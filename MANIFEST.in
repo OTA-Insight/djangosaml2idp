@@ -1,0 +1,4 @@
+include README.md
+include LICENSE.txt
+recursive-include djangosaml2idp/templates docs *
+global-exclude *.pyc *.sqlite *.db

@@ -1,0 +1,21 @@
+*.sw[a-z]
+*.py[oc]
+*.log
+
+*.egg-info/
+*.tox/
+
+*.sqlite3
+*.db
+
+.env
+
+.cache
+.coverage
+
+# Python release artifacts
+build/
+dist/
+_build/
+
+tags

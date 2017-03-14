@@ -1,0 +1,26 @@
+version: '2'
+
+services:
+  sp:
+    restart: always
+    container_name: saml_sp
+    build: sp
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./sp:/app
+    working_dir: /app
+    ports:
+      - "8000:8000"
+
+  idp:
+    restart: always
+    container_name: saml_idp
+    build: idp
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./idp:/app
+    working_dir: /app
+    ports:
+      - "9000:9000"
