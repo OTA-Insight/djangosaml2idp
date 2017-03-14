@@ -3,7 +3,7 @@ version: '2'
 services:
   sp:
     restart: always
-    container_name: saml_sp
+    container_name: djangosaml2idp_sp
     build: sp
     stdin_open: true
     tty: true
@@ -15,7 +15,7 @@ services:
 
   idp:
     restart: always
-    container_name: saml_idp
+    container_name: djangosaml2idp_idp
     build: idp
     stdin_open: true
     tty: true

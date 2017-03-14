@@ -1,8 +1,6 @@
 <form method="post" action=".">
-{% csrf_token %}
-<table>
-{{ form }}
-</table>
-<input type="submit" value="login" />
-<input type="hidden" name="next" value="{{next}}" />
+    {% csrf_token %}
+    {{ form.as_table }}
+    <input type="submit" value="login" />
+    <input type="hidden" name="next" value="{{next}}" />
 </form>

@@ -7,7 +7,5 @@
         <input type="hidden" name="SAMLResponse" value="{{ saml_response }}" />
         <input type="submit" value="Submit" />
     </form>
-    {% if autosubmit %}
     <script type="text/javascript"> window.onload = function () { document.forms[0].submit(); }</script>
-    {% endif %}
 </body>

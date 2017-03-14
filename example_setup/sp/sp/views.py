@@ -6,7 +6,7 @@ from djangosaml2.signals import pre_user_save
 
 
 def index(request):
-    """ Print user attributes if logged in.
+    """ Barebone 'diagnistics' view, print user attributes if logged in + login/logout links.
     """
     if request.user.is_authenticated:
         out = "LOGGED IN: <a href={0}>LOGOUT</a><br>".format(settings.LOGOUT_URL)
@@ -18,6 +18,7 @@ def index(request):
         return HttpResponse("LOGGED OUT: <a href={0}>LOGIN</a>".format(settings.LOGIN_URL))
 
 
+# TODO fix this in IdP side?
 @receiver(pre_user_save, sender=User)
 def custom_update_user(sender, instance, attributes, user_modified, **kargs):
     """ Default behaviour does not play nice with booleans encoded in SAML as u'true'/u'false'.
