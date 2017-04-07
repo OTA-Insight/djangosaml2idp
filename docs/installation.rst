@@ -85,7 +85,7 @@ You also have to define a mapping for each SP you talk to::
 
     SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
-            'processor': 'idp.processors.GroupProcessor',
+            'processor': 'djangosaml2idp.processors.GroupProcessor',
             'attribute_mapping': {
                 # DJANGO: SAML
                 'email': 'email',
