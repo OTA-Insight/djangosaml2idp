@@ -83,14 +83,17 @@ In your Django settings, configure your IdP. Configuration follows the pysaml2_c
 
 You also have to define a mapping for each SP you talk to::
 
-    SAML_IDP_ATTRIBUTE_MAPPING = {
+    SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
-            # DJANGO: SAML
-            'email': 'email',
-            'first_name': 'first_name',
-            'last_name': 'last_name',
-            'is_staff': 'is_staff',
-            'is_superuser':  'is_superuser',
+            'processor': 'idp.processors.GroupProcessor',
+            'attribute_mapping': {
+                # DJANGO: SAML
+                'email': 'email',
+                'first_name': 'first_name',
+                'last_name': 'last_name',
+                'is_staff': 'is_staff',
+                'is_superuser':  'is_superuser',
+            }
         }
     }
 

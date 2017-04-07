@@ -32,6 +32,9 @@ It builds on top of PySAML2_, is compatible with Python 2/3 and all current supp
 
 .. _PySAML2: https://github.com/rohe/pysaml2/
 
+This is a brand new package and I will develop it along with our (company) need for features. 
+Any contributions, feature requests, proposals, ideas ... are welcome!
+
 Installation
 ------------
 
@@ -112,19 +115,22 @@ In your Django settings, configure your IdP. Configuration follows the pysaml2_c
             'key_file': BASE_DIR + '/certificates/private_key.pem',
             'cert_file': BASE_DIR + '/certificates/public_key.pem',
         }],
-        'valid_for': 365,
+        'valid_for': 365 * 24,
     }
 
 You also have to define a mapping for each SP you talk to::
 
-    SAML_IDP_ATTRIBUTE_MAPPING = {
+    SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
-            # DJANGO: SAML
-            'email': 'email',
-            'first_name': 'first_name',
-            'last_name': 'last_name',
-            'is_staff': 'is_staff',
-            'is_superuser':  'is_superuser',
+            'processor': 'idp.processors.GroupProcessor',
+            'attribute_mapping': {
+                # DJANGO: SAML
+                'email': 'email',
+                'first_name': 'first_name',
+                'last_name': 'last_name',
+                'is_staff': 'is_staff',
+                'is_superuser':  'is_superuser',
+            }
         }
     }
 

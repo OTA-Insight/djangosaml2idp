@@ -8,9 +8,11 @@ import logging
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.urlresolvers import reverse
+from django.exceptions import ImproperlyConfigured, PermissionDenied
 from django.http import (HttpResponse, HttpResponseBadRequest,
                          HttpResponseRedirect, HttpResponseServerError)
 from django.utils.datastructures import MultiValueDictKeyError
+from django.utils.module_loading import import_string
 from django.views.decorators.csrf import csrf_exempt
 from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
@@ -22,9 +24,14 @@ from saml2.server import Server
 from six import text_type
 
 from .identity import create_identity
+from .processors import BaseProcessor
 
 logger = logging.getLogger(__name__)
 
+try:
+    idp_sp_config = settings.SAML_IDP_SPCONFIG
+except AttributeError:
+    raise ImproperlyConfigured("SAML_IDP_SPCONFIG not defined in settings.")
 
 
 @csrf_exempt
@@ -43,6 +50,7 @@ def sso_entry(request):
         request.session['SigAlg'] = passed_data['SigAlg']
         request.session['Signature'] = passed_data['Signature']
     return HttpResponseRedirect(reverse('saml_login_process'))
+
 
 
 # TODO Add http redirect logic based on https://github.com/rohe/pysaml2/blob/master/example/idp2_repoze/idp.py#L327
@@ -83,14 +91,27 @@ def login_process(request):
         resp_args = IDP.response_args(req_info.message)
     except (UnknownPrincipal, UnsupportedBinding) as excp:
         return HttpResponseServerError(excp)
+    
+    try:
+        sp_config = settings.SAML_IDP_SPCONFIG[resp_args['sp_entity_id']]
+    except Exception:
+        raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id'])
+    
+    # Create user-specified processor or fallback to all-access base processor
+    processor_string = sp_config.get('processor', None)
+    if processor_string is None:
+        processor = BaseProcessor
+    else:
+        processor_class = import_string(processor_string)
+        processor = processor_class()
+    
+    # Check if user has access to the service of this SP
+    if not processor.has_access(request.user):
+        raise PermissionDenied
 
     # Create Identity dict (SP-specific)
-    # TODO abstract somewhat, make pluggable/configurable
-    try:
-        sp_mapping = settings.SAML_IDP_ATTRIBUTE_MAPPING.get(resp_args['sp_entity_id'], {'username': 'username'})
-    except AttributeError:
-        sp_mapping = {'username': 'username'}
-    identity = create_identity(request.user, sp_mapping)
+    sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
+    identity = processor.create_identity(request.user, sp_mapping)
 
     # TODO investigate how this works, because I don't get it. Specification?
     req_authn_context = req_info.message.requested_authn_context or PASSWORD

@@ -176,7 +176,7 @@ SAML_CONFIG = {
         'key_file': BASE_DIR + '/certificates/private_key.pem',
         'cert_file': BASE_DIR + '/certificates/public_key.pem',
     }],
-    'valid_for': 365, 
+    'valid_for': 365 * 24, 
 }
 
 SAML_USE_NAME_ID_AS_USERNAME = True

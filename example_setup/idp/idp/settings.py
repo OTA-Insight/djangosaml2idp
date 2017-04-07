@@ -163,16 +163,20 @@ SAML_IDP_CONFIG = {
         'key_file': BASE_DIR + '/certificates/private_key.pem',
         'cert_file': BASE_DIR + '/certificates/public_key.pem',
     }],
-    'valid_for': 365,
+    'valid_for': 365 * 24,
 }
 
-SAML_IDP_ATTRIBUTE_MAPPING = {
+
+SAML_IDP_SPCONFIG = {
     'http://localhost:8000/saml2/metadata/': {
-        # DJANGO: SAML
-        'email': 'email',
-        'first_name': 'first_name',
-        'last_name': 'last_name',
-        'is_staff': 'is_staff',
-        'is_superuser':  'is_superuser',
+        'processor': 'idp.processors.GroupProcessor',
+        'attribute_mapping': {
+            # DJANGO: SAML
+            'email': 'email',
+            'first_name': 'first_name',
+            'last_name': 'last_name',
+            'is_staff': 'is_staff',
+            'is_superuser':  'is_superuser',
+        }
     }
 }
