@@ -5,7 +5,7 @@
     <form method="post" action="{{ acs_url }}">
         <input type="hidden" name="RelayState" value="{{ relay_state }}" />
         <input type="hidden" name="SAMLResponse" value="{{ saml_response }}" />
-        <input type="submit" value="Submit" />
+        <input type="submit" value="Submit" hidden/>
     </form>
     <script type="text/javascript"> window.onload = function () { document.forms[0].submit(); }</script>
 </body>
