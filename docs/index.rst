@@ -1,5 +1,5 @@
-:Release: 0.3.0
-:Date: 07/04/2017
+:Release: 0.3.3
+:Date: 18/04/2017
 
 Welcome to djangosaml2idp's documentation!
 ==========================================
@@ -15,18 +15,6 @@ djangosaml2idp
     :alt: Documentation Status
     :scale: 100%
     :target: https://djangosaml2idp.readthedocs.io/en/latest/?badge=latest
-
-.. image:: https://landscape.io/github/mhindery/djangosaml2idp/master/landscape.svg?style=flat
-   :target: https://landscape.io/github/mhindery/djangosaml2idp/master
-   :alt: Code Health
-
-.. image:: https://lima.codeclimate.com/github/mhindery/djangosaml2idp/badges/gpa.svg
-   :target: https://lima.codeclimate.com/github/mhindery/djangosaml2idp
-   :alt: Code Climate
-
-.. image:: https://requires.io/github/mhindery/djangosaml2idp/requirements.svg?branch=master
-     :target: https://requires.io/github/mhindery/djangosaml2idp/requirements/?branch=master
-     :alt: Requirements Status
 
 
 djangosaml2idp implements the Identity Provider side of the SAML2 protocol with Django.

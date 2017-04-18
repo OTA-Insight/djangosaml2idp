@@ -169,7 +169,7 @@ SAML_IDP_CONFIG = {
 
 SAML_IDP_SPCONFIG = {
     'http://localhost:8000/saml2/metadata/': {
-        'processor': 'djangosaml2idp.processors.GroupProcessor',
+        'processor': 'djangosaml2idp.processors.BaseProcessor',
         'attribute_mapping': {
             # DJANGO: SAML
             'email': 'email',

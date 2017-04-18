@@ -14,17 +14,6 @@ djangosaml2idp
     :target: https://travis-ci.org/mhindery/djangosaml2idp
     :alt: Travis CI
 
-.. image:: https://landscape.io/github/mhindery/djangosaml2idp/master/landscape.svg?style=flat
-   :target: https://landscape.io/github/mhindery/djangosaml2idp/master
-   :alt: Code Health
-
-.. image:: https://lima.codeclimate.com/github/mhindery/djangosaml2idp/badges/gpa.svg
-   :target: https://lima.codeclimate.com/github/mhindery/djangosaml2idp
-   :alt: Code Climate
-
-.. image:: https://requires.io/github/mhindery/djangosaml2idp/requirements.svg?branch=master
-     :target: https://requires.io/github/mhindery/djangosaml2idp/requirements/?branch=master
-     :alt: Requirements Status
 
 
 djangosaml2idp implements the Identity Provider side of the SAML2 protocol with Django.
@@ -122,7 +111,7 @@ You also have to define a mapping for each SP you talk to::
 
     SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
-            'processor': 'djangosaml2idp.processors.GroupProcessor',
+            'processor': 'djangosaml2idp.processors.BaseProcessor',
             'attribute_mapping': {
                 # DJANGO: SAML
                 'email': 'email',
