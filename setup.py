@@ -11,7 +11,7 @@ setup(
     keywords="django,pysaml2,sso,saml2,federated authentication,authentication,idp",
     author='Mathieu Hinderyckx',
     author_email='mathieu.hinderyckx@gmail.com',
-    maintainer="Mathieu Hinderyckx",
+    maintainer="OTA Insight",
     long_description="\n\n".join([
         open(os.path.join(os.path.dirname(__file__), 'README.rst')).read(),
         #open('HISTORY.rst').read()
@@ -22,7 +22,7 @@ setup(
         ],
     license='MIT',
     packages=find_packages(exclude=["tests*", "docs"]),
-    url='https://github.com/mhindery/djangosaml2idp',
+    url='https://github.com/OTA-Insight/djangosaml2idp',
     zip_safe=False,
     include_package_data=True,
     classifiers=[
