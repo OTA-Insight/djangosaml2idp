@@ -6,6 +6,7 @@ import copy
 import logging
 
 from django.conf import settings
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.core.urlresolvers import reverse
@@ -107,7 +108,7 @@ def login_process(request):
     
     # Check if user has access to the service of this SP
     if not processor.has_access(request.user):
-        raise PermissionDenied
+        raise PermissionDenied("You do not have access to this resource")
 
     # Create Identity dict (SP-specific)
     sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
@@ -137,7 +138,40 @@ def login_process(request):
         destination=destination,
         relay_state=request.session['RelayState'],
         response=True)
-    return HttpResponse(http_args['data'])
+
+    logger.debug('http args are: %s' % http_args)
+
+    if processor.enable_multifactor(request.user):
+      # Store http_args in session for after multi factor is complete
+      request.session['saml_data'] = http_args['data']
+      logger.debug("Redirecting to process_multi_factor")
+      return HttpResponseRedirect(reverse('saml_multi_factor'))
+    else:
+      logger.debug("Performing SAML redirect")
+      return HttpResponse(http_args['data'])
+
+
+@login_required
+def process_multi_factor(request, *args, **kwargs):
+  """This function is to perform 'other' user validation, for example 2nd factor
+  checks. Override this view per the documentation if using this functionality.
+  """
+  logger.debug('In process_multi_factor view')
+
+  def check_other_factor(request.user):
+    """The code here can do whatever it needs to validate your user but must
+    return True for authentication to be considered a success"""
+    return True
+
+  if check_other_factor(request.user):
+    logger.debug('Second factor succeeded for %s' % request.user)
+    # If authentication succeeded, log in is ok
+    return HttpResponse(request.session['saml_data'])
+  else:
+    logger.debug("Second factor failed; %s will not be able to log in" % request.user)
+    # Otherwise they should not be logging in.
+    logout(request)
+    raise PermissionDenied("Second authentication factor failed")
 
 
 def metadata(request):
