@@ -14,7 +14,7 @@ from django.http import (HttpResponse, HttpResponseBadRequest,
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.module_loading import import_string
 from django.views.decorators.csrf import csrf_exempt
-from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
+from saml2 import BINDING_HTTP_POST
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
@@ -23,7 +23,6 @@ from saml2.s_utils import UnknownPrincipal, UnsupportedBinding
 from saml2.server import Server
 from six import text_type
 
-from .identity import create_identity
 from .processors import BaseProcessor
 
 logger = logging.getLogger(__name__)
