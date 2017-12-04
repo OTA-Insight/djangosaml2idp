@@ -9,6 +9,10 @@ class BaseProcessor(object):
     def has_access(self, user):
         return True
 
+    def enable_multifactor(self, user):
+        """Check if this user should use a second authentication system"""
+        return False
+
     def create_identity(self, user, sp_mapping):
         return {
             out_attr: getattr(user, user_attr)

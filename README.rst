@@ -128,6 +128,27 @@ Use this metadata xml to configure your SP. Place the metadata xml from that SP 
 
 .. _pysaml2_configuration: https://github.com/rohe/pysaml2/blob/master/doc/howto/config.rst
 
+Customising the multi factor authentication support
+---------------------------------------------------
+
+There are three main components to adding multiple factor support.
+
+Override djangosaml2idp.processors.BaseProcessor as outlined above. You will
+need to override the enable_multifactor() method to check the correct locations
+for user configuration WRT multifactor for your environment (If it should be
+enabled for all users simply hard code to True). By default it unconditionally
+returns False.
+
+Next override djangosaml2idp.views.process_multi_factor() to make the
+appropriate calls for your environment. This could call a helper script, an
+internal SMS triggering service, a data source only the IdP can access  or an
+external second factor provider like Symantec VIP.
+By default this function will log that it was called then redirect.
+
+Finally update your urls.py and add an override for name='saml_multi_factor' -
+ensuring it is before importing the djangosaml2idp urls file.
+
+
 Example project
 ---------------
 ``example_project`` contains a barebone demo setup.
