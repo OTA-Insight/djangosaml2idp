@@ -1,6 +1,6 @@
 django>=1.8,<2
 # djangosaml2>=0.16.11
 # pulling from master is required until knaperek/djangosaml2/pull/105 
-# is merged
+# is released
 https://github.com/knaperek/djangosaml2/archive/master.zip
 pysaml2>=4.4.0
