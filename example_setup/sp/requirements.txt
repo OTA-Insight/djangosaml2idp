@@ -1,3 +1,6 @@
-django>=1.8
-djangosaml2==0.16.0
+django>=1.8,<2
+# djangosaml2>=0.16.11
+# pulling from master is required until knaperek/djangosaml2/pull/105 
+# is merged
+https://github.com/knaperek/djangosaml2/archive/master.zip
 pysaml2>=4.4.0
