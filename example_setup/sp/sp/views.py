@@ -6,7 +6,7 @@ from djangosaml2.signals import pre_user_save
 
 
 def index(request):
-    """ Barebone 'diagnistics' view, print user attributes if logged in + login/logout links.
+    """ Barebone 'diagnostics' view, print user attributes if logged in + login/logout links.
     """
     if request.user.is_authenticated:
         out = "LOGGED IN: <a href={0}>LOGOUT</a><br>".format(settings.LOGOUT_URL)
