@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 
+app_name = 'djangosaml2idp'
 urlpatterns = [
     path('sso/post', views.sso_entry, name="saml_login_post"),
     path('sso/redirect', views.sso_entry, name="saml_login_redirect"),
