@@ -18,7 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from saml2 import BINDING_HTTP_POST
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
-from saml2.ident import NameID
+from saml2.ident import NameID, NAMEID_FORMAT_UNSPECIFIED
 from saml2.metadata import entity_descriptor
 from saml2.s_utils import UnknownPrincipal, UnsupportedBinding
 from saml2.server import Server
@@ -172,6 +172,82 @@ def process_multi_factor(request, *args, **kwargs):
     logout(request)
     raise PermissionDenied("Second authentication factor failed")
 
+@login_required
+def sso_idp_init(request):
+    """ Entrypoint view for IdP initiated SSO. Gathers the parameters from the HTTP request and
+    contructs a SAML Response to send to the SP.
+    """
+    passed_data = request.POST if request.method == 'POST' else request.GET
+
+    # get sp information from the parameters
+    try:
+        sp_entity_id = passed_data['sp']
+    except KeyError as e:
+        return HttpResponseBadRequest()
+
+    conf = IdPConfig()
+    conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
+    IDP = Server(config=conf)
+
+    try:
+        sp_config = settings.SAML_IDP_SPCONFIG[sp_entity_id]
+    except Exception:
+        raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id)
+
+    binding_out, destination = IDP.pick_binding(
+        service="assertion_consumer_service",
+        entity_id=sp_entity_id)
+
+    # Create user-specified processor or fallback to all-access base processor
+    processor_string = sp_config.get('processor', None)
+    if processor_string is None:
+        processor = BaseProcessor
+    else:
+        processor_class = import_string(processor_string)
+        processor = processor_class()
+
+    # Check if user has access to the service of this SP
+    if not processor.has_access(request.user):
+        raise PermissionDenied("You do not have access to this resource")
+
+    # Create Identity dict (SP-specific)
+    sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
+    identity = processor.create_identity(request.user, sp_mapping)
+
+    req_authn_context = PASSWORD
+    AUTHN_BROKER = AuthnBroker()
+    AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
+
+    # Construct SamlResponse messages
+    try:
+        name_id_formats = IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
+        name_id = NameID(format=name_id_formats[0], text=request.user.username)
+        authn = AUTHN_BROKER.get_authn_by_accr(req_authn_context)
+        sign_response = IDP.config.getattr("sign_response", "idp") or False
+        sign_assertion = IDP.config.getattr("sign_assertion", "idp") or False
+        authn_resp = IDP.create_authn_response(
+            identity=identity,
+            in_response_to="Monete_IdP_Initialed_Login",
+            destination=destination,
+            sp_entity_id=sp_entity_id,
+            userid=request.user.username,
+            name_id=name_id,
+            authn=authn,
+            sign_response=sign_response,
+            sign_assertion=sign_assertion,
+            **passed_data)
+    except Exception as excp:
+        return HttpResponseServerError(excp)
+
+    # Return as html with self-submitting form.
+    http_args = IDP.apply_binding(
+        binding=binding_out,
+        msg_str="%s" % authn_resp,
+        destination=destination,
+        relay_state=passed_data['RelayState'],
+        response=True)
+    print("http_args: %s" % http_args)
+    return HttpResponse(http_args['data'])
 
 def metadata(request):
     """ Returns an XML with the SAML 2.0 metadata for this Idp.
