@@ -18,9 +18,10 @@ from django.views.decorators.csrf import csrf_exempt
 from saml2 import BINDING_HTTP_POST
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
-from saml2.ident import NameID, NAMEID_FORMAT_UNSPECIFIED
+from saml2.ident import NameID
 from saml2.metadata import entity_descriptor
 from saml2.s_utils import UnknownPrincipal, UnsupportedBinding
+from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from saml2.server import Server
 from six import text_type
 
@@ -149,6 +150,10 @@ def login_process(request):
       logger.debug("Performing SAML redirect")
       return HttpResponse(http_args['data'])
 
+def _check_other_factor(user):
+    """The code here can do whatever it needs to validate your user but must
+    return True for authentication to be considered a success"""
+    return True
 
 @login_required
 def process_multi_factor(request, *args, **kwargs):
@@ -157,12 +162,7 @@ def process_multi_factor(request, *args, **kwargs):
   """
   logger.debug('In process_multi_factor view')
 
-  def check_other_factor(request.user):
-    """The code here can do whatever it needs to validate your user but must
-    return True for authentication to be considered a success"""
-    return True
-
-  if check_other_factor(request.user):
+  if _check_other_factor(request.user):
     logger.debug('Second factor succeeded for %s' % request.user)
     # If authentication succeeded, log in is ok
     return HttpResponse(request.session['saml_data'])
@@ -183,7 +183,7 @@ def sso_idp_init(request):
     try:
         sp_entity_id = passed_data['sp']
     except KeyError as e:
-        return HttpResponseBadRequest()
+        return HttpResponseBadRequest(e)
 
     conf = IdPConfig()
     conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
@@ -246,7 +246,6 @@ def sso_idp_init(request):
         destination=destination,
         relay_state=passed_data['RelayState'],
         response=True)
-    print("http_args: %s" % http_args)
     return HttpResponse(http_args['data'])
 
 def metadata(request):
