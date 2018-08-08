@@ -169,12 +169,12 @@ SAML_CONFIG = {
         'local': [os.path.join(os.path.join(os.path.join(BASE_DIR, 'sp'), 'saml2_config'), 'idp_metadata.xml')],
     },
     # Signing
-    'key_file': BASE_DIR + '/certificates/private_key.pem',
-    'cert_file': BASE_DIR + '/certificates/public_key.pem',
+    'key_file': BASE_DIR + '/certificates/private.key',
+    'cert_file': BASE_DIR + '/certificates/public.cert',
     # Encryption
     'encryption_keypairs': [{
-        'key_file': BASE_DIR + '/certificates/private_key.pem',
-        'cert_file': BASE_DIR + '/certificates/public_key.pem',
+        'key_file': BASE_DIR + '/certificates/private.key',
+        'cert_file': BASE_DIR + '/certificates/public.cert',
     }],
     'valid_for': 365 * 24, 
 }
