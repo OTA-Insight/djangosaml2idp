@@ -227,7 +227,7 @@ def sso_idp_init(request):
         sign_assertion = IDP.config.getattr("sign_assertion", "idp") or False
         authn_resp = IDP.create_authn_response(
             identity=identity,
-            in_response_to="Monete_IdP_Initialed_Login",
+            in_response_to="IdP_Initialed_Login",
             destination=destination,
             sp_entity_id=sp_entity_id,
             userid=request.user.username,
