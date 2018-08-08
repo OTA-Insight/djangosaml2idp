@@ -25,7 +25,7 @@ SECRET_KEY = 'w1#&b@*haty+1pmlw--ll9i!5z+d$e*5yxq0&cgo16e_vhd7r('
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -120,6 +120,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.10/howto/static-files/
 
 STATIC_URL = '/static/'
+
+STATICFILES_DIRS = ( 
+      BASE_DIR + '/static/',  
+)
 
 ### Everything above are default settings made by django-admin startproject
 ### The following is added for djangosaml2idp IdP configuration.

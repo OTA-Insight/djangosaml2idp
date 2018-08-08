@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 from django.http import (HttpResponse, HttpResponseBadRequest,
                          HttpResponseRedirect, HttpResponseServerError)
 from django.utils.datastructures import MultiValueDictKeyError
@@ -49,7 +49,7 @@ def sso_entry(request):
     if "SigAlg" in passed_data and "Signature" in passed_data:
         request.session['SigAlg'] = passed_data['SigAlg']
         request.session['Signature'] = passed_data['Signature']
-    return HttpResponseRedirect(reverse('saml_login_process'))
+    return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
 
 
@@ -157,7 +157,7 @@ def process_multi_factor(request, *args, **kwargs):
   """
   logger.debug('In process_multi_factor view')
 
-  def check_other_factor(request.user):
+  def check_other_factor(request_user):
     """The code here can do whatever it needs to validate your user but must
     return True for authentication to be considered a success"""
     return True
