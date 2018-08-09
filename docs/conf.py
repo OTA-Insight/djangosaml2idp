@@ -52,7 +52,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'djangosaml2idp'
-copyright = '2017, Mathieu Hinderyckx'
+copyright = '2018, Mathieu Hinderyckx'
 author = 'Mathieu Hinderyckx'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -155,6 +155,6 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'djangosaml2idp', 'djangosaml2idp Documentation',
-     author, 'djangosaml2idp', 'One line description of project.',
+     author, 'djangosaml2idp', 'SAML2 Identity Provider in Django.',
      'Miscellaneous'),
 ]

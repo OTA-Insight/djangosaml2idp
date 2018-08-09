@@ -1,7 +1,6 @@
-FROM alpine:latest
+FROM python:3.6-alpine
 
 RUN apk add --update \
-    python python-dev py-pip \
     build-base libffi-dev openssl-dev \
     xmlsec \
   && rm -rf /var/cache/apk/*

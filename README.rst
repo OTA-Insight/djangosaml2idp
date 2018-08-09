@@ -16,27 +16,20 @@ djangosaml2idp
 
 
 
-djangosaml2idp implements the Identity Provider side of the SAML2 protocol with Django.
-It builds on top of PySAML2_, is compatible with Python 2/3 and all current supported Django versions.
+djangosaml2idp implements the Identity Provider side of the SAML2 protocol for Django.
+It builds on top of `PySAML2 <https://github.com/IdentityPython/pysaml2>`_, is the latest version compatible with Python 3 and Django 2.0+.
+(version 0.3.3 of the package is to be used with Python2 and Django 1.11)
 
-.. _PySAML2: https://github.com/rohe/pysaml2/
-
-This is a brand new package and I will develop it along with our (company) need for features. 
 Any contributions, feature requests, proposals, ideas ... are welcome!
 
 Installation
 ------------
 
-PySAML2 uses xmlsec1_ binary to sign SAML assertions so you need to install
-it either through your operating system package or by compiling the source
-code. It doesn't matter where the final executable is installed because
-you will need to set the full path to it in the configuration stage.
-xmlsec is available (at least) for Debian, OSX and Alpine Linux.
+PySAML2 uses `XML Security Library <http://www.aleksey.com/xmlsec/>`_ binary to sign SAML assertions, so you need to install
+it either through your operating system package or by compiling the source code. It doesn't matter where the final executable is installed because
+you will need to set the full path to it in the configuration stage. XmlSec is available (at least) for Debian, OSX and Alpine Linux.
 
-.. _xmlsec1: http://www.aleksey.com/xmlsec/
-
-Now you can install the djangosaml2idp package using pip. This
-will also install PySAML2 and its dependencies automatically::
+Now you can install the djangosaml2idp package using pip. This will also install PySAML2 and its dependencies automatically::
 
     pip install djangosaml2idp
 
@@ -62,7 +55,7 @@ Now include ``djangosaml2idp`` in your project by adding it in the url config::
         ...
     ]
 
-In your Django settings, configure your IdP. Configuration follows the pysaml2_configuration_. The IdP from the example project looks like this::
+In your Django settings, configure your IdP. Configuration follows the `PySAML2 configuration <https://github.com/IdentityPython/pysaml2/blob/master/docs/howto/config.rst>`_. The IdP from the example project looks like this::
 
     ...
     import saml2
@@ -97,17 +90,20 @@ In your Django settings, configure your IdP. Configuration follows the pysaml2_c
             'local': [os.path.join(os.path.join(os.path.join(BASE_DIR, 'idp'), 'saml2_config'), 'sp_metadata.xml')],
         },
         # Signing
-        'key_file': BASE_DIR + '/certificates/private_key.pem',
-        'cert_file': BASE_DIR + '/certificates/public_key.pem',
+        'key_file': BASE_DIR + '/certificates/private.key',
+        'cert_file': BASE_DIR + '/certificates/public.cert',
         # Encryption
         'encryption_keypairs': [{
-            'key_file': BASE_DIR + '/certificates/private_key.pem',
-            'cert_file': BASE_DIR + '/certificates/public_key.pem',
+            'key_file': BASE_DIR + '/certificates/private.key',
+            'cert_file': BASE_DIR + '/certificates/public.cert',
         }],
         'valid_for': 365 * 24,
     }
 
-You also have to define a mapping for each SP you talk to::
+
+Notice the configuration requires a private key and public certificate to be available on the filesystem in order to sign and encrypt messages.
+
+You also have to define a mapping for each SP you talk to:
 
     SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
@@ -126,30 +122,26 @@ You also have to define a mapping for each SP you talk to::
 That's all for the IdP configuration. Assuming you run the Django development server on localhost:8000, you can get its metadata by visiting http://localhost:8000/idp/metadata/.
 Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
 
-.. _pysaml2_configuration: https://github.com/rohe/pysaml2/blob/master/doc/howto/config.rst
-
-Customising the multi factor authentication support
+Using the multi factor authentication support
 ---------------------------------------------------
 
 There are three main components to adding multiple factor support.
 
-Override djangosaml2idp.processors.BaseProcessor as outlined above. You will
-need to override the enable_multifactor() method to check the correct locations
-for user configuration WRT multifactor for your environment (If it should be
+1. Subclass djangosaml2idp.processors.BaseProcessor as outlined above. You will
+need to override the `enable_multifactor()` method to check whether or not 
+multifactor should be enabled for a user. (If it should allways be
 enabled for all users simply hard code to True). By default it unconditionally
-returns False.
+returns False and no multifactor is enforce.
 
-Next override djangosaml2idp.views.process_multi_factor() to make the
-appropriate calls for your environment. This could call a helper script, an
-internal SMS triggering service, a data source only the IdP can access  or an
-external second factor provider like Symantec VIP.
-By default this function will log that it was called then redirect.
+2. Sublass the `djangosaml2idp.views.ProcessMultiFactorView` view to make the appropriate calls for your environment.
+Implement your custom verification logic in the `multifactor_is_valid` method: this could call a helper script, an
+internal SMS triggering service, a data source only the IdP can access or an external second factor provider like Symantec VIP ...
+By default this view will log that it was called then redirect.
 
-Finally update your urls.py and add an override for name='saml_multi_factor' -
-ensuring it is before importing the djangosaml2idp urls file.
+3. Update your urls.py and add an override for name='saml_multi_factor' - ensure it comes before importing the djangosaml2idp urls file so your custom view is used instead of the built-in one.
 
 
 Example project
 ---------------
-``example_project`` contains a barebone demo setup.
-It consists of a Service Provider implemented with ``djangosaml2`` and an Identity Provider using ``djangosaml2idp``.
+``example_project`` contains a barebone demo setup to demonstrate the login-logout functionality.
+It consists of a Service Provider implemented with `djangosaml2 <https://github.com/knaperek/djangosaml2/>`_ and an Identity Provider using ``djangosaml2idp``.
