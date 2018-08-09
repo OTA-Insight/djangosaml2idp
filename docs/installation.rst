@@ -79,7 +79,7 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
 
 Notice the configuration requires a private key and public certificate to be available on the filesystem in order to sign and encrypt messages.
 
-You also have to define a mapping for each SP you talk to:
+You also have to define a mapping for each SP you talk to::
 
     ...
     SAML_IDP_SPCONFIG = {
