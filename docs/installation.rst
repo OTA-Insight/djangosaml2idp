@@ -81,6 +81,7 @@ Notice the configuration requires a private key and public certificate to be ava
 
 You also have to define a mapping for each SP you talk to:
 
+    ...
     SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
             'processor': 'djangosaml2idp.processors.BaseProcessor',
@@ -94,6 +95,7 @@ You also have to define a mapping for each SP you talk to:
             }
         }
     }
+
 
 That's all for the IdP configuration. Assuming you run the Django development server on localhost:8000, you can get its metadata by visiting http://localhost:8000/idp/metadata/.
 Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
