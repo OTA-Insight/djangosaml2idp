@@ -30,7 +30,8 @@ djangosaml2idp
 
 djangosaml2idp implements the Identity Provider side of the SAML2 protocol for Django.
 It builds on top of `PySAML2 <https://github.com/IdentityPython/pysaml2>`_, and is used in production.
-The package starting from 0.4.4 are for Python 3 and Django 2.x. The last Python 2 version is 0.3.3 which is compatible with Django 1.8-1.11.
+
+Package version 0.3.3 is the last Python 2 / Django 1.8-1.11 compatible release. Versions starting from 0.4.0 are for Python 3 and Django 2.x.
 
 Any contributions, feature requests, proposals, ideas ... are welcome!
 
