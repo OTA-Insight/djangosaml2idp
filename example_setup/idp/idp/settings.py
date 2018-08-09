@@ -133,6 +133,9 @@ from saml2.saml import NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED
 from saml2.sigver import get_xmlsec_binary
 
 LOGIN_URL = '/login/'
+LOGOUT_URL = '/logout/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/'
 BASE_URL = 'http://localhost:9000/idp'
 
 SAML_IDP_CONFIG = {

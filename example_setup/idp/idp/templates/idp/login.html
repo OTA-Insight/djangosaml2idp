@@ -1,8 +1,23 @@
-<p>-- @ Identity Provider --</p>
+<!doctype html>
+<html lang="en">
 
-<form method="post" action=".">
-    {% csrf_token %}
-    {{ form.as_table }}
-    <input type="submit" value="login" />
-    <input type="hidden" name="next" value="{{next}}" />
-</form>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IDP Login</title>
+</head>
+
+<body>
+    <p>-- @ Identity Provider --</p>
+
+    <form method="post" action=".">
+        {% csrf_token %}
+        {{ form.as_table }}
+        <input type="submit" value="login" />
+        <input type="hidden" name="next" value="{{next}}" />
+    </form>
+
+</body>
+
+</html>

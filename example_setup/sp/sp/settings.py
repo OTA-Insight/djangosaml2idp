@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'djangosaml2',
+    'sp',
 ]
 
 MIDDLEWARE = [
@@ -51,6 +52,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'sp.urls'
+
 
 TEMPLATES = [
     {
@@ -67,6 +69,7 @@ TEMPLATES = [
         },
     },
 ]
+
 
 WSGI_APPLICATION = 'sp.wsgi.application'
 
@@ -141,7 +144,7 @@ LOGOUT_REDIRECT_URL = '/'
 BASE_URL = 'http://localhost:8000/saml2'
 
 SAML_CONFIG = {
-    'debug' : DEBUG,
+    'debug': DEBUG,
     'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
     'entityid': '%s/metadata/' % BASE_URL,
 
@@ -176,7 +179,7 @@ SAML_CONFIG = {
         'key_file': BASE_DIR + '/certificates/private.key',
         'cert_file': BASE_DIR + '/certificates/public.cert',
     }],
-    'valid_for': 365 * 24, 
+    'valid_for': 365 * 24,
 }
 
 SAML_USE_NAME_ID_AS_USERNAME = True

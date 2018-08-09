@@ -3,8 +3,8 @@ Example SP/IdP implementation
 
 This is a barebone example implementation of a functional setup with a Service Provider and Identity Provider.
 The SP is implemented using `djangosaml2 <https://github.com/knaperek/djangosaml2/>`_, the IdP using djangosaml2idp.
-Both are default django projects with only the bare minimum of added code for a functional demo or start.
-This to keep it clear and obvious how to implement the SP/IdP functionality without other code clutter serving as distraction.
+Both are default django projects with only the bare minimum of added code for a functional demo.
+This is meant to easily highlight only the parts necessary to implement the SP/IdP functionality in your own without other code clutter serving as distraction.
 
 A `docker-compose <https://docs.docker.com/compose/>`_ file is included, providing a minimum-entry-barrier setup to get up and running, without complicated & error-prone setup requirements.
 The example will run equally on Mac/Windows/Linux using docker.
@@ -22,9 +22,39 @@ In order to do an actual login, you will need to create a user account on the Id
 
     docker exec -it djangosaml2idp_idp python manage.py createsuperuser
 
-Now go to the `SP <http://localhost:8000/>`_ in your browser. The page shows you're not logged in; click on the link to login. You'll get redirected to the IdP which
-shows a login form. Enter the credentials from the user you just created. You will then get redirected back to the SP, showing you are logged in with the user information stemming from the IdP.
-And that is essentially what SAML2 does :)
+If you don't want to use docker, simply do in a terminal from the idp directory
+
+    pip install -r requirements.txt
+
+    python manage.py migrate
+
+    python manage.py runserver 0.0.0.0:9000 (8000 for the SP) in a terminal
+
+How to use
+----------
+
+
+There are two flows illustrated with this demo:
+
+
+1. SP-initiated login
+    - Go to the `SP <http://localhost:8000/>`_ in your browser and verify you are not logged in.
+    - Click on the login link. You'll get redirected to a login form on the IdP instance.
+    - Log in with your credentials from the user you just created. You get redirected back to the SP instance.
+    - You are now logged in on the SP. The page shows the user information stemming from the IdP.
+
+
+2. IDP-initiated login
+    - Go to the `SP <http://localhost:8000/>`_ in your browser and verify you are not logged in.
+    - Go to the `IDP <http://localhost:9000/>`_ in your browser. You are not logged in.
+    - Click on the login link. You'll get redirected to a login form on the IdP instance.
+    - Log in with your credentials from the user you just created. You get back to the IDP landing page, but now you are logged in.
+    - Click the link on the bottom saying "Perform IDP-initiated login ...".
+    - You get redirected to the SP and are now logged in.
+
+
+At no point in the two steps below did you login on the SP; all logins happen on the IDP. The authentication information is then passed to the SP.
+And that is essentially what SSO with SAML2 does :)
 
 
 Cleanup

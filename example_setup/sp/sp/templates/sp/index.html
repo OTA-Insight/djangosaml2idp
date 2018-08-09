@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SP</title>
+</head>
+
+<body>
+    <p>-- @ Service Provider --</p>
+    {% if request.user.is_authenticated %}
+        <p>LOGGED IN -  <a href={{ logout_url }}>LOGOUT</a></p>
+        <ul>
+        {% for k, v in user_attrs %}
+            <li>{{k}}: {{v}}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <p>LOGGED OUT - <a href={{ login_url }}>LOGIN</a></p>
+    {% endif %}
+
+</body>
+
+</html>

@@ -7,9 +7,10 @@ Welcome to djangosaml2idp's documentation!
 djangosaml2idp
 ===============
 
-.. image:: https://travis-ci.org/mhindery/djangosaml2idp.svg?branch=master
-    :target: https://travis-ci.org/mhindery/djangosaml2idp
-    :alt: Travis CI
+
+.. image:: https://img.shields.io/pypi/v/djangosaml2idp.svg
+    :target: https://pypi.python.org/pypi/djangosaml2idp
+    :alt: PyPi
 
 .. image:: https://readthedocs.org/projects/djangosaml2idp/badge/?version=latest
     :alt: Documentation Status

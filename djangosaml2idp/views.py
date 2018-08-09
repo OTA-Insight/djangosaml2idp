@@ -3,7 +3,6 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import logout
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.http import (HttpResponse, HttpResponseBadRequest,
@@ -56,19 +55,16 @@ def sso_entry(request):
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
 
-@method_decorator(never_cache, name='dispatch')
-class LoginProcessView(LoginRequiredMixin, View):
-    """ View which processes the actual SAML request and returns a self-submitting form with the SAML response.
-        The login_required decorator ensures the user authenticates first on the IdP using 'normal' ways.
-    """
+class IdPHandlerViewMixin:
+    """ Contains some methods used by multiple views """
 
     def dispatch(self, request, *args, **kwargs):
-        """ Construct server with config from settings dict
+        """ Construct IDP server with config from settings dict
         """
         conf = IdPConfig()
         conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
         self.IDP = Server(config=conf)
-        return super(LoginProcessView, self).dispatch(request, *args, **kwargs)
+        return super(IdPHandlerViewMixin, self).dispatch(request, *args, **kwargs)
 
     def get_processor(self, sp_config):
         """ "Instantiate user-specified processor or fallback to all-access base processor
@@ -86,6 +82,13 @@ class LoginProcessView(LoginRequiredMixin, View):
         """
         sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
         return processor.create_identity(user, sp_mapping)
+
+
+@method_decorator(never_cache, name='dispatch')
+class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+    """ View which processes the actual SAML request and returns a self-submitting form with the SAML response.
+        The login_required decorator ensures the user authenticates first on the IdP using 'normal' ways.
+    """
 
     def get(self, request, *args, **kwargs):
         # Parse incoming request
@@ -169,6 +172,73 @@ class LoginProcessView(LoginRequiredMixin, View):
 
 
 @method_decorator(never_cache, name='dispatch')
+class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+
+    def post(self, request, *args, **kwargs):
+        return self.get(request, *args, **kwargs)
+
+    def get(self, request, *args, **kwargs):
+        passed_data = request.POST if request.method == 'POST' else request.GET
+
+        # get sp information from the parameters
+        try:
+            sp_entity_id = passed_data['sp']
+        except KeyError as e:
+            return HttpResponseBadRequest(e)
+
+        try:
+            sp_config = settings.SAML_IDP_SPCONFIG[sp_entity_id]
+        except Exception:
+            raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id)
+
+        binding_out, destination = self.IDP.pick_binding(
+            service="assertion_consumer_service",
+            entity_id=sp_entity_id)
+
+        processor = self.get_processor(sp_config)
+
+        # Check if user has access to the service of this SP
+        if not processor.has_access(request.user):
+            raise PermissionDenied("You do not have access to this resource")
+
+        identity = self.get_identity(processor, request.user, sp_config)
+
+        req_authn_context = PASSWORD
+        AUTHN_BROKER = AuthnBroker()
+        AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
+
+        # Construct SamlResponse messages
+        try:
+            name_id_formats = self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
+            name_id = NameID(format=name_id_formats[0], text=request.user.username)
+            authn = AUTHN_BROKER.get_authn_by_accr(req_authn_context)
+            sign_response = self.IDP.config.getattr("sign_response", "idp") or False
+            sign_assertion = self.IDP.config.getattr("sign_assertion", "idp") or False
+            authn_resp = self.IDP.create_authn_response(
+                identity=identity,
+                in_response_to="IdP_Initiated_Login",
+                destination=destination,
+                sp_entity_id=sp_entity_id,
+                userid=request.user.username,
+                name_id=name_id,
+                authn=authn,
+                sign_response=sign_response,
+                sign_assertion=sign_assertion,
+                **passed_data)
+        except Exception as excp:
+            return HttpResponseServerError(excp)
+
+        # Return as html with self-submitting form.
+        http_args = self.IDP.apply_binding(
+            binding=binding_out,
+            msg_str="%s" % authn_resp,
+            destination=destination,
+            relay_state=passed_data['RelayState'],
+            response=True)
+        return HttpResponse(http_args['data'])
+
+
+@method_decorator(never_cache, name='dispatch')
 class ProcessMultiFactorView(LoginRequiredMixin, View):
     """ This view is used in an optional step is to perform 'other' user validation, for example 2nd factor checks.
         Override this view per the documentation if using this functionality to plug in your custom validation logic.
@@ -199,79 +269,3 @@ def metadata(request):
     conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
     metadata = entity_descriptor(conf)
     return HttpResponse(content=text_type(metadata).encode('utf-8'), content_type="text/xml; charset=utf8")
-
-@login_required
-def sso_idp_init(request):
-    """ Entrypoint view for IdP initiated SSO. Gathers the parameters from the HTTP request and
-    contructs a SAML Response to send to the SP.
-    """
-    passed_data = request.POST if request.method == 'POST' else request.GET
-
-    # get sp information from the parameters
-    try:
-        sp_entity_id = passed_data['sp']
-    except KeyError as e:
-        return HttpResponseBadRequest(e)
-
-    conf = IdPConfig()
-    conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
-    IDP = Server(config=conf)
-
-    try:
-        sp_config = settings.SAML_IDP_SPCONFIG[sp_entity_id]
-    except Exception:
-        raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id)
-
-    binding_out, destination = IDP.pick_binding(
-        service="assertion_consumer_service",
-        entity_id=sp_entity_id)
-
-    # Create user-specified processor or fallback to all-access base processor
-    processor_string = sp_config.get('processor', None)
-    if processor_string is None:
-        processor = BaseProcessor
-    else:
-        processor_class = import_string(processor_string)
-        processor = processor_class()
-
-    # Check if user has access to the service of this SP
-    if not processor.has_access(request.user):
-        raise PermissionDenied("You do not have access to this resource")
-
-    # Create Identity dict (SP-specific)
-    sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
-    identity = processor.create_identity(request.user, sp_mapping)
-
-    req_authn_context = PASSWORD
-    AUTHN_BROKER = AuthnBroker()
-    AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
-
-    # Construct SamlResponse messages
-    try:
-        name_id_formats = IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
-        name_id = NameID(format=name_id_formats[0], text=request.user.username)
-        authn = AUTHN_BROKER.get_authn_by_accr(req_authn_context)
-        sign_response = IDP.config.getattr("sign_response", "idp") or False
-        sign_assertion = IDP.config.getattr("sign_assertion", "idp") or False
-        authn_resp = IDP.create_authn_response(
-            identity=identity,
-            in_response_to="IdP_Initialed_Login",
-            destination=destination,
-            sp_entity_id=sp_entity_id,
-            userid=request.user.username,
-            name_id=name_id,
-            authn=authn,
-            sign_response=sign_response,
-            sign_assertion=sign_assertion,
-            **passed_data)
-    except Exception as excp:
-        return HttpResponseServerError(excp)
-
-    # Return as html with self-submitting form.
-    http_args = IDP.apply_binding(
-        binding=binding_out,
-        msg_str="%s" % authn_resp,
-        destination=destination,
-        relay_state=passed_data['RelayState'],
-        response=True)
-    return HttpResponse(http_args['data'])

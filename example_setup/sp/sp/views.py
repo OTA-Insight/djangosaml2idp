@@ -1,21 +1,24 @@
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.dispatch import receiver
-from django.http import HttpResponse
+from django.views.generic import TemplateView
 from djangosaml2.signals import pre_user_save
 
 
-def index(request):
-    """ Barebone 'diagnostics' view, print user attributes if logged in + login/logout links.
-    """
-    if request.user.is_authenticated:
-        out = "-- @ Service Provider --<br><br>LOGGED IN: <a href={0}>LOGOUT</a><br>".format(settings.LOGOUT_URL)
-        out += "<br>".join(sorted(['%s: %s' % (field.name, getattr(request.user, field.name))
-                    for field in request.user._meta.get_fields()
-                    if field.concrete]))
-        return HttpResponse(out)
-    else:
-        return HttpResponse("-- @ Service Provider --<br><br>LOGGED OUT: <a href={0}>LOGIN</a>".format(settings.LOGIN_URL))
+class IndexView(TemplateView):
+    template_name = "sp/index.html"
+
+    def get_context_data(self, **kwargs):
+        context = super(IndexView, self).get_context_data(**kwargs)
+        context.update({
+            "logout_url": settings.LOGOUT_URL,
+            "login_url": settings.LOGIN_URL,
+        })
+        if self.request.user.is_authenticated:
+            context.update({
+                "user_attrs": sorted([(field.name, getattr(self.request.user, field.name)) for field in self.request.user._meta.get_fields() if field.concrete]),
+            })
+        return context
 
 
 # TODO fix this in IdP side?

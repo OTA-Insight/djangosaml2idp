@@ -1,6 +1,14 @@
 # Changelog
 
-## Unreleased: [0.4.0] - 2018-08-08
+## [0.4.1] - 2018-08-09
+
+Many thanks for contributions to [@jlunger-arcweb](https://github.com/jlunger-arcweb)
+
+### Added
+- IDP-initiated login
+- Example project extended with IDP-initiated login and improved docs on it
+
+## [0.4.0] - 2018-08-08
 
 Many thanks for contributions to [@peppelinux](https://github.com/peppelinux), [@saundersmatt](https://github.com/saundersmatt), [@JosephKiranBabu](https://github.com/JosephKiranBabu)
 
