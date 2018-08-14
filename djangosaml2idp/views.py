@@ -53,10 +53,10 @@ def sso_entry(request):
         request.session['Signature'] = passed_data['Signature']
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
-
-class IdPHandlerViewMixin:
+class IdPHandlerViewMixin(object):
     """ Contains some methods used by multiple views """
 
+    @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
         """ Construct IDP server with config from settings dict
         """
@@ -83,13 +83,10 @@ class IdPHandlerViewMixin:
         return processor.create_identity(user, sp_mapping)
 
 
-@method_decorator(never_cache)
-@method_decorator(login_required)
 class LoginProcessView(IdPHandlerViewMixin, View):
     """ View which processes the actual SAML request and returns a self-submitting form with the SAML response.
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' ways.
     """
-
     def get(self, request, *args, **kwargs):
         # Parse incoming request
         try:
@@ -171,8 +168,6 @@ class LoginProcessView(IdPHandlerViewMixin, View):
         return HttpResponse(http_args['data'])
 
 
-@method_decorator(never_cache)
-@method_decorator(login_required)
 class SSOInitView(IdPHandlerViewMixin, View):
 
     def post(self, request, *args, **kwargs):
@@ -239,8 +234,6 @@ class SSOInitView(IdPHandlerViewMixin, View):
         return HttpResponse(http_args['data'])
 
 
-@method_decorator(never_cache)
-@method_decorator(login_required)
 class ProcessMultiFactorView(View):
     """ This view is used in an optional step is to perform 'other' user validation, for example 2nd factor checks.
         Override this view per the documentation if using this functionality to plug in your custom validation logic.
