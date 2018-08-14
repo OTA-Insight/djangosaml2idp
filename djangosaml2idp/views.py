@@ -3,25 +3,24 @@ import logging
 
 from django.conf import settings
 from django.contrib.auth import logout
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
+from django.core.urlresolvers import reverse
 from django.http import (HttpResponse, HttpResponseBadRequest,
                          HttpResponseRedirect, HttpResponseServerError)
-from django.urls import reverse
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
-from django.views import View
+from django.views.generic.base import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from saml2 import BINDING_HTTP_POST
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.metadata import entity_descriptor
 from saml2.s_utils import UnknownPrincipal, UnsupportedBinding
-from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from saml2.server import Server
 from six import text_type
 
@@ -84,8 +83,9 @@ class IdPHandlerViewMixin:
         return processor.create_identity(user, sp_mapping)
 
 
-@method_decorator(never_cache, name='dispatch')
-class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+@method_decorator(never_cache)
+@method_decorator(login_required)
+class LoginProcessView(IdPHandlerViewMixin, View):
     """ View which processes the actual SAML request and returns a self-submitting form with the SAML response.
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' ways.
     """
@@ -171,8 +171,9 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         return HttpResponse(http_args['data'])
 
 
-@method_decorator(never_cache, name='dispatch')
-class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+@method_decorator(never_cache)
+@method_decorator(login_required)
+class SSOInitView(IdPHandlerViewMixin, View):
 
     def post(self, request, *args, **kwargs):
         return self.get(request, *args, **kwargs)
@@ -238,8 +239,9 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         return HttpResponse(http_args['data'])
 
 
-@method_decorator(never_cache, name='dispatch')
-class ProcessMultiFactorView(LoginRequiredMixin, View):
+@method_decorator(never_cache)
+@method_decorator(login_required)
+class ProcessMultiFactorView(View):
     """ This view is used in an optional step is to perform 'other' user validation, for example 2nd factor checks.
         Override this view per the documentation if using this functionality to plug in your custom validation logic.
     """
