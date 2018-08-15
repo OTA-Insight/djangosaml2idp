@@ -1,5 +1,5 @@
 Configuration & Usage
----------------------
+=====================
 
 The first thing you need to do is add ``djangosaml2idp`` to the list of installed apps::
 

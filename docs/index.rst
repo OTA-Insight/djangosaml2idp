@@ -49,7 +49,6 @@ Table of contents
    :maxdepth: 2
    :caption: Contents:
 
-   toc_header
    installation
    configuration
    error

@@ -1,5 +1,5 @@
 Installation
-------------
+============
 
 PySAML2 uses `XML Security Library <http://www.aleksey.com/xmlsec/>`_ binary to sign SAML assertions, so you need to install
 it either through your operating system package or by compiling the source code. It doesn't matter where the final executable is installed because
