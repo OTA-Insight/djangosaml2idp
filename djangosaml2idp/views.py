@@ -6,7 +6,7 @@ from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.http import (HttpResponse, HttpResponseBadRequest,
-                         HttpResponseRedirect, HttpResponseServerError)
+                         HttpResponseRedirect)
 from django.urls import reverse
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.decorators import method_decorator
@@ -58,12 +58,20 @@ def sso_entry(request):
 class IdPHandlerViewMixin:
     """ Contains some methods used by multiple views """
 
+    error_view = import_string(getattr(settings, 'SAML_IDP_ERROR_VIEW_CLASS', 'djangosaml2idp.error_views.SamlIDPErrorView'))
+
+    def handle_error(self, request, **kwargs):
+        return self.error_view.as_view()(request, **kwargs)
+
     def dispatch(self, request, *args, **kwargs):
         """ Construct IDP server with config from settings dict
         """
         conf = IdPConfig()
-        conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
-        self.IDP = Server(config=conf)
+        try:
+            conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
+            self.IDP = Server(config=conf)
+        except Exception as e:
+            return self.handle_error(request, exception=e)
         return super(IdPHandlerViewMixin, self).dispatch(request, *args, **kwargs)
 
     def get_processor(self, sp_config):
@@ -95,7 +103,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         try:
             req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], BINDING_HTTP_POST)
         except Exception as excp:
-            return HttpResponseBadRequest(excp)
+            return self.handle_error(request, exception=excp)
         # TODO this is taken from example, but no idea how this works or whats it does. Check SAML2 specification?
         # Signed request for HTTP-REDIRECT
         if "SigAlg" in request.session and "Signature" in request.session:
@@ -103,31 +111,29 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             verified_ok = False
             for cert in _certs:
                 # TODO implement
-                #if verify_redirect_signature(_info, self.IDP.sec.sec_backend, cert):
+                # if verify_redirect_signature(_info, self.IDP.sec.sec_backend, cert):
                 #    verified_ok = True
                 #    break
                 pass
             if not verified_ok:
-                return HttpResponseBadRequest("Message signature verification failure")
-
-        binding_out, destination = self.IDP.pick_binding(service="assertion_consumer_service", entity_id=req_info.message.issuer.text)
+                return self.handle_error(request, extra_message="Message signature verification failure", status=400)
 
         # Gather response arguments
         try:
             resp_args = self.IDP.response_args(req_info.message)
         except (UnknownPrincipal, UnsupportedBinding) as excp:
-            return HttpResponseServerError(excp)
+            return self.handle_error(request, exception=excp, status=400)
 
         try:
             sp_config = settings.SAML_IDP_SPCONFIG[resp_args['sp_entity_id']]
         except Exception:
-            raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id'])
+            return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id']), status=400)
 
         processor = self.get_processor(sp_config)
 
         # Check if user has access to the service of this SP
         if not processor.has_access(request.user):
-            raise PermissionDenied("You do not have access to this resource")
+            return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
         identity = self.get_identity(processor, request.user, sp_config)
 
@@ -140,18 +146,18 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         try:
             authn_resp = self.IDP.create_authn_response(
                 identity=identity, userid=request.user.username,
-                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=destination, text=request.user.username),
+                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['destination'], text=request.user.username),
                 authn=AUTHN_BROKER.get_authn_by_accr(req_authn_context),
                 sign_response=self.IDP.config.getattr("sign_response", "idp") or False,
                 sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
                 **resp_args)
         except Exception as excp:
-            return HttpResponseServerError(excp)
+            return self.handle_error(request, exception=excp, status=500)
 
         http_args = self.IDP.apply_binding(
-            binding=binding_out,
+            binding=resp_args['binding'],
             msg_str="%s" % authn_resp,
-            destination=destination,
+            destination=resp_args['destination'],
             relay_state=request.session['RelayState'],
             response=True)
 
@@ -183,13 +189,13 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         # get sp information from the parameters
         try:
             sp_entity_id = passed_data['sp']
-        except KeyError as e:
-            return HttpResponseBadRequest(e)
+        except KeyError as excp:
+            return self.handle_error(request, exception=excp, status=400)
 
         try:
             sp_config = settings.SAML_IDP_SPCONFIG[sp_entity_id]
         except Exception:
-            raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id)
+            return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id), status=400)
 
         binding_out, destination = self.IDP.pick_binding(
             service="assertion_consumer_service",
@@ -199,7 +205,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         # Check if user has access to the service of this SP
         if not processor.has_access(request.user):
-            raise PermissionDenied("You do not have access to this resource")
+            return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
         identity = self.get_identity(processor, request.user, sp_config)
 
@@ -226,7 +232,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 sign_assertion=sign_assertion,
                 **passed_data)
         except Exception as excp:
-            return HttpResponseServerError(excp)
+            return self.handle_error(request, exception=excp, status=500)
 
         # Return as html with self-submitting form.
         http_args = self.IDP.apply_binding(

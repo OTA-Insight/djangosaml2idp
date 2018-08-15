@@ -50,6 +50,8 @@ Table of contents
    :caption: Contents:
 
    installation
+   error
+   multifactor
    example_setup/README
 
 
