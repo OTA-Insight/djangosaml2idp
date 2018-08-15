@@ -36,7 +36,7 @@ Package version 0.3.3 is the last Python 2 / Django 1.8-1.11 compatible release.
 Any contributions, feature requests, proposals, ideas ... are welcome!
 
 Installation
-------------
+============
 
 PySAML2 uses `XML Security Library <http://www.aleksey.com/xmlsec/>`_ binary to sign SAML assertions, so you need to install
 it either through your operating system package or by compiling the source code. It doesn't matter where the final executable is installed because
@@ -48,7 +48,8 @@ Now you can install the djangosaml2idp package using pip. This will also install
 
 
 Configuration & Usage
----------------------
+=====================
+
 The first thing you need to do is add ``djangosaml2idp`` to the list of installed apps::
 
   INSTALLED_APPS = (
@@ -139,7 +140,7 @@ That's all for the IdP configuration. Assuming you run the Django development se
 Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
 
 Customizing error handling
---------------------------
+==========================
 
 djangosaml2idp renders a very basic error page if it encounters an error, indicating an error occured, which error, and possibly an extra message.
 The HTTP status code is also set if possible depending on which error occured.
@@ -160,8 +161,8 @@ You can use any Class-Based-View for this; it's not necessary to subclass the bu
 The example project contains a ready to use example of this; uncomment the `SAML_IDP_ERROR_VIEW_CLASS` setting and it will use a custom view with custom template.
 
 
-Using the multi factor authentication support
----------------------------------------------
+Multi Factor Authentication support
+===================================
 
 There are three main components to adding multiple factor support.
 
