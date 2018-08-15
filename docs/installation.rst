@@ -99,9 +99,3 @@ You also have to define a mapping for each SP you talk to::
 
 That's all for the IdP configuration. Assuming you run the Django development server on localhost:8000, you can get its metadata by visiting http://localhost:8000/idp/metadata/.
 Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
-
-
-Example project
----------------
-``example_project`` contains a barebone demo setup to demonstrate the login-logout functionality.
-It consists of a Service Provider implemented with `djangosaml2 <https://github.com/knaperek/djangosaml2/>`_ and an Identity Provider using ``djangosaml2idp``.
