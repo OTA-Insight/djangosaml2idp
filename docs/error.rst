@@ -5,9 +5,15 @@ djangosaml2idp renders a very basic error page if it encounters an error, indica
 The HTTP status code is also set if possible depending on which error occured.
 You can customize this by using the `SAML_IDP_ERROR_VIEW_CLASS` setting. Set this to a dotted import path to your custom (class based) view in order to use that one.
 If you subclass the provided `djangosaml2idp.error_views.SamlIDPErrorView`, you have the following variables available for use in the template:
-- `exception_type`: the class of the exception that occured
-- `exception_msg`: the message from the exception (by doing `str(exception)`)
-- `extra_message`: if no specific exception given, a message indicating something went wrong, or an additional message next to the `exception_msg`
+
+exception_type
+  the class of the exception that occurred
+
+exception_msg
+  the message from the exception (by doing `str(exception)`)
+
+extra_message
+  if no specific exception given, a message indicating something went wrong, or an additional message next to the `exception_msg`
 
 The simplest override is to subclass the `SamlIDPErrorView` and only using your own error template.
 You can use any Class-Based-View for this; it's not necessary to subclass the builtin error view.

@@ -145,9 +145,15 @@ djangosaml2idp renders a very basic error page if it encounters an error, indica
 The HTTP status code is also set if possible depending on which error occured.
 You can customize this by using the `SAML_IDP_ERROR_VIEW_CLASS` setting. Set this to a dotted import path to your custom (class based) view in order to use that one.
 If you subclass the provided `djangosaml2idp.error_views.SamlIDPErrorView`, you have the following variables available for use in the template:
-- `exception_type`: the class of the exception that occured
-- `exception_msg`: the message from the exception (by doing `str(exception)`)
-- `extra_message`: if no specific exception given, a message indicating something went wrong, or an additional message next to the `exception_msg`
+
+exception_type
+  the class of the exception that occurred
+
+exception_msg
+  the message from the exception (by doing `str(exception)`)
+
+extra_message
+  if no specific exception given, a message indicating something went wrong, or an additional message next to the `exception_msg`
 
 The simplest override is to subclass the `SamlIDPErrorView` and only using your own error template.
 You can use any Class-Based-View for this; it's not necessary to subclass the builtin error view.
@@ -160,21 +166,11 @@ Using the multi factor authentication support
 There are three main components to adding multiple factor support.
 
 
-1. Subclass djangosaml2idp.processors.BaseProcessor as outlined above. You will
-need to override the `enable_multifactor()` method to check whether or not 
-multifactor should be enabled for a user. (If it should allways be
-enabled for all users simply hard code to True). By default it unconditionally
-returns False and no multifactor is enforce.
+1. Subclass djangosaml2idp.processors.BaseProcessor as outlined above. You will need to override the `enable_multifactor()` method to check whether or not multifactor should be enabled for a user. (If it should allways be enabled for all users simply hard code to True). By default it unconditionally returns False and no multifactor is enforced.
 
-
-2. Sublass the `djangosaml2idp.views.ProcessMultiFactorView` view to make the appropriate calls for your environment.
-Implement your custom verification logic in the `multifactor_is_valid` method: this could call a helper script, an
-internal SMS triggering service, a data source only the IdP can access or an external second factor provider like Symantec VIP ...
-By default this view will log that it was called then redirect.
-
+2. Sublass the `djangosaml2idp.views.ProcessMultiFactorView` view to make the appropriate calls for your environment. Implement your custom verification logic in the `multifactor_is_valid` method: this could call a helper script, an internal SMS triggering service, a data source only the IdP can access or an external second factor provider (e.g. Symantec VIP). By default this view will log that it was called then redirect.
 
 3. Update your urls.py and add an override for name='saml_multi_factor' - ensure it comes before importing the djangosaml2idp urls file so your custom view is used instead of the built-in one.
-
 
 Example project
 ---------------
