@@ -1,5 +1,5 @@
 Customizing error handling
-==========================
+--------------------------
 
 djangosaml2idp renders a very basic error page if it encounters an error, indicating an error occured, which error, and possibly an extra message.
 The HTTP status code is also set if possible depending on which error occured.

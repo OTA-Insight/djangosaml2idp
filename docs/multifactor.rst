@@ -1,5 +1,5 @@
 Multi Factor Authentication support
-===================================
+-----------------------------------
 
 There are three main components to adding multiple factor support.
 
