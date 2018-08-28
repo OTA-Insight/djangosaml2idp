@@ -1,8 +1,8 @@
-FROM python:3.6-alpine
+FROM python:3.6.6-alpine3.7
 
 RUN apk add --update \
     build-base libffi-dev openssl-dev \
-    xmlsec \
+    xmlsec xmlsec-dev \
   && rm -rf /var/cache/apk/*
 
 ADD requirements.txt /tmp
