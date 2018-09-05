@@ -1,5 +1,6 @@
 import copy
 import logging
+import ast
 
 from django.conf import settings
 from django.contrib.auth import logout
@@ -23,15 +24,18 @@ from saml2.metadata import entity_descriptor
 from saml2.s_utils import UnknownPrincipal, UnsupportedBinding
 from saml2.server import Server
 from six import text_type
+from monetate.retailer.models import SAMLSP
+
+from monetate.
 
 from .processors import BaseProcessor
 
 logger = logging.getLogger(__name__)
 
 try:
-    idp_sp_config = settings.SAML_IDP_SPCONFIG
+    idp_sp_config = SAMLSP.objects.all()
 except AttributeError:
-    raise ImproperlyConfigured("SAML_IDP_SPCONFIG not defined in settings.")
+    raise ImproperlyConfigured("No SAMLSP records defined in database.")
 
 
 @never_cache
@@ -116,7 +120,12 @@ class LoginProcessView(IdPHandlerViewMixin, View):
             return HttpResponseServerError(excp)
 
         try:
-            sp_config = settings.SAML_IDP_SPCONFIG[resp_args['sp_entity_id']]
+            sp_entity_id = resp_args['sp_entity_id']
+            saml_sp = SAMLSP.objects.filter(entity_id=sp_entity_id).first()
+            sp_config = {
+                'processor': saml_sp['processor'],
+                'attribute_mapping': ast.literal_eval(saml_sp['attribute_mapping'])
+            }
         except Exception:
             raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id'])
 
@@ -183,7 +192,11 @@ class SSOInitView(IdPHandlerViewMixin, View):
             return HttpResponseBadRequest(e)
 
         try:
-            sp_config = settings.SAML_IDP_SPCONFIG[sp_entity_id]
+            saml_sp = SAMLSP.objects.filter(entity_id=sp_entity_id).first()
+            sp_config = {
+                'processor': saml_sp['processor'],
+                'attribute_mapping': ast.literal_eval(saml_sp['attribute_mapping'])
+            }
         except Exception:
             raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id)
 
