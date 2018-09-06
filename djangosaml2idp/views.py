@@ -26,17 +26,9 @@ from saml2.server import Server
 from six import text_type
 from monetate.retailer.models import SAMLSP
 
-from monetate.
-
 from .processors import BaseProcessor
 
 logger = logging.getLogger(__name__)
-
-try:
-    idp_sp_config = SAMLSP.objects.all()
-except AttributeError:
-    raise ImproperlyConfigured("No SAMLSP records defined in database.")
-
 
 @never_cache
 @csrf_exempt
@@ -119,15 +111,15 @@ class LoginProcessView(IdPHandlerViewMixin, View):
         except (UnknownPrincipal, UnsupportedBinding) as excp:
             return HttpResponseServerError(excp)
 
+        sp_entity_id = resp_args['sp_entity_id']
         try:
-            sp_entity_id = resp_args['sp_entity_id']
-            saml_sp = SAMLSP.objects.filter(entity_id=sp_entity_id).first()
+            saml_sp = SAMLSP.objects.get(entity_id=sp_entity_id)
             sp_config = {
-                'processor': saml_sp['processor'],
-                'attribute_mapping': ast.literal_eval(saml_sp['attribute_mapping'])
+                'processor': saml_sp.processor,
+                'attribute_mapping': ast.literal_eval(saml_sp.attribute_mapping)
             }
         except Exception:
-            raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id'])
+            raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id)
 
         processor = self.get_processor(sp_config)
 
@@ -192,10 +184,10 @@ class SSOInitView(IdPHandlerViewMixin, View):
             return HttpResponseBadRequest(e)
 
         try:
-            saml_sp = SAMLSP.objects.filter(entity_id=sp_entity_id).first()
+            saml_sp = SAMLSP.objects.get(entity_id=sp_entity_id)
             sp_config = {
-                'processor': saml_sp['processor'],
-                'attribute_mapping': ast.literal_eval(saml_sp['attribute_mapping'])
+                'processor': saml_sp.processor,
+                'attribute_mapping': ast.literal_eval(saml_sp.attribute_mapping)
             }
         except Exception:
             raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id)
