@@ -1,4 +1,4 @@
-class BaseProcessor:
+class BaseProcessor(object):
     """ Processor class is used to determine if a user has access to a client service of this IDP
         and to construct the identity dictionary which is sent to the SP
     """

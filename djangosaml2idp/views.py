@@ -1,39 +1,34 @@
 import copy
 import logging
+import ast
 
 from django.conf import settings
 from django.contrib.auth import logout
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
+from django.core.urlresolvers import reverse
 from django.http import (HttpResponse, HttpResponseBadRequest,
-                         HttpResponseRedirect)
-from django.urls import reverse
+                         HttpResponseRedirect, HttpResponseServerError)
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
-from django.views import View
+from django.views.generic.base import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from saml2 import BINDING_HTTP_POST
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.metadata import entity_descriptor
 from saml2.s_utils import UnknownPrincipal, UnsupportedBinding
-from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from saml2.server import Server
 from six import text_type
+from monetate.retailer.models import SAMLSP
 
 from .processors import BaseProcessor
 
 logger = logging.getLogger(__name__)
-
-try:
-    idp_sp_config = settings.SAML_IDP_SPCONFIG
-except AttributeError:
-    raise ImproperlyConfigured("SAML_IDP_SPCONFIG not defined in settings.")
-
 
 @never_cache
 @csrf_exempt
@@ -54,15 +49,10 @@ def sso_entry(request):
         request.session['Signature'] = passed_data['Signature']
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
-
-class IdPHandlerViewMixin:
+class IdPHandlerViewMixin(object):
     """ Contains some methods used by multiple views """
 
-    error_view = import_string(getattr(settings, 'SAML_IDP_ERROR_VIEW_CLASS', 'djangosaml2idp.error_views.SamlIDPErrorView'))
-
-    def handle_error(self, request, **kwargs):
-        return self.error_view.as_view()(request, **kwargs)
-
+    @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
         """ Construct IDP server with config from settings dict
         """
@@ -92,12 +82,10 @@ class IdPHandlerViewMixin:
         return processor.create_identity(user, sp_mapping)
 
 
-@method_decorator(never_cache, name='dispatch')
-class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+class LoginProcessView(IdPHandlerViewMixin, View):
     """ View which processes the actual SAML request and returns a self-submitting form with the SAML response.
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' ways.
     """
-
     def get(self, request, *args, **kwargs):
         # Parse incoming request
         try:
@@ -124,10 +112,15 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except (UnknownPrincipal, UnsupportedBinding) as excp:
             return self.handle_error(request, exception=excp, status=400)
 
+        sp_entity_id = resp_args['sp_entity_id']
         try:
-            sp_config = settings.SAML_IDP_SPCONFIG[resp_args['sp_entity_id']]
+            saml_sp = SAMLSP.objects.get(entity_id=sp_entity_id)
+            sp_config = {
+                'processor': saml_sp.processor,
+                'attribute_mapping': ast.literal_eval(saml_sp.attribute_mapping)
+            }
         except Exception:
-            return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id']), status=400)
+            raise ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id)
 
         processor = self.get_processor(sp_config)
 
@@ -177,8 +170,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         return HttpResponse(http_args['data'])
 
 
-@method_decorator(never_cache, name='dispatch')
-class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+class SSOInitView(IdPHandlerViewMixin, View):
 
     def post(self, request, *args, **kwargs):
         return self.get(request, *args, **kwargs)
@@ -193,7 +185,11 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             return self.handle_error(request, exception=excp, status=400)
 
         try:
-            sp_config = settings.SAML_IDP_SPCONFIG[sp_entity_id]
+            saml_sp = SAMLSP.objects.get(entity_id=sp_entity_id)
+            sp_config = {
+                'processor': saml_sp.processor,
+                'attribute_mapping': ast.literal_eval(saml_sp.attribute_mapping)
+            }
         except Exception:
             return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id), status=400)
 
@@ -231,6 +227,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 sign_response=sign_response,
                 sign_assertion=sign_assertion,
                 **passed_data)
+            
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
@@ -244,8 +241,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         return HttpResponse(http_args['data'])
 
 
-@method_decorator(never_cache, name='dispatch')
-class ProcessMultiFactorView(LoginRequiredMixin, View):
+class ProcessMultiFactorView(View):
     """ This view is used in an optional step is to perform 'other' user validation, for example 2nd factor checks.
         Override this view per the documentation if using this functionality to plug in your custom validation logic.
     """
