@@ -2,7 +2,7 @@ FROM alpine:latest
 
 RUN apk add --update \
     build-base libffi-dev openssl-dev \
-    xmlsec \
+    xmlsec xmlsec-dev \
   && rm -rf /var/cache/apk/*
 
 ADD requirements.txt /tmp

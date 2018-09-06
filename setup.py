@@ -14,19 +14,18 @@ setup(
     maintainer="Mathieu Hinderyckx",
     long_description="\n\n".join([
         open(os.path.join(os.path.dirname(__file__), 'README.rst')).read(),
-        #open('HISTORY.rst').read()
     ]),
     install_requires=[
         'django>=1.8,<2.0',
         'pysaml2>=4.5.0'
         ],
-    license='MIT',
-    packages=find_packages(exclude=["tests*", "docs"]),
+    license='Apache Software License 2.0',
+    packages=find_packages(exclude=["tests*", "docs", "example_setup"]),
     url='https://github.com/OTA-Insight/djangosaml2idp/',
     zip_safe=False,
     include_package_data=True,
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         'Environment :: Web Environment',
         "Framework :: Django",
         "Framework :: Django :: 1.8",
@@ -34,7 +33,7 @@ setup(
         "Framework :: Django :: 1.10",
         "Framework :: Django :: 1.11",
         'Intended Audience :: Developers',
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: Apache Software License",
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         "Programming Language :: Python :: 2",
