@@ -74,22 +74,22 @@ class IdPHandlerViewMixin:
             return self.handle_error(request, exception=e)
         return super(IdPHandlerViewMixin, self).dispatch(request, *args, **kwargs)
 
-    def get_processor(self, sp_config):
+    def get_processor(self, entity_id, sp_config):
         """ "Instantiate user-specified processor or fallback to all-access base processor
         """
         processor_string = sp_config.get('processor', None)
         if processor_string:
             try:
-                return import_string(processor_string)()
+                return import_string(processor_string)(entity_id)
             except Exception as e:
                 logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
-        return BaseProcessor
+        return BaseProcessor(entity_id)
 
     def get_identity(self, processor, user, sp_config):
         """ Create Identity dict (using SP-specific mapping)
         """
         sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
-        return processor.create_identity(user, sp_mapping)
+        return processor.create_identity(user, sp_mapping, **sp_config.get('extra_data', {}))
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -129,7 +129,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception:
             return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id']), status=400)
 
-        processor = self.get_processor(sp_config)
+        processor = self.get_processor(resp_args['sp_entity_id'], sp_config)
 
         # Check if user has access to the service of this SP
         if not processor.has_access(request.user):
@@ -201,8 +201,8 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             service="assertion_consumer_service",
             entity_id=sp_entity_id)
 
-        processor = self.get_processor(sp_config)
-
+        processor = self.get_processor(sp_entity_id, sp_config)
+        import pdb; pdb.set_trace()
         # Check if user has access to the service of this SP
         if not processor.has_access(request.user):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
