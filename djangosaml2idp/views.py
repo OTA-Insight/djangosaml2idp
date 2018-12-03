@@ -142,11 +142,13 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         AUTHN_BROKER = AuthnBroker()
         AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
 
+        username = getattr(request.user, getattr(request.user, 'USERNAME_FIELD', 'username'))
+
         # Construct SamlResponse message
         try:
             authn_resp = self.IDP.create_authn_response(
-                identity=identity, userid=request.user.username,
-                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['destination'], text=request.user.username),
+                identity=identity, userid=username,
+                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['destination'], text=username),
                 authn=AUTHN_BROKER.get_authn_by_accr(req_authn_context),
                 sign_response=self.IDP.config.getattr("sign_response", "idp") or False,
                 sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
@@ -213,10 +215,12 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         AUTHN_BROKER = AuthnBroker()
         AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
 
+        username = getattr(request.user, getattr(request.user, 'USERNAME_FIELD', 'username'))
+
         # Construct SamlResponse messages
         try:
             name_id_formats = self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
-            name_id = NameID(format=name_id_formats[0], text=request.user.username)
+            name_id = NameID(format=name_id_formats[0], text=username)
             authn = AUTHN_BROKER.get_authn_by_accr(req_authn_context)
             sign_response = self.IDP.config.getattr("sign_response", "idp") or False
             sign_assertion = self.IDP.config.getattr("sign_assertion", "idp") or False
@@ -225,7 +229,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 in_response_to="IdP_Initiated_Login",
                 destination=destination,
                 sp_entity_id=sp_entity_id,
-                userid=request.user.username,
+                userid=username,
                 name_id=name_id,
                 authn=authn,
                 sign_response=sign_response,
