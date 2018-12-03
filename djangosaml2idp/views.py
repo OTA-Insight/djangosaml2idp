@@ -83,6 +83,7 @@ class IdPHandlerViewMixin:
                 return import_string(processor_string)(entity_id)
             except Exception as e:
                 logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
+                raise
         return BaseProcessor(entity_id)
 
     def get_identity(self, processor, user, sp_config):
