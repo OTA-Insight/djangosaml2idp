@@ -202,7 +202,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             entity_id=sp_entity_id)
 
         processor = self.get_processor(sp_entity_id, sp_config)
-        import pdb; pdb.set_trace()
+
         # Check if user has access to the service of this SP
         if not processor.has_access(request.user):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
