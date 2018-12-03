@@ -3,6 +3,9 @@ class BaseProcessor:
         and to construct the identity dictionary which is sent to the SP
     """
 
+    def __init__(self, entity_id):
+        self._entity_id = entity_id
+
     def has_access(self, user):
         """ Check if this user is allowed to use this IDP
         """
@@ -13,9 +16,10 @@ class BaseProcessor:
         """
         return False
 
-    def create_identity(self, user, sp_mapping):
+    def create_identity(self, user, sp_mapping, **extra_config):
         """ Generate an identity dictionary of the user based on the given mapping of desired user attributes by the SP
         """
+
         return {
             out_attr: getattr(user, user_attr)
             for user_attr, out_attr in sp_mapping.items()
