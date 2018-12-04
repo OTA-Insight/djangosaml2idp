@@ -90,7 +90,7 @@ class IdPHandlerViewMixin:
         """ Create Identity dict (using SP-specific mapping)
         """
         sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
-        return processor.create_identity(user, sp_mapping, **sp_config.get('extra_data', {}))
+        return processor.create_identity(user, sp_mapping, **sp_config.get('extra_config', {}))
 
 
 @method_decorator(never_cache, name='dispatch')
