@@ -1,2 +1,7 @@
 django>2.0,<2.1
 pysaml2>=4.4.0
+
+pytest==4.0.1
+pytest-django==3.4.4
+pytest-pythonpath==0.7.3
+python-dateutil==2.7.5
