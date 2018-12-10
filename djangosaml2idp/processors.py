@@ -11,6 +11,10 @@ class BaseProcessor:
         """
         return True
 
+    def is_enabled(self, request):
+        """Is this saml2 integration enabled"""
+        return True
+
     def enable_multifactor(self, user):
         """ Check if this user should use a second authentication system
         """

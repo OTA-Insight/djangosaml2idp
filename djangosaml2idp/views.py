@@ -93,7 +93,7 @@ class IdPHandlerViewMixin:
         return processor.create_identity(user, sp_mapping, **sp_config.get('extra_config', {}))
 
     def extract_user_id(self, user):
-        user_field = getattr(settings, 'SAML_IDP_DJANGO_USER_MAIN_ATTRIBUTE', None) or \
+        user_field = getattr(settings, 'SAML_IDP_DJANGO_USERNAME_FIELD', None) or \
             getattr(user, 'USERNAME_FIELD', 'username')
         return str(getattr(user, user_field))
 
@@ -138,7 +138,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         processor = self.get_processor(resp_args['sp_entity_id'], sp_config)
 
         # Check if user has access to the service of this SP
-        if not processor.has_access(request.user):
+        if not processor.has_access(request.user) or not processor.is_enabled(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
         identity = self.get_identity(processor, request.user, sp_config)
@@ -212,7 +212,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         processor = self.get_processor(sp_entity_id, sp_config)
 
         # Check if user has access to the service of this SP
-        if not processor.has_access(request.user):
+        if not processor.has_access(request.user) or not processor.is_enabled(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
         identity = self.get_identity(processor, request.user, sp_config)
