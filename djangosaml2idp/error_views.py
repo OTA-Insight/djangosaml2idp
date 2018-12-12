@@ -9,8 +9,9 @@ class SamlIDPErrorView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         exception = kwargs.get("exception")
+
         context.update({
-            "exception_type": ".".join([exception.__module__, exception.__class__.__name__]) if exception else None,
+            "exception_type": exception.__class__.__name__ if exception else None,
             "exception_msg": str(exception) if exception else None,
             "extra_message": kwargs.get("extra_message"),
         })
