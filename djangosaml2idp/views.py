@@ -92,11 +92,6 @@ class IdPHandlerViewMixin:
         sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
         return processor.create_identity(user, sp_mapping, **sp_config.get('extra_config', {}))
 
-    def extract_user_id(self, user):
-        user_field = getattr(settings, 'SAML_IDP_DJANGO_USERNAME_FIELD', None) or \
-            getattr(user, 'USERNAME_FIELD', 'username')
-        return str(getattr(user, user_field))
-
 
 @method_decorator(never_cache, name='dispatch')
 class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
@@ -148,7 +143,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         AUTHN_BROKER = AuthnBroker()
         AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
 
-        user_id = self.extract_user_id(request.user)
+        user_id = processor.get_user_id(request.user)
 
         # Construct SamlResponse message
         try:
@@ -221,7 +216,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         AUTHN_BROKER = AuthnBroker()
         AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
 
-        user_id = self.extract_user_id(request.user)
+        user_id = processor.get_user_id(request.user)
 
         # Construct SamlResponse messages
         try:

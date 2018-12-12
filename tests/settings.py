@@ -46,4 +46,7 @@ ROOT_URLCONF = 'tests.urls'
 # ---
 
 SAML_IDP_SPCONFIG = {
+    'test_idp_1': {
+        'attribute_mapping': {}
+    }
 }
