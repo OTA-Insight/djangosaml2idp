@@ -15,7 +15,7 @@ from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from saml2 import BINDING_HTTP_POST
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
@@ -42,7 +42,15 @@ def sso_entry(request):
     """ Entrypoint view for SSO. Gathers the parameters from the HTTP request, stores them in the session
         and redirects the requester to the login_process view.
     """
-    passed_data = request.POST if request.method == 'POST' else request.GET
+    if request.method == 'POST':
+        passed_data = request.POST
+        binding = BINDING_HTTP_POST
+    else:
+        passed_data = request.GET
+        binding = BINDING_HTTP_REDIRECT
+
+    request.session['Binding'] = binding
+
     try:
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
@@ -100,9 +108,11 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """
 
     def get(self, request, *args, **kwargs):
+        binding = request.session.get('Binding', BINDING_HTTP_POST)
+
         # Parse incoming request
         try:
-            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], BINDING_HTTP_POST)
+            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], binding)
         except Exception as excp:
             return self.handle_error(request, exception=excp)
         # TODO this is taken from example, but no idea how this works or whats it does. Check SAML2 specification?
