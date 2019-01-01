@@ -85,6 +85,10 @@ You also have to define a mapping for each SP you talk to::
         }
     }
 
+If you're using a custom user model that uses email instead of username to identify users (or anything else for that matter), you can use the following setting (defaults to username)::
+
+    SAML_IDP_IDENTIFYING_ATTRIBUTE = 'username'
+
 
 That's all for the IdP configuration. Assuming you run the Django development server on localhost:8000, you can get its metadata by visiting http://localhost:8000/idp/metadata/.
 Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).

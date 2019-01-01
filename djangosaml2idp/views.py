@@ -34,6 +34,8 @@ try:
 except AttributeError:
     raise ImproperlyConfigured("SAML_IDP_SPCONFIG not defined in settings.")
 
+user_identity = getattr(settings, 'SAML_IDP_IDENTIFYING_ATTRIBUTE', 'username')
+
 
 @never_cache
 @csrf_exempt
@@ -88,7 +90,7 @@ class IdPHandlerViewMixin:
     def get_identity(self, processor, user, sp_config):
         """ Create Identity dict (using SP-specific mapping)
         """
-        sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
+        sp_mapping = sp_config.get('attribute_mapping', {user_identity: user_identity})
         return processor.create_identity(user, sp_mapping)
 
 
@@ -145,8 +147,8 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         # Construct SamlResponse message
         try:
             authn_resp = self.IDP.create_authn_response(
-                identity=identity, userid=request.user.username,
-                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['destination'], text=request.user.username),
+                identity=identity, userid=getattr(request.user, user_identity),
+                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['destination'], text=getattr(request.user, user_identity)),
                 authn=AUTHN_BROKER.get_authn_by_accr(req_authn_context),
                 sign_response=self.IDP.config.getattr("sign_response", "idp") or False,
                 sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
@@ -216,7 +218,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         # Construct SamlResponse messages
         try:
             name_id_formats = self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
-            name_id = NameID(format=name_id_formats[0], text=request.user.username)
+            name_id = NameID(format=name_id_formats[0], text=getattr(request.user, user_identity))
             authn = AUTHN_BROKER.get_authn_by_accr(req_authn_context)
             sign_response = self.IDP.config.getattr("sign_response", "idp") or False
             sign_assertion = self.IDP.config.getattr("sign_assertion", "idp") or False
@@ -225,7 +227,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 in_response_to="IdP_Initiated_Login",
                 destination=destination,
                 sp_entity_id=sp_entity_id,
-                userid=request.user.username,
+                userid=getattr(request.user, user_identity),
                 name_id=name_id,
                 authn=authn,
                 sign_response=sign_response,
