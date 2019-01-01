@@ -1,6 +1,8 @@
 import copy
+import base64
 import logging
 
+from django.shortcuts import render
 from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -11,6 +13,7 @@ from django.urls import reverse
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
+from django.utils.six import text_type, binary_type, PY3
 from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
@@ -23,7 +26,6 @@ from saml2.metadata import entity_descriptor
 from saml2.s_utils import UnknownPrincipal, UnsupportedBinding
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from saml2.server import Server
-from six import text_type
 
 from .processors import BaseProcessor
 
@@ -146,7 +148,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         # Construct SamlResponse message
         try:
-            authn_resp = self.IDP.create_authn_response(
+            authn_resp_xml = self.IDP.create_authn_response(
                 identity=identity, userid=getattr(request.user, user_identity),
                 name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['destination'], text=getattr(request.user, user_identity)),
                 authn=AUTHN_BROKER.get_authn_by_accr(req_authn_context),
@@ -155,6 +157,18 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 **resp_args)
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
+
+        if resp_args['binding'] == BINDING_HTTP_POST:
+            if PY3:
+                authn_resp = base64.b64encode(binary_type(authn_resp_xml, 'UTF-8')).decode('utf-8')
+            else:
+                authn_resp = base64.b64encode(binary_type(authn_resp_xml))
+
+            return render(request, 'djangosaml2idp/login.html', {
+                'acs_url': resp_args['destination'],
+                'saml_response': authn_resp,
+
+            })
 
         http_args = self.IDP.apply_binding(
             binding=resp_args['binding'],
