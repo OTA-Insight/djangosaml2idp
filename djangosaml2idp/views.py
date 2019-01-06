@@ -1,6 +1,7 @@
 import copy
 import base64
 import logging
+import urllib.parse
 
 from django.shortcuts import render
 from django.conf import settings
@@ -18,7 +19,7 @@ from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from saml2 import BINDING_HTTP_POST
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
@@ -39,10 +40,30 @@ except AttributeError:
 user_identity = getattr(settings, 'SAML_IDP_IDENTIFYING_ATTRIBUTE', 'username')
 
 
+def build_url(*args, **kwargs):
+    get = kwargs.pop('get', {})
+    url = reverse(*args, **kwargs)
+    if get:
+        url += '?' + urllib.parse.urlencode(get)
+    return url
+
+
 @never_cache
 @csrf_exempt
-@require_http_methods(["GET", "POST"])
-def sso_entry(request):
+@require_http_methods(["POST"])
+def sso_post(request):
+    entry_binding = BINDING_HTTP_POST
+    return sso_entry(request, entry_binding)
+
+
+@never_cache
+@require_http_methods(["GET"])
+def sso_redirect(request):
+    entry_binding = BINDING_HTTP_REDIRECT
+    return sso_entry(request, entry_binding)
+
+
+def sso_entry(request, entry_binding):
     """ Entrypoint view for SSO. Gathers the parameters from the HTTP request, stores them in the session
         and redirects the requester to the login_process view.
     """
@@ -56,13 +77,16 @@ def sso_entry(request):
     if "SigAlg" in passed_data and "Signature" in passed_data:
         request.session['SigAlg'] = passed_data['SigAlg']
         request.session['Signature'] = passed_data['Signature']
-    return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
+    url = build_url('djangosaml2idp:saml_login_process',
+                    get={'binding': entry_binding})
+    return HttpResponseRedirect(url)
 
 
 class IdPHandlerViewMixin:
     """ Contains some methods used by multiple views """
 
-    error_view = import_string(getattr(settings, 'SAML_IDP_ERROR_VIEW_CLASS', 'djangosaml2idp.error_views.SamlIDPErrorView'))
+    error_view = import_string(getattr(
+        settings, 'SAML_IDP_ERROR_VIEW_CLASS', 'djangosaml2idp.error_views.SamlIDPErrorView'))
 
     def handle_error(self, request, **kwargs):
         return self.error_view.as_view()(request, **kwargs)
@@ -103,9 +127,9 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """
 
     def get(self, request, *args, **kwargs):
-        # Parse incoming request
+        entry_binding = urllib.parse.unquote(request.GET.get('binding'))
         try:
-            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], BINDING_HTTP_POST)
+            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], entry_binding)
         except Exception as excp:
             return self.handle_error(request, exception=excp)
         # TODO this is taken from example, but no idea how this works or whats it does. Check SAML2 specification?
