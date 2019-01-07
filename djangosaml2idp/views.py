@@ -25,7 +25,7 @@ from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.metadata import entity_descriptor
 from saml2.s_utils import UnknownPrincipal, UnsupportedBinding
-from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
+from saml2.saml import NAMEID_FORMAT_EMAILADDRESS
 from saml2.server import Server
 
 from .processors import BaseProcessor
@@ -165,6 +165,8 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             sp_config = settings.SAML_IDP_SPCONFIG[resp_args['sp_entity_id']]
         except Exception:
             return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id']), status=400)
+        if sp_config.get('NameIDAttr', None):
+            user_identity = sp_config.get('NameIDAttr')
 
         processor = self.get_processor(sp_config)
 
@@ -251,6 +253,9 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception:
             return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id), status=400)
 
+        if sp_config.get('NameIDAttr', None):
+            user_identity = sp_config.get('NameIDAttr')
+
         binding_out, destination = self.IDP.pick_binding(
             service="assertion_consumer_service",
             entity_id=sp_entity_id)
@@ -270,7 +275,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         # Construct SamlResponse messages
         try:
             name_id_formats = self.IDP.config.getattr("name_id_format", "idp") or [
-                NAMEID_FORMAT_UNSPECIFIED]
+                NAMEID_FORMAT_EMAILADDRESS]
             name_id = NameID(format=name_id_formats[0], text=getattr(
                 request.user, user_identity))
             authn = AUTHN_BROKER.get_authn_by_accr(req_authn_context)
