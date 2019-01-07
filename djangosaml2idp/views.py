@@ -52,33 +52,37 @@ def build_url(*args, **kwargs):
 @csrf_exempt
 @require_http_methods(["POST"])
 def sso_post(request):
+    data = request.POST
     entry_binding = BINDING_HTTP_POST
-    return sso_entry(request, entry_binding)
+    return sso_entry(request, data, entry_binding)
 
 
 @never_cache
 @require_http_methods(["GET"])
 def sso_redirect(request):
+    data = request.GET
     entry_binding = BINDING_HTTP_REDIRECT
-    return sso_entry(request, entry_binding)
+    return sso_entry(request, data, entry_binding)
 
 
-def sso_entry(request, entry_binding):
+def sso_entry(request, data, entry_binding):
     """ Entrypoint view for SSO. Gathers the parameters from the HTTP request, stores them in the session
         and redirects the requester to the login_process view.
     """
-    passed_data = request.POST if request.method == 'POST' else request.GET
+    passed_data = data
     try:
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
         return HttpResponseBadRequest(e)
-    request.session['RelayState'] = passed_data.get('RelayState', '')
     # TODO check how the redirect saml way works. Taken from example idp in pysaml2.
     if "SigAlg" in passed_data and "Signature" in passed_data:
         request.session['SigAlg'] = passed_data['SigAlg']
         request.session['Signature'] = passed_data['Signature']
+    relayState = passed_data.get('RelayState', '')
+    if relayState == 'None':
+        relayState = ""
     url = build_url('djangosaml2idp:saml_login_process',
-                    get={'binding': entry_binding})
+                    get={'binding': entry_binding, 'RelayState': relayState})
     return HttpResponseRedirect(url)
 
 
@@ -110,13 +114,15 @@ class IdPHandlerViewMixin:
             try:
                 return import_string(processor_string)()
             except Exception as e:
-                logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
+                logger.error(
+                    "Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
         return BaseProcessor
 
     def get_identity(self, processor, user, sp_config):
         """ Create Identity dict (using SP-specific mapping)
         """
-        sp_mapping = sp_config.get('attribute_mapping', {user_identity: user_identity})
+        sp_mapping = sp_config.get('attribute_mapping', {
+                                   user_identity: user_identity})
         return processor.create_identity(user, sp_mapping)
 
 
@@ -128,14 +134,17 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
     def get(self, request, *args, **kwargs):
         entry_binding = urllib.parse.unquote(request.GET.get('binding'))
+        relayState = urllib.parse.unquote(request.GET.get('RelayState'))
         try:
-            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], entry_binding)
+            req_info = self.IDP.parse_authn_request(
+                request.session['SAMLRequest'], entry_binding)
         except Exception as excp:
             return self.handle_error(request, exception=excp)
         # TODO this is taken from example, but no idea how this works or whats it does. Check SAML2 specification?
         # Signed request for HTTP-REDIRECT
         if "SigAlg" in request.session and "Signature" in request.session:
-            _certs = self.IDP.metadata.certs(req_info.message.issuer.text, "any", "signing")
+            _certs = self.IDP.metadata.certs(
+                req_info.message.issuer.text, "any", "signing")
             verified_ok = False
             for cert in _certs:
                 # TODO implement
@@ -174,23 +183,28 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         try:
             authn_resp_xml = self.IDP.create_authn_response(
                 identity=identity, userid=getattr(request.user, user_identity),
-                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['destination'], text=getattr(request.user, user_identity)),
+                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['destination'], text=getattr(
+                    request.user, user_identity)),
                 authn=AUTHN_BROKER.get_authn_by_accr(req_authn_context),
-                sign_response=self.IDP.config.getattr("sign_response", "idp") or False,
-                sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
+                sign_response=self.IDP.config.getattr(
+                    "sign_response", "idp") or False,
+                sign_assertion=self.IDP.config.getattr(
+                    "sign_assertion", "idp") or False,
                 **resp_args)
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
         if resp_args['binding'] == BINDING_HTTP_POST:
             if PY3:
-                authn_resp = base64.b64encode(binary_type(authn_resp_xml, 'UTF-8')).decode('utf-8')
+                authn_resp = base64.b64encode(binary_type(
+                    authn_resp_xml, 'UTF-8')).decode('utf-8')
             else:
                 authn_resp = base64.b64encode(binary_type(authn_resp_xml))
 
             return render(request, 'djangosaml2idp/login.html', {
                 'acs_url': resp_args['destination'],
                 'saml_response': authn_resp,
+                'relay_state': relayState
 
             })
 
@@ -255,11 +269,15 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         # Construct SamlResponse messages
         try:
-            name_id_formats = self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
-            name_id = NameID(format=name_id_formats[0], text=getattr(request.user, user_identity))
+            name_id_formats = self.IDP.config.getattr("name_id_format", "idp") or [
+                NAMEID_FORMAT_UNSPECIFIED]
+            name_id = NameID(format=name_id_formats[0], text=getattr(
+                request.user, user_identity))
             authn = AUTHN_BROKER.get_authn_by_accr(req_authn_context)
-            sign_response = self.IDP.config.getattr("sign_response", "idp") or False
-            sign_assertion = self.IDP.config.getattr("sign_assertion", "idp") or False
+            sign_response = self.IDP.config.getattr(
+                "sign_response", "idp") or False
+            sign_assertion = self.IDP.config.getattr(
+                "sign_assertion", "idp") or False
             authn_resp = self.IDP.create_authn_response(
                 identity=identity,
                 in_response_to="IdP_Initiated_Login",
@@ -279,7 +297,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             binding=binding_out,
             msg_str="%s" % authn_resp,
             destination=destination,
-            relay_state=passed_data['RelayState'],
+            relay_state=relayState,
             response=True)
         return HttpResponse(http_args['data'])
 
@@ -301,7 +319,8 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
             logger.debug('MultiFactor succeeded for %s' % request.user)
             # If authentication succeeded, log in is ok
             return HttpResponse(request.session['saml_data'])
-        logger.debug("MultiFactor failed; %s will not be able to log in" % request.user)
+        logger.debug(
+            "MultiFactor failed; %s will not be able to log in" % request.user)
         logout(request)
         raise PermissionDenied("MultiFactor authentication factor failed")
 
