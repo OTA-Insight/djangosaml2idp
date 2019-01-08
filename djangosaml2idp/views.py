@@ -165,6 +165,8 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             sp_config = settings.SAML_IDP_SPCONFIG[resp_args['sp_entity_id']]
         except Exception:
             return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id']), status=400)
+        user_identity = getattr(
+            settings, 'SAML_IDP_IDENTIFYING_ATTRIBUTE', 'username')
         if sp_config.get('NameIDAttr', None):
             user_identity = sp_config.get('NameIDAttr')
 
@@ -253,6 +255,8 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception:
             return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id), status=400)
 
+        user_identity = getattr(
+            settings, 'SAML_IDP_IDENTIFYING_ATTRIBUTE', 'username')
         if sp_config.get('NameIDAttr', None):
             user_identity = sp_config.get('NameIDAttr')
 
@@ -302,7 +306,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             binding=binding_out,
             msg_str="%s" % authn_resp,
             destination=destination,
-            relay_state=relayState,
+            relay_state=request.session['RelayState'],
             response=True)
         return HttpResponse(http_args['data'])
 
