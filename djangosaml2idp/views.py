@@ -159,7 +159,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         try:
             authn_resp = self.IDP.create_authn_response(
                 identity=identity, userid=user_id,
-                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['destination'], text=user_id),
+                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['sp_entity_id'], text=user_id),
                 authn=AUTHN_BROKER.get_authn_by_accr(req_authn_context),
                 sign_response=self.IDP.config.getattr("sign_response", "idp") or False,
                 sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
