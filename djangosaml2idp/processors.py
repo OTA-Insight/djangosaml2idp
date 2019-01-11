@@ -1,9 +1,15 @@
+from django.conf import settings
+
+
 class BaseProcessor:
     """ Processor class is used to determine if a user has access to a client service of this IDP
         and to construct the identity dictionary which is sent to the SP
     """
 
-    def has_access(self, user):
+    def __init__(self, entity_id):
+        self._entity_id = entity_id
+
+    def has_access(self, request):
         """ Check if this user is allowed to use this IDP
         """
         return True
@@ -13,9 +19,15 @@ class BaseProcessor:
         """
         return False
 
-    def create_identity(self, user, sp_mapping):
+    def get_user_id(self, user):
+        user_field = getattr(settings, 'SAML_IDP_DJANGO_USERNAME_FIELD', None) or \
+                     getattr(user, 'USERNAME_FIELD', 'username')
+        return str(getattr(user, user_field))
+
+    def create_identity(self, user, sp_mapping, **extra_config):
         """ Generate an identity dictionary of the user based on the given mapping of desired user attributes by the SP
         """
+
         return {
             out_attr: getattr(user, user_attr)
             for user_attr, out_attr in sp_mapping.items()

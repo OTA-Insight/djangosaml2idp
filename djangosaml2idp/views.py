@@ -15,7 +15,7 @@ from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from saml2 import BINDING_HTTP_POST
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
@@ -42,7 +42,15 @@ def sso_entry(request):
     """ Entrypoint view for SSO. Gathers the parameters from the HTTP request, stores them in the session
         and redirects the requester to the login_process view.
     """
-    passed_data = request.POST if request.method == 'POST' else request.GET
+    if request.method == 'POST':
+        passed_data = request.POST
+        binding = BINDING_HTTP_POST
+    else:
+        passed_data = request.GET
+        binding = BINDING_HTTP_REDIRECT
+
+    request.session['Binding'] = binding
+
     try:
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
@@ -74,22 +82,23 @@ class IdPHandlerViewMixin:
             return self.handle_error(request, exception=e)
         return super(IdPHandlerViewMixin, self).dispatch(request, *args, **kwargs)
 
-    def get_processor(self, sp_config):
+    def get_processor(self, entity_id, sp_config):
         """ "Instantiate user-specified processor or fallback to all-access base processor
         """
         processor_string = sp_config.get('processor', None)
         if processor_string:
             try:
-                return import_string(processor_string)()
+                return import_string(processor_string)(entity_id)
             except Exception as e:
                 logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
-        return BaseProcessor
+                raise
+        return BaseProcessor(entity_id)
 
     def get_identity(self, processor, user, sp_config):
         """ Create Identity dict (using SP-specific mapping)
         """
         sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
-        return processor.create_identity(user, sp_mapping)
+        return processor.create_identity(user, sp_mapping, **sp_config.get('extra_config', {}))
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -99,9 +108,11 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """
 
     def get(self, request, *args, **kwargs):
+        binding = request.session.get('Binding', BINDING_HTTP_POST)
+
         # Parse incoming request
         try:
-            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], BINDING_HTTP_POST)
+            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], binding)
         except Exception as excp:
             return self.handle_error(request, exception=excp)
         # TODO this is taken from example, but no idea how this works or whats it does. Check SAML2 specification?
@@ -129,10 +140,10 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception:
             return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id']), status=400)
 
-        processor = self.get_processor(sp_config)
+        processor = self.get_processor(resp_args['sp_entity_id'], sp_config)
 
         # Check if user has access to the service of this SP
-        if not processor.has_access(request.user):
+        if not processor.has_access(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
         identity = self.get_identity(processor, request.user, sp_config)
@@ -142,11 +153,13 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         AUTHN_BROKER = AuthnBroker()
         AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
 
+        user_id = processor.get_user_id(request.user)
+
         # Construct SamlResponse message
         try:
             authn_resp = self.IDP.create_authn_response(
-                identity=identity, userid=request.user.username,
-                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['sp_entity_id'], text=request.user.username),
+                identity=identity, userid=user_id,
+                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['sp_entity_id'], text=user_id),
                 authn=AUTHN_BROKER.get_authn_by_accr(req_authn_context),
                 sign_response=self.IDP.config.getattr("sign_response", "idp") or False,
                 sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
@@ -201,10 +214,10 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             service="assertion_consumer_service",
             entity_id=sp_entity_id)
 
-        processor = self.get_processor(sp_config)
+        processor = self.get_processor(sp_entity_id, sp_config)
 
         # Check if user has access to the service of this SP
-        if not processor.has_access(request.user):
+        if not processor.has_access(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
         identity = self.get_identity(processor, request.user, sp_config)
@@ -213,10 +226,12 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         AUTHN_BROKER = AuthnBroker()
         AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
 
+        user_id = processor.get_user_id(request.user)
+
         # Construct SamlResponse messages
         try:
             name_id_formats = self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
-            name_id = NameID(format=name_id_formats[0], text=request.user.username)
+            name_id = NameID(format=name_id_formats[0], text=user_id)
             authn = AUTHN_BROKER.get_authn_by_accr(req_authn_context)
             sign_response = self.IDP.config.getattr("sign_response", "idp") or False
             sign_assertion = self.IDP.config.getattr("sign_assertion", "idp") or False
@@ -225,7 +240,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 in_response_to="IdP_Initiated_Login",
                 destination=destination,
                 sp_entity_id=sp_entity_id,
-                userid=request.user.username,
+                userid=user_id,
                 name_id=name_id,
                 authn=authn,
                 sign_response=sign_response,

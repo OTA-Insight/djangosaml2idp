@@ -47,6 +47,17 @@ Now you can install the djangosaml2idp package using pip. This will also install
     pip install djangosaml2idp
 
 
+Running the test suite
+======================
+Install the dev dependencies in ``requirements-dev.txt``::
+
+  pip install -r requirements-dev.txt
+
+Run ``py.test`` from the project root::
+
+  py.test
+
+
 Configuration & Usage
 =====================
 
