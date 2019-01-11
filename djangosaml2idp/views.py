@@ -83,7 +83,8 @@ class IdPHandlerViewMixin:
         return super(IdPHandlerViewMixin, self).dispatch(request, *args, **kwargs)
 
     def get_processor(self, entity_id, sp_config):
-        """ "Instantiate user-specified processor or fallback to all-access base processor
+        """ Instantiate user-specified processor or default to an all-access base processor.
+            Raises an exception if the configured processor class can not be found or initialized.
         """
         processor_string = sp_config.get('processor', None)
         if processor_string:
@@ -115,7 +116,6 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], binding)
         except Exception as excp:
             return self.handle_error(request, exception=excp)
-        # TODO this is taken from example, but no idea how this works or whats it does. Check SAML2 specification?
         # Signed request for HTTP-REDIRECT
         if "SigAlg" in request.session and "Signature" in request.session:
             _certs = self.IDP.metadata.certs(req_info.message.issuer.text, "any", "signing")
@@ -148,7 +148,6 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         identity = self.get_identity(processor, request.user, sp_config)
 
-        # TODO investigate how this works, because I don't get it. Specification?
         req_authn_context = req_info.message.requested_authn_context or PASSWORD
         AUTHN_BROKER = AuthnBroker()
         AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")

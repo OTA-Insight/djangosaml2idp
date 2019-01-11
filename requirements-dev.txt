@@ -1,5 +1,5 @@
-django>2.0,<2.1
-pysaml2>=4.4.0
+django>2.0,<2.2
+pysaml2>=4.5.0
 
 pytest==4.0.1
 pytest-django==3.4.4

@@ -123,13 +123,13 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-### Everything above are default settings made by django-admin startproject
-### The following is added for djangosaml2 SP configuration.
-### See their docs for explanation of all options.
+# Everything above are default settings made by django-admin startproject
+# The following is added for djangosaml2 SP configuration.
+# See their docs for explanation of all options.
 
-import saml2
-from saml2.saml import NAMEID_FORMAT_EMAILADDRESS
-from saml2.sigver import get_xmlsec_binary
+import saml2  # noqa
+from saml2.saml import NAMEID_FORMAT_EMAILADDRESS  # noqa
+from saml2.sigver import get_xmlsec_binary  # noqa
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',

@@ -1,5 +1,3 @@
-from django.contrib.auth.models import Group
-
 from djangosaml2idp.processors import BaseProcessor
 
 
@@ -12,5 +10,6 @@ class GroupProcessor(BaseProcessor):
     """
     group = "ExampleGroup"
 
-    def has_access(self, user):
+    def has_access(self, request):
+        user = request.user
         return user.is_superuser or user.is_staff or user.groups.filter(name=self.group).exists()

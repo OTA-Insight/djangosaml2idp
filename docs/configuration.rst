@@ -88,3 +88,16 @@ You also have to define a mapping for each SP you talk to::
 
 That's all for the IdP configuration. Assuming you run the Django development server on localhost:8000, you can get its metadata by visiting http://localhost:8000/idp/metadata/.
 Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
+
+
+Further optional configuration options
+======================================
+
+In the `SAML_IDP_SPCONFIG` you define a `processor` value. This is a hook to customize some authorization checks. By default, the included `BaseProcessor` is used, which allows
+ every user to login on the IdP. You can customize this behaviour by subclassing the `BaseProcessor` and overriding its `has_access(self, request)` method. This method should return true or false,
+ depending if the user has permission to log in for the SP / IdP. The processor has the SP entity ID available as `self._entity_id`, and received the request (with an authenticated request.user on it)
+ as parameter to the `has_access` function. This way, you should have the necessary flexibility to perform whatever checks you need.
+ An example `processor subclass <https://github.com/OTA-Insight/djangosaml2idp/blob/master/example_setup/idp/idp/processors.py>`_ can be found in the IdP of the included example.
+
+Without custom setting, users will be identified by the `USERNAME_FIELD` property on the user Model you use. By Django defaults this will be the username.
+You can customize which field is used for the identifier by adding `SAML_IDP_DJANGO_USERNAME_FIELD` to your settings with as value the attribute to use on your user instance.

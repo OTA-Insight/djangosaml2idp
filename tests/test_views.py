@@ -16,7 +16,7 @@ class CustomProcessor(BaseProcessor):
 
 class TestIdPHandlerViewMixin:
     def test_get_identity_provides_extra_config(self):
-        obj = IdPHandlerViewMixin()
+        IdPHandlerViewMixin()
 
     def test_get_processor_errors_if_processor_cannot_be_loaded(self):
         sp_config = {

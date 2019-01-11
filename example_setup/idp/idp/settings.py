@@ -121,16 +121,16 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = ( 
-      BASE_DIR + '/static/',  
+STATICFILES_DIRS = (
+      BASE_DIR + '/static/',
 )
 
-### Everything above are default settings made by django-admin startproject
-### The following is added for djangosaml2idp IdP configuration.
+# Everything above are default settings made by django-admin startproject
+# The following is added for djangosaml2idp IdP configuration.
 
-import saml2
-from saml2.saml import NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED
-from saml2.sigver import get_xmlsec_binary
+import saml2  # noqa
+from saml2.saml import NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED  # noqa
+from saml2.sigver import get_xmlsec_binary  # noqa
 
 LOGIN_URL = '/login/'
 LOGOUT_URL = '/logout/'
@@ -139,7 +139,7 @@ LOGOUT_REDIRECT_URL = '/'
 BASE_URL = 'http://localhost:9000/idp'
 
 SAML_IDP_CONFIG = {
-    'debug' : DEBUG,
+    'debug': DEBUG,
     'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
     'entityid': '%s/metadata' % BASE_URL,
     'description': 'Example IdP setup',

@@ -91,7 +91,7 @@ MAP = {
         EDUPERSON_OID+'3': 'eduPersonOrgDN',
         NOREDUPERSON_OID+'3': 'norEduPersonBirthDate',
     },
-    "to":{
+    "to": {
         'roleOccupant': X500ATTR+'33',
         'gn': X500ATTR+'42',
         'norEduPersonNIN': NOREDUPERSON_OID+'5',
