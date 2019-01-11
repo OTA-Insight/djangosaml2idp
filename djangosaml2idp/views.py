@@ -143,7 +143,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         processor = self.get_processor(resp_args['sp_entity_id'], sp_config)
 
         # Check if user has access to the service of this SP
-        if not processor.has_access(request.user) or not processor.is_enabled(request):
+        if not processor.has_access(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
         identity = self.get_identity(processor, request.user, sp_config)
@@ -217,7 +217,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         processor = self.get_processor(sp_entity_id, sp_config)
 
         # Check if user has access to the service of this SP
-        if not processor.has_access(request.user) or not processor.is_enabled(request):
+        if not processor.has_access(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
         identity = self.get_identity(processor, request.user, sp_config)

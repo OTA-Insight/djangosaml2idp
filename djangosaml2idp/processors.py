@@ -9,13 +9,9 @@ class BaseProcessor:
     def __init__(self, entity_id):
         self._entity_id = entity_id
 
-    def has_access(self, user):
+    def has_access(self, request):
         """ Check if this user is allowed to use this IDP
         """
-        return True
-
-    def is_enabled(self, request):
-        """Is this saml2 integration enabled"""
         return True
 
     def enable_multifactor(self, user):
