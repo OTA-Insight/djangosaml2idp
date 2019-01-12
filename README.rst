@@ -7,7 +7,7 @@ djangosaml2idp
     :target: https://pypi.python.org/pypi/djangosaml2idp
     :alt: PyPi
 
-.. image:: https://img.shields.io/badge/python-2.7%2C3.5%2B-blue.svg
+.. image:: https://img.shields.io/badge/python-2.7%2C3.7%2B-blue.svg
     :scale: 100%
     :target: https://www.python.org/
     :alt: Python
@@ -142,7 +142,7 @@ Use this metadata xml to configure your SP. Place the metadata xml from that SP 
 Further optional configuration options
 ======================================
 
-In the `SAML_IDP_SPCONFIG` you define a `processor` value. This is a hook to customize some authorization checks. By default, the included `BaseProcessor` is used, which allows
+In the `SAML_IDP_SPCONFIG` you define a `processor` value. This is a hook to customize some access control checks. By default, the included `BaseProcessor` is used, which allows
  every user to login on the IdP. You can customize this behaviour by subclassing the `BaseProcessor` and overriding its `has_access(self, request)` method. This method should return true or false,
  depending if the user has permission to log in for the SP / IdP. The processor has the SP entity ID available as `self._entity_id`, and received the request (with an authenticated request.user on it)
  as parameter to the `has_access` function. This way, you should have the necessary flexibility to perform whatever checks you need.

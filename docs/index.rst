@@ -1,5 +1,5 @@
-:Release: 0.4.0
-:Date: 08-08-2018
+:Release: 0.5.0
+:Date: 12-01-2019
 
 Welcome to djangosaml2idp's documentation!
 ==========================================
@@ -13,7 +13,7 @@ djangosaml2idp
     :target: https://pypi.python.org/pypi/djangosaml2idp
     :alt: PyPi
 
-.. image:: https://img.shields.io/badge/python-2.7%2C3.5%2B-blue.svg
+.. image:: https://img.shields.io/badge/python-2.7%2C3.7%2B-blue.svg
     :scale: 100%
     :target: https://www.python.org/
     :alt: Python
