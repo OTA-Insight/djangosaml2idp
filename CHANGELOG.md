@@ -5,9 +5,9 @@
 Many thanks for contributions to [@lgarvey](https://github.com/lgarvey)
 
 ### Added
-- The user identifier attribute is now customizable via the `SAML_IDP_DJANGO_USERNAME_FIELD` settings. https://github.com/OTA-Insight/djangosaml2idp/pull/20
-- Supports the HTTP REDIRECT binding. https://github.com/OTA-Insight/djangosaml2idp/pull/20
-- Bugfix in the NameID generation where destination instead of entity ID was used. https://github.com/OTA-Insight/djangosaml2idp/issues/18
+- The user identifier attribute is now customizable via the `SAML_IDP_DJANGO_USERNAME_FIELD` settings. [PR#20](https://github.com/OTA-Insight/djangosaml2idp/pull/20)
+- Supports the HTTP REDIRECT binding. [PR#20](https://github.com/OTA-Insight/djangosaml2idp/pull/20)
+- Bugfix in the NameID generation where destination instead of entity ID was used. [#18](https://github.com/OTA-Insight/djangosaml2idp/issues/18)
 
 ### Changed
 - BREAKING CHANGE: the `has_access(user)` method on the Processor class has been changed to `has_access(request)`. This to allow a broader scope of access control checks to perform. If you have subclassed the `BaseProcessor` class and have overriden this method with a custom implementation, you will need to change this.

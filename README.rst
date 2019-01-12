@@ -33,7 +33,7 @@ It builds on top of `PySAML2 <https://github.com/IdentityPython/pysaml2>`_, and 
 
 Package version 0.3.3 was the last Python 2 / Django 1.8-1.11 compatible release. Versions starting from 0.4.0 are for Python 3 and Django 2.x.
 
-Any contributions, feature requests, proposals, ideas ... are welcome! See the `CONTRIBUTING <https://github.com/OTA-Insight/djangosaml2idp/blob/master/CHANGELOG.md>`_ for some tips.
+Any contributions, feature requests, proposals, ideas ... are welcome! See the `CONTRIBUTING document <https://github.com/OTA-Insight/djangosaml2idp/blob/master/CONTRIBUTING.md>`_ for some info.
 
 Installation
 ============
@@ -142,21 +142,22 @@ Use this metadata xml to configure your SP. Place the metadata xml from that SP 
 Further optional configuration options
 ======================================
 
-In the `SAML_IDP_SPCONFIG` you define a `processor` value. This is a hook to customize some access control checks. By default, the included `BaseProcessor` is used, which allows
- every user to login on the IdP. You can customize this behaviour by subclassing the `BaseProcessor` and overriding its `has_access(self, request)` method. This method should return true or false,
- depending if the user has permission to log in for the SP / IdP. The processor has the SP entity ID available as `self._entity_id`, and received the request (with an authenticated request.user on it)
- as parameter to the `has_access` function. This way, you should have the necessary flexibility to perform whatever checks you need.
- An example `processor subclass <https://github.com/OTA-Insight/djangosaml2idp/blob/master/example_setup/idp/idp/processors.py>`_ can be found in the IdP of the included example.
+In the ``SAML_IDP_SPCONFIG`` setting you can define a ``processor``, its value being a string with dotted path to a class.
+This is a hook to customize some access control checks. By default, the included `BaseProcessor` is used, which allows every user to login on the IdP.
+You can customize this behaviour by subclassing the `BaseProcessor` and overriding its `has_access(self, request)` method. This method should return true or false, depending if the user has permission to log in for the SP / IdP.
+The processor has the SP entity ID available as `self._entity_id`, and received the request (with an authenticated request.user on it) as parameter to the `has_access` function.
+This way, you should have the necessary flexibility to perform whatever checks you need.
+An example `processor subclass <https://github.com/OTA-Insight/djangosaml2idp/blob/master/example_setup/idp/idp/processors.py>`_ can be found in the IdP of the included example.
 
-Without custom setting, users will be identified by the `USERNAME_FIELD` property on the user Model you use. By Django defaults this will be the username.
-You can customize which field is used for the identifier by adding `SAML_IDP_DJANGO_USERNAME_FIELD` to your settings with as value the attribute to use on your user instance.
+Without custom setting, users will be identified by the ``USERNAME_FIELD`` property on the user Model you use. By Django defaults this will be the username.
+You can customize which field is used for the identifier by adding ``SAML_IDP_DJANGO_USERNAME_FIELD`` to your settings with as value the attribute to use on your user instance.
 
 Customizing error handling
 ==========================
 
 djangosaml2idp renders a very basic error page if it encounters an error, indicating an error occured, which error, and possibly an extra message.
 The HTTP status code is also set if possible depending on which error occured.
-You can customize this by using the `SAML_IDP_ERROR_VIEW_CLASS` setting. Set this to a dotted import path to your custom (class based) view in order to use that one.
+You can customize this by using the ``SAML_IDP_ERROR_VIEW_CLASS`` setting. Set this to a dotted import path to your custom (class based) view in order to use that one.
 If you subclass the provided `djangosaml2idp.error_views.SamlIDPErrorView`, you have the following variables available for use in the template:
 
 exception_type
