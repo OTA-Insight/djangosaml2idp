@@ -10,7 +10,7 @@ Many thanks for contributions to [@lgarvey](https://github.com/lgarvey)
 - Bugfix in the NameID generation where destination instead of entity ID was used. [#18](https://github.com/OTA-Insight/djangosaml2idp/issues/18)
 
 ### Changed
-- BREAKING CHANGE: the `has_access(user)` method on the Processor class has been changed to `has_access(request)`. This to allow a broader scope of access control checks to perform. If you have subclassed the `BaseProcessor` class and have overriden this method with a custom implementation, you will need to change this.
+- **BREAKING CHANGE**: the `has_access(user)` method on the Processor class has been changed to `has_access(request)`. This to allow a broader scope of access control checks to perform. If you have subclassed the `BaseProcessor` class and have overriden this method with a custom implementation, you will need to change this.
 
 ## [0.4.1] - 2018-08-09
 
