@@ -101,7 +101,8 @@ class IdPHandlerViewMixin:
             except Exception as e:
                 logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
                 raise e
-        self.processor = BaseProcessor(self.sp['id'])
+            else:
+                self.processor = BaseProcessor(self.sp['id'])
 
     def get_identity(self, user):
         """ Create Identity dict (using SP-specific mapping)
