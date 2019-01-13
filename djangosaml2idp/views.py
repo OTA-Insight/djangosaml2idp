@@ -121,10 +121,10 @@ class IdPHandlerViewMixin:
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
             identity=self.get_identity(user),
-            userid=self.processor.get_user_id(user),
-            name_id=NameID(format=name_id_formats[0], sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user)),
-            sign_response=self.IDP.config.getattr("sign_response", "idp") or False,
-            sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
+            userid=self.processor.get_user_id(user, self.sp['config']),
+            name_id=NameID(format=name_id_formats[0], sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user, self.sp['config'])),
+            sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
+            sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
             **resp_args)
         return authn_resp
 

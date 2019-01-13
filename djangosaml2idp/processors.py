@@ -19,12 +19,13 @@ class BaseProcessor:
         """
         return False
 
-    def get_user_id(self, user):
+    def get_user_id(self, user, sp_config={}):
         """ Get identifier for a user. Take the one defined in settings.SAML_IDP_DJANGO_USERNAME_FIELD first, if not set
             use the USERNAME_FIELD property which is set on the user Model. This defaults to the user.username field.
         """
-        user_field = getattr(settings, 'SAML_IDP_DJANGO_USERNAME_FIELD', None) or \
-                     getattr(user, 'USERNAME_FIELD', 'username')
+        user_field = sp_config.get('nameid_field') or \
+            getattr(settings, 'SAML_IDP_DJANGO_USERNAME_FIELD', None) or \
+            getattr(user, 'USERNAME_FIELD', 'username')
         return str(getattr(user, user_field))
 
     def create_identity(self, user, sp_mapping, **extra_config):
