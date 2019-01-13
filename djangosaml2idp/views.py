@@ -100,7 +100,7 @@ class IdPHandlerViewMixin:
                 self.processor = import_string(processor_string)(self.sp['id'])
             except Exception as e:
                 logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
-                raise
+                raise e
         self.processor = BaseProcessor(self.sp['id'])
 
     def get_identity(self, user):
@@ -111,9 +111,9 @@ class IdPHandlerViewMixin:
 
     def get_authn(self, req_info=None):
         req_authn_context = req_info.message.requested_authn_context if req_info else PASSWORD
-        AUTHN_BROKER = AuthnBroker()
-        AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
-        return AUTHN_BROKER.get_authn_by_accr(req_authn_context)
+        broker = AuthnBroker()
+        broker.add(authn_context_class_ref(req_authn_context), "")
+        return broker.get_authn_by_accr(req_authn_context)
 
     def build_authn_response(self, user, authn, resp_args):
         name_id_formats = [resp_args.get('name_id_policy').format] or self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
