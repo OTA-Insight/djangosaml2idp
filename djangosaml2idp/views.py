@@ -80,7 +80,7 @@ class IdPHandlerViewMixin:
             self.IDP = Server(config=conf)
         except Exception as e:
             return self.handle_error(request, exception=e)
-        return super(IdPHandlerViewMixin, self).dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)
 
     def get_processor(self, entity_id, sp_config):
         """ Instantiate user-specified processor or default to an all-access base processor.
@@ -164,7 +164,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
                 **resp_args)
         except Exception as excp:
-            return self.handle_error(request, exception=excp, status=500)z
+            return self.handle_error(request, exception=excp, status=500)
 
         http_args = self.IDP.apply_binding(
             binding=resp_args['binding'],
