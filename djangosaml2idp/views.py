@@ -93,13 +93,13 @@ class IdPHandlerViewMixin:
             except Exception as e:
                 logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
                 raise
-        return BaseProcessor(entity_id)
+        self.processor = BaseProcessor(entity_id)
 
-    def get_identity(self, processor, user, sp_config):
+    def get_identity(self, user, sp_config):
         """ Create Identity dict (using SP-specific mapping)
         """
         sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
-        return processor.create_identity(user, sp_mapping, **sp_config.get('extra_config', {}))
+        return self.processor.create_identity(user, sp_mapping, **sp_config.get('extra_config', {}))
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -140,19 +140,19 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception:
             return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id']), status=400)
 
-        processor = self.get_processor(resp_args['sp_entity_id'], sp_config)
+        self.get_processor(resp_args['sp_entity_id'], sp_config)
 
         # Check if user has access to the service of this SP
-        if not processor.has_access(request):
+        if not self.processor.has_access(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
-        identity = self.get_identity(processor, request.user, sp_config)
+        identity = self.get_identity(request.user, sp_config)
 
         req_authn_context = req_info.message.requested_authn_context or PASSWORD
         AUTHN_BROKER = AuthnBroker()
         AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
 
-        user_id = processor.get_user_id(request.user)
+        user_id = self.processor.get_user_id(request.user)
 
         # Construct SamlResponse message
         try:
@@ -164,7 +164,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
                 **resp_args)
         except Exception as excp:
-            return self.handle_error(request, exception=excp, status=500)
+            return self.handle_error(request, exception=excp, status=500)z
 
         http_args = self.IDP.apply_binding(
             binding=resp_args['binding'],
@@ -175,12 +175,12 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         logger.debug('http args are: %s' % http_args)
 
-        return self.render_response(request, processor, http_args)
+        return self.render_response(request, http_args)
 
-    def render_response(self, request, processor, http_args):
+    def render_response(self, request, http_args):
         """ Return either as redirect to MultiFactorView or as html with self-submitting form.
         """
-        if processor.enable_multifactor(request.user):
+        if self.processor.enable_multifactor(request.user):
             # Store http_args in session for after multi factor is complete
             request.session['saml_data'] = http_args['data']
             logger.debug("Redirecting to process_multi_factor")
@@ -213,19 +213,19 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             service="assertion_consumer_service",
             entity_id=sp_entity_id)
 
-        processor = self.get_processor(sp_entity_id, sp_config)
+        self.get_processor(sp_entity_id, sp_config)
 
         # Check if user has access to the service of this SP
-        if not processor.has_access(request):
+        if not self.processor.has_access(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
-        identity = self.get_identity(processor, request.user, sp_config)
+        identity = self.get_identity(self.processor, request.user, sp_config)
 
         req_authn_context = PASSWORD
         AUTHN_BROKER = AuthnBroker()
         AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
 
-        user_id = processor.get_user_id(request.user)
+        user_id = self.processor.get_user_id(request.user)
 
         # Construct SamlResponse messages
         try:
