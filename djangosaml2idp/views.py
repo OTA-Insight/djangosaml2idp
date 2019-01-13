@@ -1,3 +1,4 @@
+import base64
 import copy
 import logging
 
@@ -5,8 +6,8 @@ from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
-from django.http import (HttpResponse, HttpResponseBadRequest,
-                         HttpResponseRedirect)
+from django.http import (HttpResponse, HttpResponseBadRequest, HttpResponseRedirect)
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.decorators import method_decorator
@@ -89,7 +90,7 @@ class IdPHandlerViewMixin:
         processor_string = sp_config.get('processor', None)
         if processor_string:
             try:
-                return import_string(processor_string)(entity_id)
+                self.processor = import_string(processor_string)(entity_id)
             except Exception as e:
                 logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
                 raise
@@ -100,6 +101,38 @@ class IdPHandlerViewMixin:
         """
         sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
         return self.processor.create_identity(user, sp_mapping, **sp_config.get('extra_config', {}))
+
+    def create_response(self, request, binding, authn_resp, destination, relay_state):
+        if binding == BINDING_HTTP_POST:
+            context = {
+                "acs_url": destination,
+                "saml_response": base64.b64encode(authn_resp.encode()).decode(),
+                "relay_state": relay_state,
+            }
+            html_response = render_to_string("djangosaml2idp/login.html", context=context, request=request)
+        else:
+            http_args = self.IDP.apply_binding(
+                binding=binding,
+                msg_str=authn_resp,
+                destination=destination,
+                relay_state=relay_state,
+                response=True)
+
+            logger.debug('http args are: %s' % http_args)
+            html_response = http_args['data']
+
+        return html_response
+
+    def render_response(self, request, html_response):
+        """ Return either as redirect to MultiFactorView or as html with self-submitting form.
+        """
+        if self.processor.enable_multifactor(request.user):
+            # Store http_args in session for after multi factor is complete
+            request.session['saml_data'] = html_response
+            logger.debug("Redirecting to process_multi_factor")
+            return HttpResponseRedirect(reverse('saml_multi_factor'))
+        logger.debug("Performing SAML redirect")
+        return HttpResponse(html_response)
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -166,27 +199,13 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
-        http_args = self.IDP.apply_binding(
+        html_response = self.create_response(
+            request,
             binding=resp_args['binding'],
-            msg_str="%s" % authn_resp,
+            authn_resp=authn_resp,
             destination=resp_args['destination'],
-            relay_state=request.session['RelayState'],
-            response=True)
-
-        logger.debug('http args are: %s' % http_args)
-
-        return self.render_response(request, http_args)
-
-    def render_response(self, request, http_args):
-        """ Return either as redirect to MultiFactorView or as html with self-submitting form.
-        """
-        if self.processor.enable_multifactor(request.user):
-            # Store http_args in session for after multi factor is complete
-            request.session['saml_data'] = http_args['data']
-            logger.debug("Redirecting to process_multi_factor")
-            return HttpResponseRedirect(reverse('saml_multi_factor'))
-        logger.debug("Performing SAML redirect")
-        return HttpResponse(http_args['data'])
+            relay_state=request.session['RelayState'])
+        return self.render_response(request, html_response)
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -248,14 +267,8 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
-        # Return as html with self-submitting form.
-        http_args = self.IDP.apply_binding(
-            binding=binding_out,
-            msg_str="%s" % authn_resp,
-            destination=destination,
-            relay_state=passed_data['RelayState'],
-            response=True)
-        return HttpResponse(http_args['data'])
+        html_response = self.create_response(request, binding_out, authn_resp, destination, passed_data['RelayState'])
+        return self.render_response(request, html_response)
 
 
 @method_decorator(never_cache, name='dispatch')
