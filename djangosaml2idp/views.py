@@ -83,26 +83,51 @@ class IdPHandlerViewMixin:
             return self.handle_error(request, exception=e)
         return super().dispatch(request, *args, **kwargs)
 
-    def get_processor(self, entity_id, sp_config):
+    def set_sp(self, sp_entity_id):
+        self.sp = {'id': sp_entity_id}
+        try:
+            self.sp['config'] = settings.SAML_IDP_SPCONFIG[sp_entity_id]
+        except KeyError:
+            raise ImproperlyConfigured("No config for SP {} defined in SAML_IDP_SPCONFIG".format(sp_entity_id))
+
+    def set_processor(self):
         """ Instantiate user-specified processor or default to an all-access base processor.
             Raises an exception if the configured processor class can not be found or initialized.
         """
-        processor_string = sp_config.get('processor', None)
+        processor_string = self.sp['config'].get('processor', None)
         if processor_string:
             try:
-                self.processor = import_string(processor_string)(entity_id)
+                self.processor = import_string(processor_string)(self.sp['id'])
             except Exception as e:
                 logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
                 raise
-        self.processor = BaseProcessor(entity_id)
+        self.processor = BaseProcessor(self.sp['id'])
 
-    def get_identity(self, user, sp_config):
+    def get_identity(self, user):
         """ Create Identity dict (using SP-specific mapping)
         """
-        sp_mapping = sp_config.get('attribute_mapping', {'username': 'username'})
-        return self.processor.create_identity(user, sp_mapping, **sp_config.get('extra_config', {}))
+        sp_mapping = self.sp['config'].get('attribute_mapping', {'username': 'username'})
+        return self.processor.create_identity(user, sp_mapping, **self.sp['config'].get('extra_config', {}))
 
-    def create_response(self, request, binding, authn_resp, destination, relay_state):
+    def get_authn(self, req_info=None):
+        req_authn_context = req_info.message.requested_authn_context if req_info else PASSWORD
+        AUTHN_BROKER = AuthnBroker()
+        AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
+        return AUTHN_BROKER.get_authn_by_accr(req_authn_context)
+
+    def build_authn_response(self, user, authn, resp_args):
+        name_id_formats = [resp_args.get('name_id_policy').format] or self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
+        authn_resp = self.IDP.create_authn_response(
+            authn=authn,
+            identity=self.get_identity(user),
+            userid=self.processor.get_user_id(user),
+            name_id=NameID(format=name_id_formats[0], sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user)),
+            sign_response=self.IDP.config.getattr("sign_response", "idp") or False,
+            sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
+            **resp_args)
+        return authn_resp
+
+    def create_html_response(self, request, binding, authn_resp, destination, relay_state):
         if binding == BINDING_HTTP_POST:
             context = {
                 "acs_url": destination,
@@ -169,37 +194,22 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             return self.handle_error(request, exception=excp, status=400)
 
         try:
-            sp_config = settings.SAML_IDP_SPCONFIG[resp_args['sp_entity_id']]
-        except Exception:
-            return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % resp_args['sp_entity_id']), status=400)
-
-        self.get_processor(resp_args['sp_entity_id'], sp_config)
+            self.set_sp(resp_args['sp_entity_id'])
+            self.set_processor()
+        except (KeyError, ImproperlyConfigured) as excp:
+            return self.handle_error(request, exception=excp, status=400)
 
         # Check if user has access to the service of this SP
         if not self.processor.has_access(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
-        identity = self.get_identity(request.user, sp_config)
-
-        req_authn_context = req_info.message.requested_authn_context or PASSWORD
-        AUTHN_BROKER = AuthnBroker()
-        AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
-
-        user_id = self.processor.get_user_id(request.user)
-
         # Construct SamlResponse message
         try:
-            authn_resp = self.IDP.create_authn_response(
-                identity=identity, userid=user_id,
-                name_id=NameID(format=resp_args['name_id_policy'].format, sp_name_qualifier=resp_args['sp_entity_id'], text=user_id),
-                authn=AUTHN_BROKER.get_authn_by_accr(req_authn_context),
-                sign_response=self.IDP.config.getattr("sign_response", "idp") or False,
-                sign_assertion=self.IDP.config.getattr("sign_assertion", "idp") or False,
-                **resp_args)
+            authn_resp = self.build_authn_response(request.user, self.get_authn(), resp_args)
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
-        html_response = self.create_response(
+        html_response = self.create_html_response(
             request,
             binding=resp_args['binding'],
             authn_resp=authn_resp,
@@ -219,55 +229,31 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         # get sp information from the parameters
         try:
-            sp_entity_id = passed_data['sp']
-        except KeyError as excp:
+            self.set_sp(passed_data['sp'])
+            self.set_processor()
+        except (KeyError, ImproperlyConfigured) as excp:
             return self.handle_error(request, exception=excp, status=400)
-
-        try:
-            sp_config = settings.SAML_IDP_SPCONFIG[sp_entity_id]
-        except Exception:
-            return self.handle_error(request, exception=ImproperlyConfigured("No config for SP %s defined in SAML_IDP_SPCONFIG" % sp_entity_id), status=400)
 
         binding_out, destination = self.IDP.pick_binding(
             service="assertion_consumer_service",
-            entity_id=sp_entity_id)
-
-        self.get_processor(sp_entity_id, sp_config)
+            entity_id=self.sp['id'])
 
         # Check if user has access to the service of this SP
         if not self.processor.has_access(request):
             return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
 
-        identity = self.get_identity(self.processor, request.user, sp_config)
-
-        req_authn_context = PASSWORD
-        AUTHN_BROKER = AuthnBroker()
-        AUTHN_BROKER.add(authn_context_class_ref(req_authn_context), "")
-
-        user_id = self.processor.get_user_id(request.user)
+        # Adding a few things that would have been added if this were SP Initiated
+        passed_data['destination'] = destination
+        passed_data['in_response_to'] = "IdP_Initiated_Login"
+        passed_data['sp_entity_id'] = self.sp['id']
 
         # Construct SamlResponse messages
         try:
-            name_id_formats = self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
-            name_id = NameID(format=name_id_formats[0], text=user_id)
-            authn = AUTHN_BROKER.get_authn_by_accr(req_authn_context)
-            sign_response = self.IDP.config.getattr("sign_response", "idp") or False
-            sign_assertion = self.IDP.config.getattr("sign_assertion", "idp") or False
-            authn_resp = self.IDP.create_authn_response(
-                identity=identity,
-                in_response_to="IdP_Initiated_Login",
-                destination=destination,
-                sp_entity_id=sp_entity_id,
-                userid=user_id,
-                name_id=name_id,
-                authn=authn,
-                sign_response=sign_response,
-                sign_assertion=sign_assertion,
-                **passed_data)
+            authn_resp = self.build_authn_response(request.user, self.get_authn(), passed_data)
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
-        html_response = self.create_response(request, binding_out, authn_resp, destination, passed_data['RelayState'])
+        html_response = self.create_html_response(request, binding_out, authn_resp, destination, passed_data['RelayState'])
         return self.render_response(request, html_response)
 
 
