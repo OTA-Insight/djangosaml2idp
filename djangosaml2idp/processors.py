@@ -28,9 +28,11 @@ class BaseProcessor:
             getattr(user, 'USERNAME_FIELD', 'username')
         return str(getattr(user, user_field))
 
-    def create_identity(self, user, sp_mapping, **extra_config):
+    def create_identity(self, user, sp_config):
         """ Generate an identity dictionary of the user based on the given mapping of desired user attributes by the SP
         """
+        default_mapping = {'username': 'username'}
+        sp_mapping = sp_config.get('attribute_mapping', default_mapping)
 
         return {
             out_attr: getattr(user, user_attr)
