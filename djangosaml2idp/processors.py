@@ -34,8 +34,9 @@ class BaseProcessor:
         default_mapping = {'username': 'username'}
         sp_mapping = sp_config.get('attribute_mapping', default_mapping)
 
-        return {
-            out_attr: getattr(user, user_attr)
-            for user_attr, out_attr in sp_mapping.items()
-            if hasattr(user, user_attr)
-        }
+        results = {}
+        for user_attr, out_attr in sp_mapping.items():
+            if hasattr(user, user_attr):
+                attr = getattr(user, user_attr)
+                results[out_attr] = attr() if callable(attr) else attr
+        return results

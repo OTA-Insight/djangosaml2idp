@@ -61,7 +61,12 @@ class TestIdPHandlerViewMixin:
     def test_get_authn_returns_correctly_when_no_req_info(self):
         mixin = IdPHandlerViewMixin()
 
-        assert mixin.get_authn() == ""
+        assert mixin.get_authn() == {
+            'authn_auth': '',
+            'class_ref': 'urn:oasis:names:tc:SAML:2.0:ac:classes:Password',
+            'level': 0,
+            'method': ''
+        }
 
 
 class TestIdpInitiatedFlow:
