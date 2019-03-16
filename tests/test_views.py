@@ -1,9 +1,10 @@
 import pytest
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ImproperlyConfigured
+from django.http import HttpRequest
 
 from djangosaml2idp.views import IdPHandlerViewMixin
-
 from djangosaml2idp.processors import BaseProcessor
 
 
@@ -15,29 +16,52 @@ class CustomProcessor(BaseProcessor):
 
 
 class TestIdPHandlerViewMixin:
-    def test_get_identity_provides_extra_config(self):
-        IdPHandlerViewMixin()
-
-    def test_get_processor_errors_if_processor_cannot_be_loaded(self):
-        sp_config = {
-            'processor': 'this.does.not.exist'
-        }
+    def test_dispatch_fails_if_IDP_config_undefined_in_settings(self, settings):
+        del settings.SAML_IDP_CONF
 
         with pytest.raises(Exception):
-            IdPHandlerViewMixin().get_processor('entity_id', sp_config)
+            IdPHandlerViewMixin().dispatch(HttpRequest())
 
-    def test_get_processor_defaults_to_base_processor(self):
-        sp_config = {
+    def test_set_sp_errors_if_sp_not_defined(self):
+        mixin = IdPHandlerViewMixin()
+
+        with pytest.raises(ImproperlyConfigured):
+            mixin.set_sp('this_sp_does_not_exist')
+
+    def test_set_sp_works_if_sp_defined(self, settings):
+        mixin = IdPHandlerViewMixin()
+        mixin.set_sp('test_generic_sp')
+
+        assert mixin.sp == {
+            'id': 'test_generic_sp',
+            'config': settings.SAML_IDP_SPCONFIG['test_generic_sp']
         }
 
-        assert isinstance(IdPHandlerViewMixin().get_processor('entity_id', sp_config), BaseProcessor)
+    def test_set_processor_errors_if_processor_cannot_be_loaded(self):
+        mixin = IdPHandlerViewMixin()
+        mixin.set_sp('test_sp_with_bad_processor')
+
+        with pytest.raises(Exception):
+            mixin.set_processor()
+
+    def test_set_processor_defaults_to_base_processor(self):
+        mixin = IdPHandlerViewMixin()
+        mixin.set_sp('test_sp_with_no_processor')
+        mixin.set_processor()
+
+        assert isinstance(mixin.processor, BaseProcessor)
 
     def test_get_processor_loads_custom_processor(self):
-        sp_config = {
-            'processor': 'tests.test_views.CustomProcessor'
-        }
+        mixin = IdPHandlerViewMixin()
+        mixin.set_sp('test_sp_with_custom_processor')
+        mixin.set_processor()
 
-        assert isinstance(IdPHandlerViewMixin().get_processor('entity_id', sp_config), CustomProcessor)
+        assert isinstance(mixin.processor, CustomProcessor)
+
+    def test_get_authn_returns_correctly_when_no_req_info(self):
+        mixin = IdPHandlerViewMixin()
+
+        assert mixin.get_authn() == ""
 
 
 class TestIdpInitiatedFlow:

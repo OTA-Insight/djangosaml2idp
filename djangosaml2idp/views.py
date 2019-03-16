@@ -84,6 +84,9 @@ class IdPHandlerViewMixin:
         return super().dispatch(request, *args, **kwargs)
 
     def set_sp(self, sp_entity_id):
+        """ Saves SP info to instance variable
+            Raises an exception if sp matching the given entity id cannot be found.
+        """
         self.sp = {'id': sp_entity_id}
         try:
             self.sp['config'] = settings.SAML_IDP_SPCONFIG[sp_entity_id]
@@ -104,12 +107,6 @@ class IdPHandlerViewMixin:
                 raise e
         self.processor = BaseProcessor(self.sp['id'])
 
-    def get_identity(self, user):
-        """ Create Identity dict (using SP-specific mapping)
-        """
-        sp_mapping = self.sp['config'].get('attribute_mapping', {'username': 'username'})
-        return self.processor.create_identity(user, sp_mapping, **self.sp['config'].get('extra_config', {}))
-
     def get_authn(self, req_info=None):
         req_authn_context = req_info.message.requested_authn_context if req_info else PASSWORD
         broker = AuthnBroker()
@@ -120,7 +117,7 @@ class IdPHandlerViewMixin:
         name_id_formats = [resp_args.get('name_id_policy').format] or self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
-            identity=self.get_identity(user),
+            identity=self.processor.create_identity(user, self.sp['config']),
             userid=self.processor.get_user_id(user, self.sp['config']),
             name_id=NameID(format=name_id_formats[0], sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user, self.sp['config'])),
             sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
