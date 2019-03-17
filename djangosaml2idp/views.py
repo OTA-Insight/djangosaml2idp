@@ -67,7 +67,9 @@ def sso_entry(request):
 class IdPHandlerViewMixin:
     """ Contains some methods used by multiple views """
 
-    error_view = import_string(getattr(settings, 'SAML_IDP_ERROR_VIEW_CLASS', 'djangosaml2idp.error_views.SamlIDPErrorView'))
+    error_view = import_string(getattr(settings,
+                                       'SAML_IDP_ERROR_VIEW_CLASS',
+                                       'djangosaml2idp.error_views.SamlIDPErrorView'))
 
     def handle_error(self, request, **kwargs):
         return self.error_view.as_view()(request, **kwargs)
@@ -114,25 +116,35 @@ class IdPHandlerViewMixin:
         return broker.get_authn_by_accr(req_authn_context)
 
     def build_authn_response(self, user, authn, resp_args):
-        name_id_formats = [resp_args.get('name_id_policy').format] or self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
+        name_id_formats = [resp_args.get('name_id_policy').format] or \
+                           self.IDP.config.getattr("name_id_format", "idp") or \
+                           [NAMEID_FORMAT_UNSPECIFIED]
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
             identity=self.processor.create_identity(user, self.sp['config']),
             userid=self.processor.get_user_id(user, self.sp['config']),
-            name_id=NameID(format=name_id_formats[0], sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user, self.sp['config'])),
-            sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
-            sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
+            name_id=NameID(format=name_id_formats[0],
+                           sp_name_qualifier=self.sp['id'],
+                           text=self.processor.get_user_id(user,
+                                                           self.sp['config'])),
+            sign_response=self.sp['config'].get("sign_response") or
+                          self.IDP.config.getattr("sign_response", "idp") or False,
+            sign_assertion=self.sp['config'].get("sign_assertion") or
+                           self.IDP.config.getattr("sign_assertion", "idp") or False,
             **resp_args)
         return authn_resp
 
     def create_html_response(self, request, binding, authn_resp, destination, relay_state):
+        """ Login form for SSO
+        """
         if binding == BINDING_HTTP_POST:
             context = {
                 "acs_url": destination,
                 "saml_response": base64.b64encode(authn_resp.encode()).decode(),
                 "relay_state": relay_state,
             }
-            html_response = render_to_string("djangosaml2idp/login.html", context=context, request=request)
+            html_response = render_to_string("djangosaml2idp/login.html",
+                                             context=context, request=request)
         else:
             http_args = self.IDP.apply_binding(
                 binding=binding,
@@ -143,7 +155,6 @@ class IdPHandlerViewMixin:
 
             logger.debug('http args are: %s' % http_args)
             html_response = http_args['data']
-
         return html_response
 
     def render_response(self, request, html_response):
@@ -183,7 +194,9 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 #    break
                 pass
             if not verified_ok:
-                return self.handle_error(request, extra_message="Message signature verification failure", status=400)
+                return self.handle_error(request,
+                                         extra_message="Message signature verification failure",
+                                         status=400)
 
         # Gather response arguments
         try:
@@ -199,11 +212,15 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         # Check if user has access to the service of this SP
         if not self.processor.has_access(request):
-            return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
+            return self.handle_error(request,
+                                     exception=PermissionDenied("You do not have access to this resource"),
+                                     status=403)
 
         # Construct SamlResponse message
         try:
-            authn_resp = self.build_authn_response(request.user, self.get_authn(), resp_args)
+            authn_resp = self.build_authn_response(request.user,
+                                                   self.get_authn(),
+                                                   resp_args)
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
@@ -238,7 +255,9 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         # Check if user has access to the service of this SP
         if not self.processor.has_access(request):
-            return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
+            return self.handle_error(request,
+                                     exception=PermissionDenied("You do not have access to this resource"),
+                                     status=403)
 
         # Adding a few things that would have been added if this were SP Initiated
         passed_data['destination'] = destination
@@ -247,11 +266,17 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         # Construct SamlResponse messages
         try:
-            authn_resp = self.build_authn_response(request.user, self.get_authn(), passed_data)
+            authn_resp = self.build_authn_response(request.user,
+                                                   self.get_authn(),
+                                                   passed_data)
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
-        html_response = self.create_html_response(request, binding_out, authn_resp, destination, passed_data['RelayState'])
+        html_response = self.create_html_response(request,
+                                                  binding_out,
+                                                  authn_resp,
+                                                  destination,
+                                                  passed_data['RelayState'])
         return self.render_response(request, html_response)
 
 
@@ -285,4 +310,5 @@ def metadata(request):
     conf = IdPConfig()
     conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
     metadata = entity_descriptor(conf)
-    return HttpResponse(content=text_type(metadata).encode('utf-8'), content_type="text/xml; charset=utf8")
+    return HttpResponse(content=text_type(metadata).encode('utf-8'),
+                        content_type="text/xml; charset=utf8")

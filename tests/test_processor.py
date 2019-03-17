@@ -1,4 +1,3 @@
-import types
 from django.contrib.auth import get_user_model
 from djangosaml2idp.processors import BaseProcessor
 
