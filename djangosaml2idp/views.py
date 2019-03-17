@@ -53,7 +53,8 @@ def sso_entry(request):
 
     request.session['Binding'] = binding
     logger.info("--- Single SignOn requested [{}] to IDP ---".format(binding))
-    logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True)))
+    logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'],
+                                                                b64=True)))
     try:
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
@@ -185,20 +186,14 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], binding)
         except Exception as excp:
             return self.handle_error(request, exception=excp)
-        # Signed request for HTTP-REDIRECT
-        if "SigAlg" in request.session and "Signature" in request.session:
-            _certs = self.IDP.metadata.certs(req_info.message.issuer.text, "any", "signing")
-            verified_ok = False
-            for cert in _certs:
-                # TODO implement
-                # if verify_redirect_signature(_info, self.IDP.sec.sec_backend, cert):
-                #    verified_ok = True
-                #    break
-                pass
-            if not verified_ok:
-                return self.handle_error(request,
-                                         extra_message="Message signature verification failure",
-                                         status=400)
+
+        # Signature verification
+        # for authn request signature_check is saml2.sigver.SecurityContext.correctly_signed_authn_request
+        verified_ok = req_info.signature_check(req_info.xmlstr)
+        if not verified_ok:
+            return self.handle_error(request,
+                                     extra_message="Message signature verification failure",
+                                     status=400)
 
         # Gather response arguments
         try:
