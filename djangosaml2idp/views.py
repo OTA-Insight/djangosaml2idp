@@ -27,6 +27,7 @@ from saml2.server import Server
 from six import text_type
 
 from .processors import BaseProcessor
+from .utils import repr_saml
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,8 @@ def sso_entry(request):
         binding = BINDING_HTTP_REDIRECT
 
     request.session['Binding'] = binding
-
+    logger.info("--- Single SignOn requested [{}] to IDP ---".format(binding))
+    logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True)))
     try:
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
@@ -230,6 +232,8 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             authn_resp=authn_resp,
             destination=resp_args['destination'],
             relay_state=request.session['RelayState'])
+
+        logger.debug("--- SAML Authn Response [\n{}] ---".format(repr_saml(authn_resp)))
         return self.render_response(request, html_response)
 
 
