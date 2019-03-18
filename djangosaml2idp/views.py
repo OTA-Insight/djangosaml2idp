@@ -12,6 +12,7 @@ from django.urls import reverse
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
+from django.utils.translation import gettext as _
 from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
@@ -27,17 +28,17 @@ from saml2.server import Server
 from six import text_type
 
 from .processors import BaseProcessor
-from .utils import repr_saml
+from .utils import repr_saml, encode_http_redirect_saml
 
 logger = logging.getLogger(__name__)
 
 try:
     idp_sp_config = settings.SAML_IDP_SPCONFIG
 except AttributeError:
-    raise ImproperlyConfigured("SAML_IDP_SPCONFIG not defined in settings.")
+    raise ImproperlyConfigured(_("SAML_IDP_SPCONFIG not defined in settings."))
 
 
-def get_binding(request):
+def get_binding_data(request):
     if request.method == 'POST':
         # future TODO: parse also SOAP and PAOS format from POST
         passed_data = request.POST
@@ -52,15 +53,16 @@ def saml_session_request(request):
     """ Entrypoint view for SSO. Gathers the parameters from the
         HTTP request and stores them in the session
     """
-    binding, passed_data = get_binding(request)
+    binding, passed_data = get_binding_data(request)
     request.session['Binding'] = binding
-    logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True)))
     try:
+        logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True)))
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
-        return HttpResponseBadRequest(e)
+        return HttpResponseBadRequest(_('not a valid SAMLRequest: {}').format(e))
     request.session['RelayState'] = passed_data.get('RelayState', '')
     # TODO check how the redirect saml way works. Taken from example idp in pysaml2.
+    # TODO we should check that passed signs are equal to metadata signs!
     if "SigAlg" in passed_data and "Signature" in passed_data:
         request.session['SigAlg'] = passed_data['SigAlg']
         request.session['Signature'] = passed_data['Signature']
@@ -71,7 +73,7 @@ def saml_session_request(request):
 @never_cache
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
-def sso_entry(request):
+def sso_entry(request, binding):
     """ Entrypoint view for SSO. Build the saml session and redirects
         the requester to the login_process view.
     """
@@ -79,15 +81,6 @@ def sso_entry(request):
     saml_session_request(request)
     logger.info("--- Single SignOn requested [{}] to IDP ---".format(request.session['Binding']))
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
-
-
-@never_cache
-@csrf_exempt
-@require_http_methods(["GET", "POST"])
-def slo_entry(request):
-    saml_session_request(request)
-    logger.info("--- Single LogOut requested [{}] to IDP ---".format(request.session['Binding']))
-    return HttpResponseRedirect(reverse('djangosaml2idp:saml_logout_process'))
 
 
 class IdPHandlerViewMixin:
@@ -117,7 +110,37 @@ class IdPHandlerViewMixin:
         try:
             self.sp['config'] = settings.SAML_IDP_SPCONFIG[sp_entity_id]
         except KeyError:
-            raise ImproperlyConfigured("No config for SP {} defined in SAML_IDP_SPCONFIG".format(sp_entity_id))
+            raise ImproperlyConfigured(_("No config for SP {} defined in SAML_IDP_SPCONFIG").format(sp_entity_id))
+
+    def build_response_arguments(self, req_info):
+        """ Gather response arguments from SAML request
+        """
+        try:
+            self.resp_args = self.IDP.response_args(req_info.message)
+        except (UnknownPrincipal, UnsupportedBinding) as excp:
+            return self.handle_error(request, exception=excp, status=400)
+
+        try:
+            self.set_sp(self.resp_args['sp_entity_id'])
+            self.set_processor()
+        except (KeyError, ImproperlyConfigured) as excp:
+            return self.handle_error(request, exception=excp, status=400)
+
+    def verify_request_signature(self, req_info):
+        """ Signature verification
+            for authn request signature_check is at
+            saml2.sigver.SecurityContext.correctly_signed_authn_request
+        """
+        # TODO: verify that passed signs are the same of sp's metadatas signs
+        verified_ok = req_info.signature_check(req_info.xmlstr)
+        if not verified_ok:
+            return self.handle_error(request, extra_message=_("Message signature verification failure"), status=400)
+
+    def has_access(self, request):
+        """ Check if user has access to the service of this SP
+        """
+        if not self.processor.has_access(request):
+            return self.handle_error(request, exception=PermissionDenied(_("You do not have access to this resource")), status=403)
 
     def set_processor(self):
         """ Instantiate user-specified processor or default to an all-access base processor.
@@ -129,7 +152,7 @@ class IdPHandlerViewMixin:
                 self.processor = import_string(processor_string)(self.sp['id'])
                 return
             except Exception as e:
-                logger.error("Failed to instantiate processor: {} - {}".format(processor_string, e), exc_info=True)
+                logger.error(_("Failed to instantiate processor: {} - {}").format(processor_string, e), exc_info=True)
                 raise e
         self.processor = BaseProcessor(self.sp['id'])
 
@@ -155,7 +178,19 @@ class IdPHandlerViewMixin:
             **resp_args)
         return authn_resp
 
-    def create_html_response(self, request, binding, authn_resp, destination, relay_state):
+    def render_response(self, request, html_response):
+        """ Return either as redirect to MultiFactorView or as html with self-submitting form.
+        """
+        if hasattr(self, 'processor'):
+            if self.processor.enable_multifactor(request.user):
+                # Store http_args in session for after multi factor is complete
+                request.session['saml_data'] = html_response
+                logger.debug("Redirecting to process_multi_factor")
+                return HttpResponseRedirect(reverse('saml_multi_factor'))
+        logger.debug("Performing SAML redirect")
+        return HttpResponse(html_response)
+
+    def create_html_response(self, request, binding, authn_resp, destination, relay_state, template="djangosaml2idp/login.html"):
         """ Login form for SSO
         """
         if binding == BINDING_HTTP_POST:
@@ -164,7 +199,7 @@ class IdPHandlerViewMixin:
                 "saml_response": base64.b64encode(authn_resp.encode()).decode(),
                 "relay_state": relay_state,
             }
-            html_response = render_to_string("djangosaml2idp/login.html", context=context, request=request)
+            html_response = render_to_string(template, context=context, request=request)
         else:
             http_args = self.IDP.apply_binding(
                 binding=binding,
@@ -176,17 +211,6 @@ class IdPHandlerViewMixin:
             logger.debug('http args are: %s' % http_args)
             html_response = http_args['data']
         return html_response
-
-    def render_response(self, request, html_response):
-        """ Return either as redirect to MultiFactorView or as html with self-submitting form.
-        """
-        if self.processor.enable_multifactor(request.user):
-            # Store http_args in session for after multi factor is complete
-            request.session['saml_data'] = html_response
-            logger.debug("Redirecting to process_multi_factor")
-            return HttpResponseRedirect(reverse('saml_multi_factor'))
-        logger.debug("Performing SAML redirect")
-        return HttpResponse(html_response)
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -204,54 +228,42 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception as excp:
             return self.handle_error(request, exception=excp)
 
-        # Signature verification
-        # for authn request signature_check is saml2.sigver.SecurityContext.correctly_signed_authn_request
-        verified_ok = req_info.signature_check(req_info.xmlstr)
-        if not verified_ok:
-            return self.handle_error(request, extra_message="Message signature verification failure", status=400)
+        # check SAML request signature
+        self.verify_request_signature(req_info)
 
-        # Gather response arguments
-        try:
-            resp_args = self.IDP.response_args(req_info.message)
-        except (UnknownPrincipal, UnsupportedBinding) as excp:
-            return self.handle_error(request, exception=excp, status=400)
+        # gather response arguments
+        self.build_response_arguments(req_info)
 
-        try:
-            self.set_sp(resp_args['sp_entity_id'])
-            self.set_processor()
-        except (KeyError, ImproperlyConfigured) as excp:
-            return self.handle_error(request, exception=excp, status=400)
-
-        # Check if user has access to the service of this SP
-        if not self.processor.has_access(request):
-            return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
+        # check if the user has access to this SP (view processor)
+        self.has_access(request)
 
         # Construct SamlResponse message
         try:
-            authn_resp = self.build_authn_response(request.user, self.get_authn(), resp_args)
+            self.authn_resp = self.build_authn_response(request.user, self.get_authn(), self.resp_args)
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
         html_response = self.create_html_response(
             request,
-            binding=resp_args['binding'],
-            authn_resp=authn_resp,
-            destination=resp_args['destination'],
+            binding=self.resp_args['binding'],
+            authn_resp=self.authn_resp,
+            destination=self.resp_args['destination'],
             relay_state=request.session['RelayState'])
 
-        logger.debug("--- SAML Authn Response [\n{}] ---".format(repr_saml(authn_resp)))
+        logger.debug("--- SAML Authn Response [\n{}] ---".format(repr_saml(self.authn_resp)))
         return self.render_response(request, html_response)
 
 
 @method_decorator(never_cache, name='dispatch')
 class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
-
+    """ View used for IDP initialized login, doesn't handle any SAML authn request
+    """
     def post(self, request, *args, **kwargs):
         return self.get(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         passed_data = request.POST or request.GET
-        import pdb; pdb.set_trace()
+
         # get sp information from the parameters
         try:
             self.set_sp(passed_data['sp'])
@@ -264,8 +276,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             entity_id=self.sp['id'])
 
         # Check if user has access to the service of this SP
-        if not self.processor.has_access(request):
-            return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
+        self.has_access(request)
 
         # Adding a few things that would have been added if this were SP Initiated
         passed_data['destination'] = destination
@@ -303,122 +314,83 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
             logger.debug('MultiFactor succeeded for %s' % request.user)
             # If authentication succeeded, log in is ok
             return HttpResponse(request.session['saml_data'])
-        logger.debug("MultiFactor failed; %s will not be able to log in" % request.user)
+        logger.debug(_("MultiFactor failed; %s will not be able to log in") % request.user)
         logout(request)
-        raise PermissionDenied("MultiFactor authentication factor failed")
+        raise PermissionDenied(_("MultiFactor authentication factor failed"))
 
 
 @method_decorator(never_cache, name='dispatch')
+@method_decorator(csrf_exempt, name='dispatch')
 class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """ View which processes the actual SAML Single Logout request
-        The login_required decorator ensures the user authenticates first on the IdP using 'normal' ways.
+        The login_required decorator ensures the user authenticates first on the IdP using 'normal' way.
     """
     __service_name = 'Single LogOut'
 
+    def post(self, request, *args, **kwargs):
+        return self.get(request, *args, **kwargs)
+
     def get(self, request, *args, **kwargs):
         logger.info("--- {} Service ---".format(self.__service_name))
-        binding = get_binding(request)
-        logger.debug("--- {} requested [{}] to IDP ---".format(self.__service_name, binding))
-        logger.debug("{}".format(binding))
-        # code aliases for pySAML fast implementation
-        IDP = self.IDP
-        # copied and adapted from pysaml2 examples/idp2/idp_uwsgi.py
-        req_info = IDP.parse_logout_request(request.session['SAMLRequest'], binding)
+        saml_session_request(request)
+        binding = request.session['Binding']
+        relay_state = request.session['RelayState']
+        logger.debug("--- {} requested [\n{}] to IDP ---".format(self.__service_name, binding))
+
+        # adapted from pysaml2 examples/idp2/idp_uwsgi.py
         try:
-            req_info = IDP.parse_logout_request(request.session['SAMLRequest'], binding)
+            req_info = self.IDP.parse_logout_request(request.session['SAMLRequest'], binding)
         except Exception as excp:
             expc_msg = "{} Bad request: {}".format(self.__service_name, excp)
             logger.error(expc_msg)
             return self.handle_error(request, exception=expc_msg, status=400)
 
-        msg = req_info.message
-        if msg.name_id:
-            lid = IDP.ident.find_local_id(msg.name_id)
-            logger.info("{} - local identifier: {}".format(self.__service_name, lid))
-            if lid in IDP.cache.user2uid:
-                uid = IDP.cache.user2uid[lid]
-                if uid in IDP.cache.uid2user:
-                    del IDP.cache.uid2user[uid]
-                del IDP.cache.user2uid[lid]
+        logger.info("{} - local identifier: {} from {}".format(self.__service_name, req_info.message.name_id.text, req_info.message.name_id.sp_name_qualifier))
+        logger.debug("--- {} SAML request [\n{}] ---".format(self.__service_name, repr_saml(req_info.xmlstr, b64=False)))
 
-            # TODO manage session_db
-            # remove the authentication
-            # try:
-                # IDP.session_db.remove_authn_statements(msg.name_id)
-            # except KeyError as exc:
-                # logger.error("ServiceError: %s", exc)
-                # resp = ServiceError("%s" % exc)
-                # return resp(self.environ, self.start_response)
+        # TODO
+        # check SAML request signature
+        # self.verify_request_signature(req_info)
+        resp = self.IDP.create_logout_response(req_info.message, [binding])
 
-        resp = IDP.create_logout_response(msg, [binding])
+        # TODO: SOAP
+        # if binding == BINDING_SOAP:
+            # destination = ""
+            # response = False
+        # else:
+            # binding, destination = IDP.pick_binding(
+                # "single_logout_service", [binding], "spsso", req_info
+            # )
+            # response = True
+        # END TODO SOAP
 
         try:
-            hinfo = IDP.apply_binding(binding, "%s" % resp, "", relay_state)
+            # hinfo returns request or response, it depends by request arg
+            hinfo = self.IDP.apply_binding(binding, resp.__str__(), resp.destination, relay_state, response=True)
         except Exception as exc:
             logger.error("ServiceError: %s", exc)
             resp = ServiceError("%s" % exc)
             return self.handle_error(request, exception=excp, status=400)
             # return resp(self.environ, self.start_response)
 
-        # TODO: also remove session from cookie
-        ## _tlh = dict2list_of_tuples(hinfo["headers"])
-        # delco = delete_cookie(self.environ, "idpauthn")
-        # if delco:
-            # hinfo["headers"].append(delco)
-        # logger.info("Header: %s", (hinfo["headers"],))
-        # resp = Response(hinfo["data"], headers=hinfo["headers"])
-        # return resp(self.environ, self.start_response)
+        logger.debug("--- {} Response [\n{}] ---".format(self.__service_name, repr_saml(resp.__str__().encode())))
+        logger.debug("--- binding: {} destination:{} relay_state:{} ---".format(binding, resp.destination, relay_state))
 
+        # TODO: double check username session and saml login request
+        # logout user from IDP
         logout(request)
-        logger.debug("--- {} Response [\n{}] ---".format(self.__service_name, repr_saml(authn_resp)))
 
-        html_response = self.create_html_response(
-            request,
-            binding=resp_args['binding'],
-            authn_resp=authn_resp,
-            destination=resp_args['destination'],
-            relay_state=request.session['RelayState'])
+        if hinfo['method'] == 'GET':
+            return HttpResponseRedirect(hinfo['headers'][0][1])
+        else:
+            html_response = self.create_html_response(
+                request,
+                binding=binding,
+                authn_resp=resp.__str__(),
+                destination=resp.destination,
+                relay_state=relay_state)
         return self.render_response(request, html_response)
 
-
-@method_decorator(never_cache, name='dispatch')
-class SLOInitView(SSOInitView):
-
-    def get(self, request, *args, **kwargs):
-        passed_data = request.POST or request.GET
-
-        # get sp information from the parameters
-        try:
-            self.set_sp(passed_data['sp'])
-            self.set_processor()
-        except (KeyError, ImproperlyConfigured) as excp:
-            return self.handle_error(request, exception=excp, status=400)
-
-        binding_out, destination = self.IDP.pick_binding(
-            service="assertion_consumer_service",
-            entity_id=self.sp['id'])
-
-        # Check if user has access to the service of this SP
-        if not self.processor.has_access(request):
-            return self.handle_error(request, exception=PermissionDenied("You do not have access to this resource"), status=403)
-
-        # Adding a few things that would have been added if this were SP Initiated
-        passed_data['destination'] = destination
-        passed_data['in_response_to'] = "IdP_Initiated_Login"
-        passed_data['sp_entity_id'] = self.sp['id']
-
-        # Construct SamlResponse messages
-        try:
-            authn_resp = self.build_authn_response(request.user, self.get_authn(), passed_data)
-        except Exception as excp:
-            return self.handle_error(request, exception=excp, status=500)
-
-        html_response = self.create_html_response(request,
-                                                  binding_out,
-                                                  authn_resp,
-                                                  destination,
-                                                  passed_data['RelayState'])
-        return self.render_response(request, html_response)
 
 @never_cache
 def metadata(request):

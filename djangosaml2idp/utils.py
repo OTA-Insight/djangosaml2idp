@@ -18,3 +18,6 @@ def repr_saml(saml_str, b64=False):
         inflated = zlib.decompress(msg, -15)
         dom = xml.dom.minidom.parseString(inflated.decode())
     return dom.toprettyxml()
+
+def encode_http_redirect_saml(saml_envelope):
+    return base64.b64encode(zlib.compress(saml_envelope.encode()))
