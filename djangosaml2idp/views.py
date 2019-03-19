@@ -27,6 +27,7 @@ from saml2.server import Server
 from six import text_type
 
 from .processors import BaseProcessor
+from .utils import repr_saml
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,8 @@ def sso_entry(request):
         binding = BINDING_HTTP_REDIRECT
 
     request.session['Binding'] = binding
-
+    logger.info("--- Single SignOn requested [{}] to IDP ---".format(binding))
+    logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True)))
     try:
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
@@ -122,10 +124,13 @@ class IdPHandlerViewMixin:
             name_id=NameID(format=name_id_formats[0], sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user, self.sp['config'])),
             sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
             sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
-            **resp_args)
+            **resp_args
+        )
         return authn_resp
 
     def create_html_response(self, request, binding, authn_resp, destination, relay_state):
+        """ Login form for SSO
+        """
         if binding == BINDING_HTTP_POST:
             context = {
                 "acs_url": destination,
@@ -143,7 +148,6 @@ class IdPHandlerViewMixin:
 
             logger.debug('http args are: %s' % http_args)
             html_response = http_args['data']
-
         return html_response
 
     def render_response(self, request, html_response):
@@ -172,18 +176,12 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], binding)
         except Exception as excp:
             return self.handle_error(request, exception=excp)
-        # Signed request for HTTP-REDIRECT
-        if "SigAlg" in request.session and "Signature" in request.session:
-            _certs = self.IDP.metadata.certs(req_info.message.issuer.text, "any", "signing")
-            verified_ok = False
-            for cert in _certs:
-                # TODO implement
-                # if verify_redirect_signature(_info, self.IDP.sec.sec_backend, cert):
-                #    verified_ok = True
-                #    break
-                pass
-            if not verified_ok:
-                return self.handle_error(request, extra_message="Message signature verification failure", status=400)
+
+        # Signature verification
+        # for authn request signature_check is saml2.sigver.SecurityContext.correctly_signed_authn_request
+        verified_ok = req_info.signature_check(req_info.xmlstr)
+        if not verified_ok:
+            return self.handle_error(request, extra_message="Message signature verification failure", status=400)
 
         # Gather response arguments
         try:
@@ -213,6 +211,8 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             authn_resp=authn_resp,
             destination=resp_args['destination'],
             relay_state=request.session['RelayState'])
+
+        logger.debug("--- SAML Authn Response [\n{}] ---".format(repr_saml(authn_resp)))
         return self.render_response(request, html_response)
 
 
