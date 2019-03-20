@@ -176,7 +176,7 @@ class IdPHandlerViewMixin:
         logger.debug("Performing SAML redirect")
         return HttpResponse(html_response)
 
-    def create_html_response(self, request, binding, authn_resp, destination, relay_state, template="djangosaml2idp/login.html"):
+    def create_html_response(self, request, binding, authn_resp, destination, relay_state):
         """ Login form for SSO
         """
         if binding == BINDING_HTTP_POST:
@@ -185,6 +185,7 @@ class IdPHandlerViewMixin:
                 "saml_response": base64.b64encode(authn_resp.encode()).decode(),
                 "relay_state": relay_state,
             }
+            template = "djangosaml2idp/login.html"
             html_response = render_to_string(template, context=context, request=request)
         else:
             http_args = self.IDP.apply_binding(
