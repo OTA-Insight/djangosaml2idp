@@ -38,7 +38,7 @@ except AttributeError:
     raise ImproperlyConfigured(_("SAML_IDP_SPCONFIG not defined in settings."))
 
 
-def saml_session_request(request):
+def store_params_in_session(request):
     """ Entrypoint view for SSO. Gathers the parameters from the
         HTTP request and stores them in the session
     """
@@ -69,7 +69,7 @@ def sso_entry(request, binding):
         the requester to the login_process view.
     """
     # fill request.session with SAML attributes
-    saml_session_request(request)
+    request = store_params_in_session(request)
     logger.info("--- Single SignOn requested [{}] to IDP ---".format(request.session['Binding']))
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
@@ -103,35 +103,6 @@ class IdPHandlerViewMixin:
         except KeyError:
             raise ImproperlyConfigured(_("No config for SP {} defined in SAML_IDP_SPCONFIG").format(sp_entity_id))
 
-    def build_response_arguments(self, req_info):
-        """ Gather response arguments from SAML request
-        """
-        try:
-            self.resp_args = self.IDP.response_args(req_info.message)
-        except (UnknownPrincipal, UnsupportedBinding) as excp:
-            return self.handle_error(request, exception=excp, status=400)
-
-        try:
-            self.set_sp(self.resp_args['sp_entity_id'])
-            self.set_processor()
-        except (KeyError, ImproperlyConfigured) as excp:
-            return self.handle_error(request, exception=excp, status=400)
-
-    def verify_request_signature(self, req_info):
-        """ Signature verification
-            for authn request signature_check is at
-            saml2.sigver.SecurityContext.correctly_signed_authn_request
-        """
-        # TODO: Add unit tests for this
-        if not req_info.signature_check(req_info.xmlstr):
-            return self.handle_error(request, extra_message=_("Message signature verification failure"), status=400)
-
-    def has_access(self, request):
-        """ Check if user has access to the service of this SP
-        """
-        if not self.processor.has_access(request):
-            return self.handle_error(request, exception=PermissionDenied(_("You do not have access to this resource")), status=403)
-
     def set_processor(self):
         """ Instantiate user-specified processor or default to an all-access base processor.
             Raises an exception if the configured processor class can not be found or initialized.
@@ -143,8 +114,23 @@ class IdPHandlerViewMixin:
                 return
             except Exception as e:
                 logger.error(_("Failed to instantiate processor: {} - {}").format(processor_string, e), exc_info=True)
-                raise e
+                raise ImproperlyConfigured(_("Failed to instantiate processor: {} - {}").format(processor_string, e), exc_info=True)
         self.processor = BaseProcessor(self.sp['id'])
+
+    def verify_request_signature(self, req_info):
+        """ Signature verification
+            for authn request signature_check is at
+            saml2.sigver.SecurityContext.correctly_signed_authn_request
+        """
+        # TODO: Add unit tests for this
+        if not req_info.signature_check(req_info.xmlstr):
+            raise ValueError(_("Message signature verification failure"))
+
+    def check_access(self, request):
+        """ Check if user has access to the service of this SP
+        """
+        if not self.processor.has_access(request):
+            raise PermissionDenied(_("You do not have access to this resource"))
 
     def get_authn(self, req_info=None):
         req_authn_context = req_info.message.requested_authn_context if req_info else PASSWORD
@@ -218,11 +204,20 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         # check SAML request signature
         self.verify_request_signature(req_info)
 
-        # gather response arguments
-        self.build_response_arguments(req_info)
-
-        # check if the user has access to this SP (view processor)
-        self.has_access(request)
+        try:
+            # Compile Response Arguments
+            self.resp_args = self.IDP.response_args(req_info.message)
+            # Set SP and Processor
+            self.set_sp(self.resp_args['sp_entity_id'])
+            self.set_processor()
+            # Check if user has access
+            self.check_access(request)
+        except (UnknownPrincipal, UnsupportedBinding) as excp:
+            return self.handle_error(request, exception=excp, status=400)
+        except ImproperlyConfigured as excp:
+            return self.handle_error(request, exception=excp, status=500)
+        except PermissionDenied as e:
+            return self.handle_error(request, exception=e, status=403)
 
         # Construct SamlResponse message
         try:
@@ -245,25 +240,27 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """ View used for IDP initialized login, doesn't handle any SAML authn request
     """
+
     def post(self, request, *args, **kwargs):
         return self.get(request, *args, **kwargs)
 
     def get(self, request, *args, **kwargs):
         passed_data = request.POST or request.GET
 
-        # get sp information from the parameters
         try:
+            # get sp information from the parameters
             self.set_sp(passed_data['sp'])
             self.set_processor()
+            # Check if user has access to SP
+            self.check_access(request)
         except (KeyError, ImproperlyConfigured) as excp:
             return self.handle_error(request, exception=excp, status=400)
+        except PermissionDenied as excp:
+            return self.handle_error(request, exception=excp, status=403)
 
         binding_out, destination = self.IDP.pick_binding(
             service="assertion_consumer_service",
             entity_id=self.sp['id'])
-
-        # Check if user has access to the service of this SP
-        self.has_access(request)
 
         # Adding a few things that would have been added if this were SP Initiated
         passed_data['destination'] = destination
@@ -315,7 +312,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
     def get(self, request, *args, **kwargs):
         logger.info("--- {} Service ---".format(self.__service_name))
-        saml_session_request(request)
+        request = store_params_in_session(request)
         binding = request.session['Binding']
         relay_state = request.session['RelayState']
         logger.debug("--- {} requested [\n{}] to IDP ---".format(self.__service_name, binding))
@@ -328,7 +325,8 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             logger.error(expc_msg)
             return self.handle_error(request, exception=expc_msg, status=400)
 
-        logger.info("{} - local identifier: {} from {}".format(self.__service_name, req_info.message.name_id.text, req_info.message.name_id.sp_name_qualifier))
+        logger.info("{} - local identifier: {} from {}".format(self.__service_name,
+                                                               req_info.message.name_id.text, req_info.message.name_id.sp_name_qualifier))
         logger.debug("--- {} SAML request [\n{}] ---".format(self.__service_name, repr_saml(req_info.xmlstr, b64=False)))
 
         # TODO
@@ -336,6 +334,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         self.verify_request_signature(req_info)
         resp = self.IDP.create_logout_response(req_info.message, [binding])
 
+        '''
         # TODO: SOAP
         # if binding == BINDING_SOAP:
             # destination = ""
@@ -345,7 +344,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 # "single_logout_service", [binding], "spsso", req_info
             # )
             # response = True
-        # END TODO SOAP
+        # END TODO SOAP'''
 
         try:
             # hinfo returns request or response, it depends by request arg
