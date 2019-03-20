@@ -168,12 +168,11 @@ class IdPHandlerViewMixin:
     def render_response(self, request, html_response):
         """ Return either as redirect to MultiFactorView or as html with self-submitting form.
         """
-        if hasattr(self, 'processor'):
-            if self.processor.enable_multifactor(request.user):
-                # Store http_args in session for after multi factor is complete
-                request.session['saml_data'] = html_response
-                logger.debug("Redirecting to process_multi_factor")
-                return HttpResponseRedirect(reverse('saml_multi_factor'))
+        if self.processor.enable_multifactor(request.user):
+            # Store http_args in session for after multi factor is complete
+            request.session['saml_data'] = html_response
+            logger.debug("Redirecting to process_multi_factor")
+            return HttpResponseRedirect(reverse('saml_multi_factor'))
         logger.debug("Performing SAML redirect")
         return HttpResponse(html_response)
 
