@@ -125,6 +125,39 @@ STATICFILES_DIRS = (
       BASE_DIR + '/static/',
 )
 
+
+# pySAML2 IDP
+SESSION_EXPIRE_AT_BROWSER_CLOSE=True
+SESSION_COOKIE_AGE = 60 * 60 # an hour
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'filters': {
+        'require_debug_false': {
+            '()': 'django.utils.log.RequireDebugFalse'
+        }
+    },
+    'handlers': {
+        'mail_admins': {
+            'level': 'ERROR',
+            'filters': ['require_debug_false'],
+            'class': 'django.utils.log.AdminEmailHandler'
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'djangosaml2idp': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    }
+}
+
+
 # Everything above are default settings made by django-admin startproject
 # The following is added for djangosaml2idp IdP configuration.
 
@@ -151,6 +184,10 @@ SAML_IDP_CONFIG = {
                 'single_sign_on_service': [
                     ('%s/sso/post' % BASE_URL, saml2.BINDING_HTTP_POST),
                     ('%s/sso/redirect' % BASE_URL, saml2.BINDING_HTTP_REDIRECT),
+                ],
+                "single_logout_service": [
+                    ("%s/slo/post" % BASE, BINDING_HTTP_POST),
+                    ("%s/slo/redirect" % BASE, BINDING_HTTP_REDIRECT)
                 ],
             },
             'name_id_format': [NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED],
