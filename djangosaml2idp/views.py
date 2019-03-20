@@ -37,6 +37,7 @@ try:
 except AttributeError:
     raise ImproperlyConfigured(_("SAML_IDP_SPCONFIG not defined in settings."))
 
+
 def saml_session_request(request):
     """ Entrypoint view for SSO. Gathers the parameters from the
         HTTP request and stores them in the session
@@ -122,8 +123,7 @@ class IdPHandlerViewMixin:
             saml2.sigver.SecurityContext.correctly_signed_authn_request
         """
         # TODO: Add unit tests for this
-        verified_ok = req_info.signature_check(req_info.xmlstr)
-        if not verified_ok:
+        if not req_info.signature_check(req_info.xmlstr):
             return self.handle_error(request, extra_message=_("Message signature verification failure"), status=400)
 
     def has_access(self, request):
