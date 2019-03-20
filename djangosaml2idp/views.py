@@ -159,11 +159,10 @@ class IdPHandlerViewMixin:
             identity=self.processor.create_identity(user, self.sp['config']),
             userid=self.processor.get_user_id(user, self.sp['config']),
             name_id=NameID(format=name_id_formats[0], sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user, self.sp['config'])),
-            sign_response=self.sp['config'].get("sign_response") or
-                          self.IDP.config.getattr("sign_response", "idp") or False,
-            sign_assertion=self.sp['config'].get("sign_assertion") or
-                           self.IDP.config.getattr("sign_assertion", "idp") or False,
-            **resp_args)
+            sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
+            sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
+            **resp_args
+        )
         return authn_resp
 
     def render_response(self, request, html_response):
