@@ -1,6 +1,7 @@
 import base64
 import copy
 import logging
+import importlib
 
 from django.conf import settings
 from django.contrib.auth import logout
@@ -275,6 +276,18 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
         logger.debug("MultiFactor failed; %s will not be able to log in" % request.user)
         logout(request)
         raise PermissionDenied("MultiFactor authentication factor failed")
+
+
+@never_cache
+def get_metadata(request):
+    if hasattr(settings, "SAML_IDP_MULTIFACTOR_VIEW"):
+        path_data = getattr(settings, "SAML_IDP_MULTIFACTOR_VIEW").split(".")
+        module_path = ".".join(path_data[:-1])
+        class_str = path_data[-1]
+        multifactor_class = getattr(importlib.import_module(module_path), class_str)
+    else:
+        multifactor_class = ProcessMultiFactorView
+    return multifactor_class.as_view()(request)
 
 
 @never_cache
