@@ -56,11 +56,6 @@ def saml_session_request(request):
     except (KeyError, MultiValueDictKeyError) as e:
         return HttpResponseBadRequest(_('not a valid SAMLRequest: {}').format(e))
     request.session['RelayState'] = passed_data.get('RelayState', '')
-    # TODO check how the redirect saml way works. Taken from example idp in pysaml2.
-    # TODO we should check that passed signs are equal to metadata signs!
-    if "SigAlg" in passed_data and "Signature" in passed_data:
-        request.session['SigAlg'] = passed_data['SigAlg']
-        request.session['Signature'] = passed_data['Signature']
     # logger.debug("--- SAML Session [\n{}] ---".format(request.__dict__))
     return request
 
@@ -126,7 +121,7 @@ class IdPHandlerViewMixin:
             for authn request signature_check is at
             saml2.sigver.SecurityContext.correctly_signed_authn_request
         """
-        # TODO: verify that passed signs are the same of sp's metadatas signs
+        # TODO: Add unit tests for this
         verified_ok = req_info.signature_check(req_info.xmlstr)
         if not verified_ok:
             return self.handle_error(request, extra_message=_("Message signature verification failure"), status=400)
