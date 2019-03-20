@@ -195,16 +195,11 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     def get(self, request, *args, **kwargs):
         binding = request.session.get('Binding', BINDING_HTTP_POST)
 
-        # Parse incoming request
         try:
+            # Parse incoming request
             req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], binding)
-        except Exception as excp:
-            return self.handle_error(request, exception=excp)
-
-        # check SAML request signature
-        self.verify_request_signature(req_info)
-
-        try:
+            # check SAML request signature
+            self.verify_request_signature(req_info)
             # Compile Response Arguments
             self.resp_args = self.IDP.response_args(req_info.message)
             # Set SP and Processor
@@ -212,16 +207,16 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             self.set_processor()
             # Check if user has access
             self.check_access(request)
+            # Construct SamlResponse message
+            self.authn_resp = self.build_authn_response(request.user, self.get_authn(), self.resp_args)
+        except ValueError as excp:
+            return self.handle_error(request, exception=excp, status=400)
         except (UnknownPrincipal, UnsupportedBinding) as excp:
             return self.handle_error(request, exception=excp, status=400)
         except ImproperlyConfigured as excp:
             return self.handle_error(request, exception=excp, status=500)
         except PermissionDenied as e:
             return self.handle_error(request, exception=e, status=403)
-
-        # Construct SamlResponse message
-        try:
-            self.authn_resp = self.build_authn_response(request.user, self.get_authn(), self.resp_args)
         except Exception as excp:
             return self.handle_error(request, exception=excp, status=500)
 
@@ -349,9 +344,8 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         try:
             # hinfo returns request or response, it depends by request arg
             hinfo = self.IDP.apply_binding(binding, resp.__str__(), resp.destination, relay_state, response=True)
-        except Exception as exc:
-            logger.error("ServiceError: %s", exc)
-            resp = ServiceError("%s" % exc)
+        except Exception as excp:
+            logger.error("ServiceError: %s", excp)
             return self.handle_error(request, exception=excp, status=400)
             # return resp(self.environ, self.start_response)
 
