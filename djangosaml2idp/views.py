@@ -343,7 +343,8 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         # TODO
         # check SAML request signature
-        # self.verify_request_signature(req_info)
+        self.verify_request_signature(req_info)
+
         resp = self.IDP.create_logout_response(req_info.message, [binding])
 
         # TODO: SOAP
