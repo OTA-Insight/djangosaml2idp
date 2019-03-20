@@ -37,8 +37,10 @@ try:
 except AttributeError:
     raise ImproperlyConfigured(_("SAML_IDP_SPCONFIG not defined in settings."))
 
-
-def get_binding_data(request):
+def saml_session_request(request):
+    """ Entrypoint view for SSO. Gathers the parameters from the
+        HTTP request and stores them in the session
+    """
     if request.method == 'POST':
         # future TODO: parse also SOAP and PAOS format from POST
         passed_data = request.POST
@@ -46,14 +48,7 @@ def get_binding_data(request):
     else:
         passed_data = request.GET
         binding = BINDING_HTTP_REDIRECT
-    return binding, passed_data
 
-
-def saml_session_request(request):
-    """ Entrypoint view for SSO. Gathers the parameters from the
-        HTTP request and stores them in the session
-    """
-    binding, passed_data = get_binding_data(request)
     request.session['Binding'] = binding
     try:
         logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True)))
@@ -169,10 +164,11 @@ class IdPHandlerViewMixin:
             identity=self.processor.create_identity(user, self.sp['config']),
             userid=self.processor.get_user_id(user, self.sp['config']),
             name_id=NameID(format=name_id_formats[0], sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user, self.sp['config'])),
-            sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
-            sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
-            **resp_args
-        )
+            sign_response=self.sp['config'].get("sign_response") or
+                          self.IDP.config.getattr("sign_response", "idp") or False,
+            sign_assertion=self.sp['config'].get("sign_assertion") or
+                           self.IDP.config.getattr("sign_assertion", "idp") or False,
+            **resp_args)
         return authn_resp
 
     def render_response(self, request, html_response):
@@ -344,7 +340,6 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         # TODO
         # check SAML request signature
         self.verify_request_signature(req_info)
-
         resp = self.IDP.create_logout_response(req_info.message, [binding])
 
         # TODO: SOAP
