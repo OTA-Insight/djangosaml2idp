@@ -176,6 +176,8 @@ By default, the only information available about the SP is the entity id, which 
 
 By default, the user agreement screen will show all transmitted attributes to the user. If there are any attributes you wish to exclude, you can do so with the `SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE = []` setting. You can supplement this on a per-SP level with `user_agreement_attr_exclude`.
 
+Finally, by default, user agreements never expire. You can override this globally with `SAML_IDP_USER_AGREEMENT_VALID_FOR` (in hours), or per-SP through `user_agreement_valid_for`.
+
 An example setup can be found below::
 
     SAML_IDP_SPCONFIG = {
@@ -203,12 +205,14 @@ An example setup can be found below::
             'user_agreement_attr_exclude': ['sp_specific_secret_attr'],
             # Because we specify display name, that will be shown instead of entity id.
             'display_name': 'SP Number 3',
-            'display_description': 'This SP does something that's probably important'
+            'display_description': 'This SP does something that's probably important',
+            'user_agreement_valid_for': 24 * 3650  # User agreements will be valid for 10 years for this SP only
         },
     }
 
     SAML_IDP_SHOW_USER_AGREEMENT_SCREEN = True
     SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE = ['secret_attr']
+    SAML_IDP_USER_AGREEMENT_VALID_FOR = 24 * 365  # User agreements will be valid for 1 year unless overriden. If this attribute is not used, user agreements will not expire
 
 
 Customizing error handling
