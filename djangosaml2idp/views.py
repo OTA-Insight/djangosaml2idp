@@ -42,6 +42,8 @@ except AttributeError:
 def store_params_in_session(request):
     """ Entrypoint view for SSO. Gathers the parameters from the
         HTTP request and stores them in the session
+
+        do not return anything because request come as pointer
     """
     if request.method == 'POST':
         # future TODO: parse also SOAP and PAOS format from POST
@@ -58,8 +60,6 @@ def store_params_in_session(request):
     except (KeyError, MultiValueDictKeyError) as e:
         return HttpResponseBadRequest(_('not a valid SAMLRequest: {}').format(e))
     request.session['RelayState'] = passed_data.get('RelayState', '')
-    # logger.debug("--- SAML Session [\n{}] ---".format(request.__dict__))
-    return request
 
 
 @never_cache
@@ -70,7 +70,7 @@ def sso_entry(request, binding):
         the requester to the login_process view.
     """
     # fill request.session with SAML attributes
-    request = store_params_in_session(request)
+    store_params_in_session(request)
     logger.info("--- Single SignOn requested [{}] to IDP ---".format(request.session['Binding']))
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
@@ -178,6 +178,10 @@ class IdPHandlerViewMixin:
     def render_response(self, request, html_response):
         """ Return either as redirect to MultiFactorView or as html with self-submitting form.
         """
+        if not hasattr(self, 'processor'):
+            # In case of SLO, where processor isn't relevant
+            return HttpResponse(html_response)
+        
         request.session['saml_data'] = html_response
 
         # Conditions for showing user agreement screen
@@ -366,7 +370,8 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
     def get(self, request, *args, **kwargs):
         logger.info("--- {} Service ---".format(self.__service_name))
-        request = store_params_in_session(request)
+        # do not assign a variable that overwrite request object, if it will fail the return with HttpResponseBadRequest trows naturally
+        store_params_in_session(request)
         binding = request.session['Binding']
         relay_state = request.session['RelayState']
         logger.debug("--- {} requested [\n{}] to IDP ---".format(self.__service_name, binding))
