@@ -1,19 +1,34 @@
 <!doctype html>
 <html lang="en">
-
+{% load i18n %}
+{% load static %}
 <head>
     <meta charset="utf-8">
-    <title>User Agreement</title>
+    <title>{% trans "User Agreement" %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 
 <body>
     <form method="post" action="">
         {% csrf_token %}
-        <p>I Agree</p>
-        <input type="submit" name="confirm" value="Yes" />
-        <input type="submit" name="confirm" value="No" />
-        <input type="checkbox" name="dont_show_again" value="Yes" />Remember My Choice
+        <p>{% trans "Agreement Screen" %}</p>
+
+        <div>
+        <p>{% lorem %}</p>
+        </div>
+
+        <div>
+        <input type="radio" id="scales" name="confirm" value="1" checked>
+        <label for="scales">{% trans "I Agree" %}</label>
+
+        <input type="radio" id="scales" name="confirm" value="0">
+        <label for="scales">{% trans "I do not Agree" %}</label>
+
+
+        <input type="checkbox" name="dont_show_again"/ checked>{% trans "Remember My Choice" %}
+        </div>
+
+        <input type="submit" value="{% trans 'Submit' %}"  />
     </form>
 </body>
 

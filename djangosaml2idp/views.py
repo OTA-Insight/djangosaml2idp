@@ -328,10 +328,14 @@ class UserAgreementScreen(LoginRequiredMixin, View):
         return HttpResponse(html_response)
 
     def post(self, request, *args, **kwargs):
-        if request.POST.get('confirm') != "Yes":
-            logout(request)
+        confirm = int(request.POST.get('confirm'))
+        dont_show_again = request.POST.get('dont_show_again')
 
-        if request.POST.get('dont_show_again') == "Yes":
+        if not confirm:
+            logout(request)
+            return HttpResponse(_("You cannot access to this service"))
+
+        if dont_show_again:
             record = AgreementRecord(
                 user=request.user,
                 sp_entity_id=request.session['sp_entity_id'],
@@ -339,7 +343,7 @@ class UserAgreementScreen(LoginRequiredMixin, View):
             )
             record.save()
 
-        return HttpResponse(request.session['saml_data'])
+        return HttpResponse(request.session.get('saml_data'))
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -361,7 +365,7 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
             # Check if user agreement redirect needed
             if request.session.get('sp_display_info'):
                 # Arbitrary value that's only set if user agreement needed.
-                return HttpResponseRedirect(reverse('saml_user_agreement'))
+                return HttpResponseRedirect(reverse('djangosaml2idp:saml_user_agreement'))
             return HttpResponse(request.session['saml_data'])
         logger.debug(_("MultiFactor failed; %s will not be able to log in") % request.user)
         logout(request)
