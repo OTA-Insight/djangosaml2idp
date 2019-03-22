@@ -8,6 +8,15 @@
 </head>
 
 <body>
+    <h2>{{sp_display_name}}</h2>
+    <p>{{sp_display_description}}
+    <h3>This app will receive the following information:</h3>
+    <ul>
+        {% for key, value in attrs_passed_to_sp.items %}
+            <li>{{ key }}: {{ value }}</li>
+        {% endfor %}
+    </ul>
+
     <form method="post" action="">
         {% csrf_token %}
         <p>I Agree</p>
