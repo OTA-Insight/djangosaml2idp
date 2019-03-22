@@ -14,6 +14,7 @@ from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext as _
 from django.views import View
+from django.views.generic import TemplateView
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -312,20 +313,17 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 
 @method_decorator(never_cache, name='dispatch')
-class UserAgreementScreen(LoginRequiredMixin, View):
+class UserAgreementScreen(LoginRequiredMixin, TemplateView):
     """This view shows the user an overview of the data being sent to the SP.
     """
+    template_name = 'djangosaml2idp/user_agreement.html'
 
-    def get(self, request, *args, **kwargs):
-        template = 'djangosaml2idp/user_agreement.html'
-
-        context = {}
-        context['sp_display_name'] = request.session['sp_display_info'][0]
-        context['sp_display_description'] = request.session['sp_display_info'][1]
-        context['attrs_passed_to_sp'] = request.session['identity']
-
-        html_response = render_to_string(template, context=context, request=request)
-        return HttpResponse(html_response)
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['sp_display_name'] = self.request.session['sp_display_info'][0]
+        context['sp_display_description'] = self.request.session['sp_display_info'][1]
+        context['attrs_passed_to_sp'] = self.request.session['identity']
+        return context
 
     def post(self, request, *args, **kwargs):
         if request.POST.get('confirm') != "Yes":
