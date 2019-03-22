@@ -196,7 +196,8 @@ class IdPHandlerViewMixin:
         }
         request.session['sp_display_info'] = (
             self.sp['config'].get('display_name', self.sp['id']),
-            self.sp['config'].get('display_description')
+            self.sp['config'].get('display_description'),
+            self.sp['config'].get('display_agreement_message', _(settings.SAML_IDP_AGREEMENT_MSG))
         )
         request.session['sp_entity_id'] = self.sp['id']
 
@@ -339,6 +340,7 @@ class UserAgreementScreen(LoginRequiredMixin, View):
             # prevents KeyError at /login/process_user_agreement/: 'sp_display_info'
             context['sp_display_name'] = request.session['sp_display_info'][0]
             context['sp_display_description'] = request.session['sp_display_info'][1]
+            context['sp_display_agreement_message'] = request.session['sp_display_info'][2]
             context['attrs_passed_to_sp'] = request.session['identity']
         except Exception as excp:
             return HttpResponseBadRequest(_('not valid SAML Session, no {} found').format(excp))

@@ -15,20 +15,35 @@
         <h4>{{ sp_display_name }}</h4>
         <p>{{ sp_display_description }}</p>
         <div>
-        <p>{% lorem %}</p>
+        <p>{{ sp_display_agreement_message|safe }}</p>
 
+        <hr>
         <div>
-            <ul>
-        {% for attr in attrs_passed_to_sp %}
-            <li>{{ attr }}</li>
+            <p>{% trans "Do you agree to transmit to " %} <b>{{ sp_display_name }}</b> {% trans "the following personal attributes" %}:</p>
+            <table>
+                <thead>
+                    <th>attribute name</th>
+                    <th>value</th>
+                </thead>
+                <tbody>
+        {% for attr, value in attrs_passed_to_sp.items %}
+            <tr>
+                <td>{{ attr }}</td>
+                <td>{{ value }}</td>
+            </tr>
         {% endfor %}
-            </ul>
+            </tbody>
+            </table>
         </div>
 
+        <hr>
         </div>
             {{ form }}
         </div>
-        <input type="submit" value="{% trans 'Submit' %}"  />
+
+        <div>
+            <input type="submit" value="{% trans 'Submit' %}"  />
+        </div>
     </form>
 </body>
 

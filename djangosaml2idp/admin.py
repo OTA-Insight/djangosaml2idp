@@ -8,3 +8,4 @@ class AgreementRecordAdmin(admin.ModelAdmin):
                     'sp_entity_id',
                     'created',
                     'modified')
+    readonly_fields = ('attrs', 'sp_entity_id', 'user')
