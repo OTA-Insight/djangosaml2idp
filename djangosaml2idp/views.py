@@ -3,8 +3,9 @@ import copy
 import logging
 
 from django.conf import settings
-from django.contrib.auth import logout
+from django.contrib.auth import logout, login as auth_login
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import LoginView
 from django.core.exceptions import ImproperlyConfigured, PermissionDenied
 from django.http import (HttpResponse, HttpResponseBadRequest, HttpResponseRedirect)
 from django.template.loader import render_to_string
@@ -27,7 +28,7 @@ from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from saml2.server import Server
 from six import text_type
 
-from .forms import AgreementForm
+from .forms import AgreementForm, LoginForm
 from .models import AgreementRecord
 from .processors import BaseProcessor
 from .utils import repr_saml, encode_http_redirect_saml
@@ -225,6 +226,19 @@ class IdPHandlerViewMixin:
         logger.debug("Performing SAML redirect")
         return HttpResponse(html_response)
 
+
+class LoginAuthView(LoginView):
+    """ First Login Form
+    """
+    template_name = "djangosaml2idp/login.html"
+    form_class = LoginForm
+
+    def form_valid(self, form):
+        """Security check complete. Log the user in."""
+        auth_login(self.request, form.get_user())
+        if self.request.POST.get('forget_agreement'):
+            AgreementRecord.objects.filter(user__username = self.request.POST.get('username')).delete()
+        return HttpResponseRedirect(self.get_success_url())
 
 @method_decorator(never_cache, name='dispatch')
 class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):

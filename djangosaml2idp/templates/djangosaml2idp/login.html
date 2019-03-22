@@ -9,15 +9,24 @@
 
 <body>
     <form method="post" action="{{ acs_url }}">
+        {% csrf_token %}
+        <div>
+            <table>
+            {{ form.as_table }}
+            </table>
         <input type="hidden" name="RelayState" value="{{ relay_state }}" />
         <input type="hidden" name="SAMLResponse" value="{{ saml_response }}" />
-        <input type="submit" value="Submit" hidden/>
+        </div>
+
+        <input type="submit" value="Submit"/>
     </form>
+    {% if  saml_response %}
     <script type="text/javascript">
         window.onload = function () {
             document.forms[0].submit();
         }
     </script>
+    {% endif %}
 </body>
 
 </html>
