@@ -10,10 +10,14 @@ class AgreementRecord(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     sp_entity_id = models.CharField(max_length=512)
     attrs = models.TextField()
-    date = models.DateTimeField(default=timezone.now)
+    created = models.DateTimeField(auto_now_add=True)
+    modified = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ("user", "sp_entity_id")
+
+    def __str__(self):
+        return '{}, {}'.format(self.user, self.modified)
 
     def is_expired(self):
         sp_config_dict = getattr(settings, 'SAML_IDP_SPCONFIG')
@@ -28,7 +32,7 @@ class AgreementRecord(models.Model):
         if not valid_for:
             return False
         else:
-            return timezone.now() > self.date + timedelta(hours=valid_for)
+            return timezone.now() > self.modified + timedelta(hours=valid_for)
 
     def wants_more_attrs(self, newAttrs):
         return bool(set(newAttrs).difference(self.attrs.split(",")))
