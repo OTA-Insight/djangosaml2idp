@@ -27,8 +27,9 @@ from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from saml2.server import Server
 from six import text_type
 
-from .processors import BaseProcessor
+from .forms import AgreementForm
 from .models import AgreementRecord
+from .processors import BaseProcessor
 from .utils import repr_saml, encode_http_redirect_saml
 
 logger = logging.getLogger(__name__)
@@ -320,9 +321,15 @@ class UserAgreementScreen(LoginRequiredMixin, View):
         template = 'djangosaml2idp/user_agreement.html'
 
         context = {}
-        context['sp_display_name'] = request.session['sp_display_info'][0]
-        context['sp_display_description'] = request.session['sp_display_info'][1]
-        context['attrs_passed_to_sp'] = request.session['identity']
+        try:
+            # prevents KeyError at /login/process_user_agreement/: 'sp_display_info'
+            context['sp_display_name'] = request.session['sp_display_info'][0]
+            context['sp_display_description'] = request.session['sp_display_info'][1]
+            context['attrs_passed_to_sp'] = request.session['identity']
+        except Exception as excp:
+            return HttpResponseBadRequest(_('not valid SAML Session, no {} found').format(excp))
+
+        context['form'] = AgreementForm()
 
         html_response = render_to_string(template, context=context, request=request)
         return HttpResponse(html_response)
