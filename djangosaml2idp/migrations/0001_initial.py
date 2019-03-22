@@ -19,7 +19,7 @@ class Migration(migrations.Migration):
             name='AgreementRecord',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('sp_entity_id', models.TextField()),
+                ('sp_entity_id', models.CharField(max_length=512)),
                 ('attrs', models.TextField()),
                 ('date', models.DateTimeField(default=django.utils.timezone.now)),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),

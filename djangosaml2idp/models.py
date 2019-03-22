@@ -8,7 +8,7 @@ from django.utils import timezone
 
 class AgreementRecord(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    sp_entity_id = models.TextField()
+    sp_entity_id = models.CharField(max_length=512)
     attrs = models.TextField()
     date = models.DateTimeField(default=timezone.now)
 
