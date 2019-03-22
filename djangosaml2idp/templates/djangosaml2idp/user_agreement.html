@@ -11,9 +11,20 @@
 <body>
     <form method="post" action="">
         {% csrf_token %}
-        <p>{% trans "Agreement Screen" %}</p>
+        <h1>{% trans "Agreement Screen" %}</h1>
+        <h4>{{ sp_display_name }}</h4>
+        <p>{{ sp_display_description }}</p>
         <div>
         <p>{% lorem %}</p>
+
+        <div>
+            <ul>
+        {% for attr in attrs_passed_to_sp %}
+            <li>{{ attr }}</li>
+        {% endfor %}
+            </ul>
+        </div>
+
         </div>
             {{ form }}
         </div>
