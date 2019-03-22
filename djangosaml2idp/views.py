@@ -189,7 +189,7 @@ class IdPHandlerViewMixin:
             getattr(settings, "SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE", [])
         request.session['identity'] = {
             k: v
-            for k, v in self.processor.create_identity(request.user, self.sp['config'])
+            for k, v in self.processor.create_identity(request.user, self.sp['config']).items()
             if k not in attrs_to_exclude
         }
         request.session['sp_display_info'] = (
@@ -213,12 +213,12 @@ class IdPHandlerViewMixin:
         # Multifactor goes before user agreement because might result in user not being authenticated
         if self.processor.enable_multifactor(request.user):
             logger.debug("Redirecting to process_multi_factor")
-            return HttpResponseRedirect(reverse('saml_multi_factor'))
+            return HttpResponseRedirect(reverse('djangosaml2idp:saml_multi_factor'))
 
         # If we are here, there's no multifactor. Check whether to show user agreement
         if user_agreement_enabled_for_sp and not already_agreed:
             logger.debug("Redirecting to process_user_agreement")
-            return HttpResponseRedirect(reverse('saml_user_agreement'))
+            return HttpResponseRedirect(reverse('djangosaml2idp:saml_user_agreement'))
 
         # No multifactor or user agreement
         logger.debug("Performing SAML redirect")
