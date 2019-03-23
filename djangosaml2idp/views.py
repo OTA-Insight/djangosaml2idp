@@ -343,7 +343,8 @@ class UserAgreementScreen(LoginRequiredMixin, View):
             context['sp_display_agreement_message'] = request.session['sp_display_info'][2]
             context['attrs_passed_to_sp'] = request.session['identity']
         except Exception as excp:
-            return HttpResponseBadRequest(_('not valid SAML Session, no {} found').format(excp))
+            logout(request)
+            return HttpResponseBadRequest(_('Not a valid SAML Session, Probably your request is expired or you refreshed your page getting in a stale request. Please come back to your SP and renew the authentication request'))
 
         context['form'] = AgreementForm()
 

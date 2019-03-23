@@ -5,6 +5,7 @@ from . import views
 app_name = 'djangosaml2idp'
 
 urlpatterns = [
+    path('login/', views.LoginAuthView.as_view(), name='login'),
     path('sso/init', views.SSOInitView.as_view(), name="saml_idp_init"),
     path('sso/<str:binding>', views.sso_entry, name="saml_login_binding"),
     path('login/process/', views.LoginProcessView.as_view(), name='saml_login_process'),
