@@ -15,6 +15,7 @@ from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext as _
 from django.views import View
+from django.views.generic import TemplateView
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
