@@ -32,7 +32,7 @@ from six import text_type
 from .forms import AgreementForm, LoginForm
 from .models import AgreementRecord
 from .processors import BaseProcessor
-from .utils import repr_saml, encode_http_redirect_saml
+from .utils import repr_saml
 
 logger = logging.getLogger(__name__)
 
