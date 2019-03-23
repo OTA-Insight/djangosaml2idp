@@ -30,7 +30,7 @@ from six import text_type
 
 from .processors import BaseProcessor
 from .models import AgreementRecord
-from .utils import repr_saml, encode_http_redirect_saml
+from .utils import repr_saml
 
 logger = logging.getLogger(__name__)
 
