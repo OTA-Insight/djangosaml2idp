@@ -13,4 +13,6 @@ install:
   - python setup.py install
 script:
   - pylama -o pytest.ini
-  - python -Wall runtests.py
+  - py.test --cov=djangosaml2idp
+after_success:
+  codecov

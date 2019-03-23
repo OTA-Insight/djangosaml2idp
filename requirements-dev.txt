@@ -5,3 +5,6 @@ pytest==4.0.1
 pytest-django==3.4.4
 pytest-pythonpath==0.7.3
 python-dateutil==2.7.5
+pytest-cov
+pylama
+codecov

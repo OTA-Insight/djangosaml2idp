@@ -37,6 +37,10 @@ class TestBaseProcessor:
 
     def test_identity_dict_creation(self):
 
+        def random_method(self):
+            return "test method result"
+
+        User.random_method = random_method
         user = User()
         user.name = 'Test Name'
         user.email = 'test@email.com'
@@ -47,14 +51,16 @@ class TestBaseProcessor:
             'attribute_mapping': {
                 'name': 'fullName',
                 'email': 'emailAddress',
-                'other_setting': 'otherSetting'
+                'other_setting': 'otherSetting',
+                'random_method': 'randomMethodTest'
             }
         }
 
         expected_result = {
             'fullName': 'Test Name',
             'emailAddress': 'test@email.com',
-            'otherSetting': 'Test Setting'
+            'otherSetting': 'Test Setting',
+            'randomMethodTest': 'test method result'
         }
 
         assert BaseProcessor('entity_id').create_identity(user, sp_config) == expected_result
