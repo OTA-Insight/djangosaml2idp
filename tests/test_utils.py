@@ -15,4 +15,3 @@ class TestSAMLEncodeAndDecode:
 
     def test_with_internal_saml_response_zlib(self):
         assert repr_saml(encode_saml(expected_result, use_zlib=True)) == expected_result_pretty
-
