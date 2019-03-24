@@ -152,19 +152,6 @@ class IdPHandlerViewMixin:
         )
         return authn_resp
 
-    def render_response(self, request, html_response):
-        """ Return either as redirect to MultiFactorView or as html with self-submitting form.
-        """
-        if hasattr(self, 'processor'):
-            # avoids "AttributeError at /slo/post 'LogoutProcessView' object has no attribute 'processor'"
-            if self.processor.enable_multifactor(request.user):
-                # Store http_args in session for after multi factor is complete
-                request.session['saml_data'] = html_response
-                logger.debug("Redirecting to process_multi_factor")
-                return HttpResponseRedirect(reverse('saml_multi_factor'))
-        logger.debug("Performing SAML redirect")
-        return HttpResponse(html_response)
-
     def create_html_response(self, request, binding, authn_resp, destination, relay_state):
         """ Login form for SSO
         """
@@ -187,6 +174,59 @@ class IdPHandlerViewMixin:
             logger.debug('http args are: %s' % http_args)
             html_response = http_args['data']
         return html_response
+
+    def render_response(self, request, html_response):
+        """ Return either as redirect to MultiFactorView or as html with self-submitting form.
+        """
+        if not hasattr(self, 'processor'):
+            # In case of SLO, where processor isn't relevant
+            return HttpResponse(html_response)
+
+        request.session['saml_data'] = html_response
+
+        """
+        # Generate request session stuff needed for user agreement screen
+        attrs_to_exclude = self.sp['config'].get('user_agreement_attr_exclude', []) + \
+            getattr(settings, "SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE", [])
+        request.session['identity'] = {
+            k: v
+            for k, v in self.processor.create_identity(request.user, self.sp['config']).items()
+            if k not in attrs_to_exclude
+        }
+        request.session['sp_display_info'] = (
+            self.sp['config'].get('display_name', self.sp['id']),
+            self.sp['config'].get('display_description')
+        )
+        request.session['sp_entity_id'] = self.sp['id']
+
+        # Conditions for showing user agreement screen
+        user_agreement_enabled_for_sp = self.sp['config'].get('show_user_agreement_screen', getattr(settings, "SAML_IDP_SHOW_USER_AGREEMENT_SCREEN"))
+        try:
+            agreement_for_sp = AgreementRecord.objects.get(user=request.user, sp_entity_id=self.sp['id'])
+            if agreement_for_sp.is_expired() or agreement_for_sp.wants_more_attrs(request.session['identity'].keys()):
+                agreement_for_sp.delete()
+                already_agreed = False
+            else:
+                already_agreed = True
+        except AgreementRecord.DoesNotExist:
+            already_agreed = False
+        """
+
+        # Multifactor goes before user agreement because might result in user not being authenticated
+        if self.processor.enable_multifactor(request.user):
+            logger.debug("Redirecting to process_multi_factor")
+            return HttpResponseRedirect(reverse('djangosaml2idp:saml_multi_factor'))
+
+        """
+        # If we are here, there's no multifactor. Check whether to show user agreement
+        if user_agreement_enabled_for_sp and not already_agreed:
+            logger.debug("Redirecting to process_user_agreement")
+            return HttpResponseRedirect(reverse('djangosaml2idp:saml_user_agreement'))
+        """
+
+        # No multifactor or user agreement
+        logger.debug("Performing SAML redirect")
+        return HttpResponse(html_response)
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -290,8 +330,14 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         if self.multifactor_is_valid(request):
             logger.debug('MultiFactor succeeded for %s' % request.user)
-            # If authentication succeeded, log in is ok
+
+            """
+            # Check if user agreement redirect needed
+            if request.session.get('sp_display_info'):
+                # Arbitrary value that's only set if user agreement needed.
+                return HttpResponseRedirect(reverse('djangosaml2idp:saml_user_agreement'))
             return HttpResponse(request.session['saml_data'])
+            """
         logger.debug(_("MultiFactor failed; %s will not be able to log in") % request.user)
         logout(request)
         raise PermissionDenied(_("MultiFactor authentication factor failed"))
