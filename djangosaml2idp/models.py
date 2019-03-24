@@ -43,4 +43,5 @@ class AgreementRecord(models.Model):
             return timezone.now() > self.date + timedelta(hours=valid_for)
 
     def wants_more_attrs(self, newAttrs):
-        return bool(set(newAttrs).difference(self.attrs.split(",")))
+        newAttrsList = newAttrs.split(",") if isinstance(newAttrs, str) else newAttrs
+        return bool(set(newAttrsList).difference(self.attrs.split(",")))
