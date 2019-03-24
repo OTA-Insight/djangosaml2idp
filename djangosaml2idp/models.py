@@ -36,7 +36,7 @@ class AgreementRecord(models.Model):
         if sp_config is None:
             raise ImproperlyConfigured("No settings defined for this SP.")
 
-        valid_for = sp_config.get("user_agreement_valid_for", getattr(settings, "SAML_IDP_USER_AGREEMENT_VALID_FOR"))
+        valid_for = sp_config.get("user_agreement_valid_for", getattr(settings, "SAML_IDP_USER_AGREEMENT_VALID_FOR", None))
         if not valid_for:
             return False
         else:
