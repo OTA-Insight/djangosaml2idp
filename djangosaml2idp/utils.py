@@ -23,4 +23,3 @@ def repr_saml(saml_str, b64=False):
 def encode_saml(saml_envelope, use_zlib=False):
     before_base64 = zlib.compress(saml_envelope.encode()) if use_zlib else saml_envelope.encode()
     return base64.b64encode(before_base64)
-
