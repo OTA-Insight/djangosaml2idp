@@ -15,7 +15,6 @@ from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext as _
 from django.views import View
-from django.views.generic import TemplateView
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -239,8 +238,9 @@ class LoginAuthView(LoginView):
         """Security check complete. Log the user in."""
         auth_login(self.request, form.get_user())
         if self.request.POST.get('forget_agreement'):
-            AgreementRecord.objects.filter(user__username = self.request.POST.get('username')).delete()
+            AgreementRecord.objects.filter(user__username=self.request.POST.get('username')).delete()
         return HttpResponseRedirect(self.get_success_url())
+
 
 @method_decorator(never_cache, name='dispatch')
 class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
@@ -345,6 +345,7 @@ class UserAgreementScreen(LoginRequiredMixin, View):
             context['attrs_passed_to_sp'] = request.session['identity']
         except Exception as excp:
             logout(request)
+            logging.debug('{}'.format(excp))
             return HttpResponseBadRequest(_('Not a valid SAML Session, Probably your request is expired or you refreshed your page getting in a stale request. Please come back to your SP and renew the authentication request'))
 
         context['form'] = AgreementForm()

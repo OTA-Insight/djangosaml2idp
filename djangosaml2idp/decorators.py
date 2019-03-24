@@ -1,11 +1,11 @@
 import logging
 
-from django.http import (HttpResponse, HttpResponseBadRequest, HttpResponseRedirect)
+from django.http import HttpResponseBadRequest
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.translation import gettext as _
 from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 
-from .utils import repr_saml, encode_http_redirect_saml
+from .utils import repr_saml
 
 logger = logging.getLogger(__name__)
 
