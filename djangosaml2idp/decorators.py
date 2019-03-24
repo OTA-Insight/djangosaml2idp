@@ -26,7 +26,8 @@ def store_params_in_session(request):
 
     request.session['Binding'] = binding
     try:
-        logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True)))
+        msg = "--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True))
+        logger.debug(msg)
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
         return HttpResponseBadRequest(_('not a valid SAMLRequest: {}').format(e))
