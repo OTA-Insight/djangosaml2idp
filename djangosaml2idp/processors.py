@@ -2,7 +2,8 @@ from django.conf import settings
 
 
 class BaseProcessor:
-    """ Processor class is used to determine if a user has access to a client service of this IDP
+    """ Processor class is used to determine if a user has access to a
+        client service of this IDP
         and to construct the identity dictionary which is sent to the SP
     """
 
@@ -20,8 +21,10 @@ class BaseProcessor:
         return False
 
     def get_user_id(self, user, sp_config={}):
-        """ Get identifier for a user. Take the one defined in settings.SAML_IDP_DJANGO_USERNAME_FIELD first, if not set
-            use the USERNAME_FIELD property which is set on the user Model. This defaults to the user.username field.
+        """ Get identifier for a user. Take the one defined in
+            settings.SAML_IDP_DJANGO_USERNAME_FIELD first, if not set
+            use the USERNAME_FIELD property which is set on the
+            user Model. This defaults to the user.username field.
         """
         user_field_str = sp_config.get('nameid_field') or \
             getattr(settings, 'SAML_IDP_DJANGO_USERNAME_FIELD', None) or \
@@ -33,7 +36,8 @@ class BaseProcessor:
             return str(user_field)
 
     def create_identity(self, user, sp_config):
-        """ Generate an identity dictionary of the user based on the given mapping of desired user attributes by the SP
+        """ Generate an identity dictionary of the user based on the
+            given mapping of desired user attributes by the SP
         """
         default_mapping = {'username': 'username'}
         sp_mapping = sp_config.get('attribute_mapping', default_mapping)
