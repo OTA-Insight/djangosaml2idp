@@ -35,6 +35,20 @@ class TestBaseProcessor:
 
         assert BaseProcessor('entity_id').get_user_id(user, sp_config) == 'test_special_id'
 
+    def test_extract_user_id_from_sp_config_if_method(self):
+
+        def random_method(self):
+            return "test method result"
+
+        User.random_method = random_method
+
+        user = User()
+        sp_config = {
+            'nameid_field': 'random_method'
+        }
+
+        assert BaseProcessor('entity_id').get_user_id(user, sp_config) == 'test method result'
+
     def test_identity_dict_creation(self):
 
         def random_method(self):

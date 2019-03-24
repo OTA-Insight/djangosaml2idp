@@ -127,8 +127,8 @@ STATICFILES_DIRS = (
 
 
 # pySAML2 IDP
-SESSION_EXPIRE_AT_BROWSER_CLOSE=True
-SESSION_COOKIE_AGE = 60 * 60 # an hour
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_AGE = 60 * 60  # an hour
 
 LOGGING = {
     'version': 1,
@@ -186,8 +186,8 @@ SAML_IDP_CONFIG = {
                     ('%s/sso/redirect' % BASE_URL, saml2.BINDING_HTTP_REDIRECT),
                 ],
                 "single_logout_service": [
-                    ("%s/slo/post" % BASE, BINDING_HTTP_POST),
-                    ("%s/slo/redirect" % BASE, BINDING_HTTP_REDIRECT)
+                    ("%s/slo/post" % BASE_URL, saml2.BINDING_HTTP_POST),
+                    ("%s/slo/redirect" % BASE_URL, saml2.BINDING_HTTP_REDIRECT)
                 ],
             },
             'name_id_format': [NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED],
