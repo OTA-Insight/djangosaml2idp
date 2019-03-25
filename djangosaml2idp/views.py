@@ -151,9 +151,11 @@ class IdPHandlerViewMixin:
             identity=self.processor.create_identity(user, self.sp['config']),
             userid=self.processor.get_user_id(user, self.sp['config']),
             name_id=name_id,
+            sp_entity_id=self.sp['id'],
             sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
             sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
-            sp_entity_id=self.sp['id'],
+            sign_alg=self.sp['config'].get("signing_algorithm") or settings.SAML_AUTHN_SIGN_ALG,
+            digest_alg=self.sp['config'].get("digest_algorithm") or settings.SAML_AUTHN_DIGEST_ALG,
             **resp_args
         )
         return authn_resp
