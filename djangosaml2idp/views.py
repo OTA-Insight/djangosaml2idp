@@ -55,21 +55,23 @@ def sso_entry(request, binding):
     """ Entrypoint view for SSO. Build the saml session and redirects
         the requester to the login_process view.
     """
-    # @store_params_in_session_func
     # fill request.session with SAML attributes
     logger.info("--- Single SignOn requested [{}] to IDP ---".format(request.session['Binding']))
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
 
-class IdPHandlerViewMixin:
-    """ Contains some methods used by multiple views """
-
+class ErrorHandler(object):
     error_view = import_string(getattr(settings,
                                        'SAML_IDP_ERROR_VIEW_CLASS',
                                        'djangosaml2idp.error_views.SamlIDPErrorView'))
 
     def handle_error(self, request, **kwargs):
         return self.error_view.as_view()(request, **kwargs)
+
+
+class IdPHandlerViewMixin(ErrorHandler):
+    """ Contains some methods used by multiple views
+    """
 
     def dispatch(self, request, *args, **kwargs):
         """ Construct IDP server with config from settings dict
@@ -383,8 +385,14 @@ class UserAgreementScreen(LoginRequiredMixin, View):
         return HttpResponse(html_response)
 
     def post(self, request, *args, **kwargs):
-        confirm = int(request.POST.get('confirm'))
-        dont_show_again = request.POST.get('dont_show_again')
+        form = AgreementForm(request.POST)
+        # confirm = int(request.POST.get('confirm'))
+        # dont_show_again = request.POST.get('dont_show_again')
+        if not form.is_valid():
+            return HttpResponseBadRequest(_("Invalid submission"))
+
+        confirm = int(form.cleaned_data['confirm'])
+        dont_show_again = form.cleaned_data['dont_show_again']
 
         if not confirm:
             logout(request)
