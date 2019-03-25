@@ -6,6 +6,7 @@ FILE_PREFIX = "tests/"
 expected_result_file = open(FILE_PREFIX + "xml/min/request/sample_saml_request_minimal.xml")
 expected_result = expected_result_file.readline()
 expected_result_pretty = xml.dom.minidom.parseString(expected_result).toprettyxml()
+expected_result_file.close()
 
 
 # repr_saml and encode_saml are inverse functions. By testing them against each other, we test both.

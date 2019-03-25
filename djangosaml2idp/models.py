@@ -33,14 +33,13 @@ class AgreementRecord(models.Model):
 
     def is_expired(self):
         sp_config = sp_config_dict.get(self.sp_entity_id)
-        if sp_config is None:
-            raise ImproperlyConfigured("No settings defined for this SP.")
 
-        valid_for = sp_config.get("user_agreement_valid_for", getattr(settings, "SAML_IDP_USER_AGREEMENT_VALID_FOR"))
+        valid_for = sp_config.get("user_agreement_valid_for", getattr(settings, "SAML_IDP_USER_AGREEMENT_VALID_FOR", None))
         if not valid_for:
             return False
         else:
             return timezone.now() > self.date + timedelta(hours=valid_for)
 
     def wants_more_attrs(self, newAttrs):
-        return bool(set(newAttrs).difference(self.attrs.split(",")))
+        newAttrsList = newAttrs.split(",") if isinstance(newAttrs, str) else newAttrs
+        return bool(set(newAttrsList).difference(self.attrs.split(",")))
