@@ -70,4 +70,3 @@ class TestAgreementRecord:
         record = AgreementRecord.objects.create(user=user, sp_entity_id="test_sp_with_no_expiration")
 
         assert record.is_expired() is False
-

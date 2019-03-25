@@ -214,6 +214,10 @@ SAML_IDP_CONFIG = {
 SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA256
 SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA256
 
+SP_METADATA_URL = 'http://localhost:8000/saml2/metadata/'
+
+SAML_IDP_AGREEMENT_MSG = 'You are about to share the following data with this sp:'
+
 SAML_IDP_SPCONFIG = {
     '{}'.format(SP_METADATA_URL): {
         'processor': 'djangosaml2idp.processors.BaseProcessor',
@@ -229,12 +233,12 @@ SAML_IDP_SPCONFIG = {
             # 'user_permissions': 'user_permissions',
             # 'groups': 'groups',
         },
-        #'user_agreement_attr_exclude': ['sp_specific_secret_attr'],
+        # 'user_agreement_attr_exclude': ['sp_specific_secret_attr'],
         # Because we specify display name, that will be shown instead of entity id.
         'display_name': 'SP Number 1',
         'display_description': 'This SP does something that\'s probably important',
         'display_agreement_message': SAML_IDP_AGREEMENT_MSG,
-        'user_agreement_valid_for': 24 * 3650 , # User agreements will be valid for 10 years for this SP only
+        'user_agreement_valid_for': 24 * 3650,  # User agreements will be valid for 10 years for this SP only
         'signing_algorithm': saml2.xmldsig.SIG_RSA_SHA1,
         'digest_algorithm': saml2.xmldsig.DIGEST_SHA1,
     }

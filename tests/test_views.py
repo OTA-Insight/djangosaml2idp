@@ -3,18 +3,15 @@ import copy
 import xml
 from datetime import timedelta
 from urllib import parse
-from xml.etree.ElementTree import Element, SubElement, tostring
 
 import pytest
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.sessions.backends.db import SessionStore
 from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
                                     ValidationError)
-from django.http import (HttpRequest, HttpResponse, HttpResponseBadRequest,
-                         HttpResponseRedirect)
+from django.http import (HttpRequest, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect)
 from django.utils import timezone
 from django.utils.six import binary_type
-from djangosaml2.cache import IdentityCache, StateCache
 from saml2 import saml
 from saml2.client import Saml2Client
 from saml2.config import SPConfig
