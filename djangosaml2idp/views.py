@@ -155,6 +155,8 @@ class IdPHandlerViewMixin:
             sign_assertion=self.sp['config'].get("sign_assertion") or \
                            self.IDP.config.getattr("sign_assertion", "idp") or \
                            False,
+            sign_alg=self.sp['config'].get("signing_algorithm") or settings.SAML_AUTHN_SIGN_ALG,
+            digest_alg=self.sp['config'].get("digest_algorithm") or settings.SAML_AUTHN_DIGEST_ALG,
             **resp_args
         )
         return authn_resp
