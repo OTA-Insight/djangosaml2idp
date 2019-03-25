@@ -203,17 +203,18 @@ class IdPHandlerViewMixin:
                                                        self.sp['config']).items()
             if k not in attrs_to_exclude
         }
-        request.session['sp_display_info'] = (
-            self.sp['config'].get('display_name', self.sp['id']),
-            self.sp['config'].get('display_description'),
-            self.sp['config'].get('display_agreement_message',
-                                  _(settings.SAML_IDP_AGREEMENT_MSG))
-        )
+        request.session['sp_display_info'] = {
+            'display_name': self.sp['config'].get('display_name', self.sp['id']),
+            'display_description': self.sp['config'].get('display_description'),
+            'display_agreement_message': self.sp['config'].get('display_agreement_message',
+                                         _(settings.SAML_IDP_AGREEMENT_MSG))
+            }
         request.session['sp_entity_id'] = self.sp['id']
 
         # Conditions for showing user agreement screen
         user_agreement_enabled_for_sp = self.sp['config'].get('show_user_agreement_screen',
-                                                              getattr(settings, "SAML_IDP_SHOW_USER_AGREEMENT_SCREEN"))
+                                                              getattr(settings,
+                                                                      "SAML_IDP_SHOW_USER_AGREEMENT_SCREEN"))
         try:
             agreement_for_sp = AgreementRecord.objects.get(user=request.user,
                                                            sp_entity_id=self.sp['id'])
@@ -360,9 +361,9 @@ class UserAgreementScreen(LoginRequiredMixin, View):
         context = {}
         try:
             # prevents KeyError at /login/process_user_agreement/: 'sp_display_info'
-            context['sp_display_name'] = request.session['sp_display_info'][0]
-            context['sp_display_description'] = request.session['sp_display_info'][1]
-            context['sp_display_agreement_message'] = request.session['sp_display_info'][2]
+            context['sp_display_name'] = request.session['sp_display_info']['display_name']
+            context['sp_display_description'] = request.session['sp_display_info']['display_description']
+            context['sp_display_agreement_message'] = request.session['sp_display_info']['display_agreement_message'].replace('\n', '<br>')
             context['attrs_passed_to_sp'] = request.session['identity']
         except Exception as excp:
             logout(request)

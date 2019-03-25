@@ -16,5 +16,6 @@ class AgreementForm(forms.Form):
                (0, _('I do not Agree')))
 
     confirm = forms.ChoiceField(choices=CHOICES, widget=forms.RadioSelect)
-    dont_show_again = forms.BooleanField(label=_("Remember My Choice"),
+    dont_show_again = forms.BooleanField(label=_("Remember my choice "
+                                                 "for the next login"),
                                          required=False)

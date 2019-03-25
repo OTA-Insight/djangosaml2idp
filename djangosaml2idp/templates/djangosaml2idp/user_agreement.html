@@ -11,46 +11,42 @@
 <body>
     <h2>{{sp_display_name}}</h2>
     <p>{{sp_display_description}}
-    <h3>This app will receive the following information:</h3>
-    <ul>
-        {% for key, value in attrs_passed_to_sp.items %}
-            <li>{{ key }}: {{ value }}</li>
-        {% endfor %}
-    </ul>
 
+    <h2>{% trans "Agreement Screen" %}</h2>
+    <p>{{ sp_display_agreement_message|safe }}</p>
+
+    <h3>This app will receive the following information:</h3>
+    <div>
+    <table>
+        <thead>
+            <th>attribute name</th>
+            <th>value</th>
+        </thead>
+        <tbody>
+    {% for attr, value in attrs_passed_to_sp.items %}
+        <tr>
+            <td>{{ attr }}</td>
+            <td>{{ value }}</td>
+        </tr>
+    {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+
+    <div>
+        <p>{% trans "Do you agree to transmit to " %}
+            <b>{{ sp_display_name }}</b>
+            {% trans "the previous personal attributes" %}?</p>
+    </div>
     <form method="post" action="">
         {% csrf_token %}
-        <h1>{% trans "Agreement Screen" %}</h1>
-        <h4>{{ sp_display_name }}</h4>
-        <p>{{ sp_display_description }}</p>
         <div>
-        <p>{{ sp_display_agreement_message|safe }}</p>
-
-        <hr>
+            </div>
+                {{ form }}
+            </div>
         <div>
-            <p>{% trans "Do you agree to transmit to " %} <b>{{ sp_display_name }}</b> {% trans "the following personal attributes" %}:</p>
-            <table>
-                <thead>
-                    <th>attribute name</th>
-                    <th>value</th>
-                </thead>
-                <tbody>
-        {% for attr, value in attrs_passed_to_sp.items %}
-            <tr>
-                <td>{{ attr }}</td>
-                <td>{{ value }}</td>
-            </tr>
-        {% endfor %}
-            </tbody>
-            </table>
-        </div>
 
-        <hr>
-        </div>
-            {{ form }}
-        </div>
-
-        <div>
             <input type="submit" value="{% trans 'Submit' %}"  />
         </div>
     </form>
