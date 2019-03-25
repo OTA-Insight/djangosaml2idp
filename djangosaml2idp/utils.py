@@ -15,11 +15,12 @@ def repr_saml(saml_str, b64=False):
     except (UnicodeDecodeError, ExpatError):
         # in HTTP-REDIRECT the base64 must be inflated
         msg = base64.b64decode(saml_str)
-        inflated = zlib.decompress(msg, 0)
+        inflated = zlib.decompress(msg, -15)
         dom = xml.dom.minidom.parseString(inflated.decode())
     return dom.toprettyxml()
 
 
 def encode_saml(saml_envelope, use_zlib=False):
-    before_base64 = zlib.compress(saml_envelope.encode()) if use_zlib else saml_envelope.encode()
+    # Not sure where 2:-4 came from, but that's how pysaml2 does it, and it works
+    before_base64 = zlib.compress(saml_envelope.encode())[2:-4] if use_zlib else saml_envelope.encode()
     return base64.b64encode(before_base64)
