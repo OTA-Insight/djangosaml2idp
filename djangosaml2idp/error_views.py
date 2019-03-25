@@ -2,7 +2,8 @@ from django.views.generic import TemplateView
 
 
 class SamlIDPErrorView(TemplateView):
-    """ Default error view when a 'known' error occurs in the saml2 authentication views.
+    """ Default error view when a 'known' error
+        occurs in the saml2 authentication views.
     """
     template_name = 'djangosaml2idp/error.html'
 

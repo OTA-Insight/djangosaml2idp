@@ -26,11 +26,13 @@ def store_params_in_session(request):
 
     request.session['Binding'] = binding
     try:
-        msg = "--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True))
-        logger.debug(msg)
+        msg = "--- SAML request [\n{}] ---"
+        logger.debug(msg.format(repr_saml(passed_data['SAMLRequest'],
+                                b64=True)))
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
-        return HttpResponseBadRequest(_('not a valid SAMLRequest: {}').format(e))
+        msg = _('not a valid SAMLRequest: {}').format(e)
+        return HttpResponseBadRequest(msg)
     request.session['RelayState'] = passed_data.get('RelayState', '')
 
 
@@ -43,21 +45,6 @@ def store_params_in_session_func(func_to_decorate):
             store_params_in_session(request)
             return func_to_decorate(*original_args, **original_kwargs)
         except Exception as e:
-            return HttpResponseBadRequest(_('not a valid SAMLRequest: {}').format(e))
+            msg = _('not a valid SAMLRequest: {}').format(e)
+            return HttpResponseBadRequest(msg)
     return new_func
-
-
-class store_params_in_session_class(object):
-    """ store_params_in_session as a class decorator
-    """
-    def __init__(self, request):
-        self.request = request
-
-    def __call__(self, fn, *args, **kwargs):
-        def decorator(*args, **kwargs):
-            try:
-                store_params_in_session(self.request)
-            except Exception as e:
-                return HttpResponseBadRequest(_('not a valid SAMLRequest: {}').format(e))
-            return fn(*args, **kwargs)
-        return decorator

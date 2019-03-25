@@ -8,7 +8,8 @@ from django.utils.translation import gettext as _
 
 
 class AgreementRecord(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL,
+                             on_delete=models.CASCADE)
     sp_entity_id = models.CharField(max_length=512)
     attrs = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
@@ -31,7 +32,9 @@ class AgreementRecord(models.Model):
         if sp_config is None:
             raise ImproperlyConfigured(_("No settings defined for this SP."))
 
-        valid_for = sp_config.get("user_agreement_valid_for", getattr(settings, "SAML_IDP_USER_AGREEMENT_VALID_FOR"))
+        valid_for = sp_config.get("user_agreement_valid_for",
+                                  getattr(settings,
+                                          "SAML_IDP_USER_AGREEMENT_VALID_FOR"))
         if not valid_for:
             return False
         else:
