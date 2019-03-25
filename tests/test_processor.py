@@ -1,10 +1,22 @@
 from django.contrib.auth import get_user_model
+from django.http import HttpRequest
 from djangosaml2idp.processors import BaseProcessor
 
 User = get_user_model()
 
 
 class TestBaseProcessor:
+
+    def test_has_access_returns_true_by_default(self):
+        request = HttpRequest()
+        request.method = "GET"
+
+        assert BaseProcessor('entity-id').has_access(request) is True
+
+    def test_enable_multifactor_returns_false_by_default(self):
+        user = User()
+
+        assert BaseProcessor('entity-id').enable_multifactor(user) is False
 
     def test_extract_user_id_configure_by_user_class(self):
 
