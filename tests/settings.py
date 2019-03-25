@@ -47,6 +47,9 @@ ROOT_URLCONF = 'tests.urls'
 
 BASE_URL = 'http://localhost:9000/idp'
 
+SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA256
+SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA256
+
 SAML_IDP_CONFIG = {
     'service': {
         'idp': {

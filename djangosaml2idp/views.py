@@ -22,7 +22,6 @@ from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.metadata import entity_descriptor
-from saml2.s_utils import UnknownPrincipal, UnsupportedBinding
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from saml2.server import Server
 from six import text_type
@@ -409,12 +408,12 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         logger.debug("--- {} requested [\n{}] to IDP ---".format(self.__service_name, binding))
 
         # adapted from pysaml2 examples/idp2/idp_uwsgi.py
-        #try:
-        req_info = self.IDP.parse_logout_request(request.session['SAMLRequest'], binding)
-        #except Exception as excp:
-        #    expc_msg = "{} Bad request: {}".format(self.__service_name, excp)
-        #    logger.error(expc_msg)
-        #    return self.handle_error(request, exception=expc_msg, status=400)
+        try:
+            req_info = self.IDP.parse_logout_request(request.session['SAMLRequest'], binding)
+        except Exception as excp:
+            expc_msg = "{} Bad request: {}".format(self.__service_name, excp)
+            logger.error(expc_msg)
+            return self.handle_error(request, exception=expc_msg, status=400)
 
         logger.info("{} - local identifier: {} from {}".format(self.__service_name, req_info.message.name_id.text, req_info.message.name_id.sp_name_qualifier))
         logger.debug("--- {} SAML request [\n{}] ---".format(self.__service_name, repr_saml(req_info.xmlstr, b64=False)))
