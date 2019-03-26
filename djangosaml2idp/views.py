@@ -83,6 +83,7 @@ class IdPHandlerViewMixin:
     error_view = import_string(getattr(settings, 'SAML_IDP_ERROR_VIEW_CLASS', 'djangosaml2idp.error_views.SamlIDPErrorView'))
 
     def handle_error(self, request, **kwargs):
+        logger.error(kwargs)
         return self.error_view.as_view()(request, **kwargs)
 
     def dispatch(self, request, *args, **kwargs):
@@ -151,10 +152,14 @@ class IdPHandlerViewMixin:
             userid=self.processor.get_user_id(user, self.sp['config']),
             name_id=name_id,
             sp_entity_id=self.sp['id'],
+            # Signing
             sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
             sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
             sign_alg=self.sp['config'].get("signing_algorithm") or settings.SAML_AUTHN_SIGN_ALG,
             digest_alg=self.sp['config'].get("digest_algorithm") or settings.SAML_AUTHN_DIGEST_ALG,
+            # Encryption
+            encrypt_assertion=getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
+            encrypted_advice_attributes=getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
             **resp_args
         )
         return authn_resp
@@ -257,9 +262,12 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     def get(self, request, *args, **kwargs):
         binding = request.session.get('Binding', BINDING_HTTP_POST)
 
+        # TODO: would it be better to store SAML info in request objects?
+        # AuthBackend takes request obj as argument...
         try:
             # Parse incoming request
-            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], binding)
+            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'],
+                                                    binding)
             # check SAML request signature
             self.verify_request_signature(req_info)
             # Compile Response Arguments
@@ -287,7 +295,8 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 @method_decorator(never_cache, name='dispatch')
 class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
-    """ View used for IDP initialized login, doesn't handle any SAML authn request
+    """ View used for IDP initialized login,
+        doesn't handle any SAML authn request
     """
 
     def post(self, request, *args, **kwargs):
