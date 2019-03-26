@@ -66,6 +66,7 @@ class ErrorHandler(object):
                                        'djangosaml2idp.error_views.SamlIDPErrorView'))
 
     def handle_error(self, request, **kwargs):
+        logger.error(kwargs)
         return self.error_view.as_view()(request, **kwargs)
 
 
@@ -140,6 +141,9 @@ class IdPHandlerViewMixin(ErrorHandler):
         return broker.get_authn_by_accr(req_authn_context)
 
     def build_authn_response(self, user, authn, resp_args):
+        """ pysaml2 server.Server.create_authn_response wrapper
+        """
+
         name_id_formats = [resp_args.get('name_id_policy').format] or \
                            self.IDP.config.getattr("name_id_format", "idp") or \
                            [NAMEID_FORMAT_UNSPECIFIED]
@@ -151,14 +155,19 @@ class IdPHandlerViewMixin(ErrorHandler):
                            sp_name_qualifier=self.sp['id'],
                            text=self.processor.get_user_id(user,
                                                            self.sp['config'])),
+            # signature
             sign_response=self.sp['config'].get("sign_response") or \
                           self.IDP.config.getattr("sign_response", "idp") or \
                           False,
             sign_assertion=self.sp['config'].get("sign_assertion") or \
                            self.IDP.config.getattr("sign_assertion", "idp") or \
                            False,
-            sign_alg=self.sp['config'].get("signing_algorithm") or settings.SAML_AUTHN_SIGN_ALG,
-            digest_alg=self.sp['config'].get("digest_algorithm") or settings.SAML_AUTHN_DIGEST_ALG,
+            sign_alg=self.sp['config'].get("signing_algorithm") or getattr(settings, 'SAML_AUTHN_SIGN_ALG', False),
+            digest_alg=self.sp['config'].get("digest_algorithm") or getattr(settings, 'SAML_AUTHN_DIGEST_ALG', False),
+
+            # Encryption
+            encrypt_assertion = getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
+            encrypted_advice_attributes = getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
             **resp_args
         )
         return authn_resp
@@ -256,7 +265,9 @@ class LoginAuthView(LoginView):
         """Security check complete. Log the user in."""
         auth_login(self.request, form.get_user())
         if self.request.POST.get('forget_agreement'):
-            AgreementRecord.objects.filter(user__username=self.request.POST.get('username')).delete()
+            # TODO: also add the sp_nameid in the query?
+            agr = AgreementRecord.objects.filter(user=self.request.user)
+            agr.delete()
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -271,9 +282,12 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     def get(self, request, *args, **kwargs):
         binding = request.session.get('Binding', BINDING_HTTP_POST)
 
+        # TODO: would it be better to store SAML info in request objects?
+        # AuthBackend takes request obj as argument...
         try:
             # Parse incoming request
-            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'], binding)
+            req_info = self.IDP.parse_authn_request(request.session['SAMLRequest'],
+                                                    binding)
             # check SAML request signature
             self.verify_request_signature(req_info)
             # Compile Response Arguments
@@ -311,7 +325,8 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 @method_decorator(never_cache, name='dispatch')
 class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
-    """ View used for IDP initialized login, doesn't handle any SAML authn request
+    """ View used for IDP initialized login,
+        doesn't handle any SAML authn request
     """
 
     def post(self, request, *args, **kwargs):
@@ -335,7 +350,8 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             service="assertion_consumer_service",
             entity_id=self.sp['id'])
 
-        # Adding a few things that would have been added if this were SP Initiated
+        # Adding a few things that would have been added
+        # if this were SP Initiated
         passed_data['destination'] = destination
         passed_data['in_response_to'] = "IdP_Initiated_Login"
         passed_data['sp_entity_id'] = self.sp['id']
