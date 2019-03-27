@@ -5,7 +5,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError, SuspiciousOperation
 from django.http import (HttpResponse, HttpResponseRedirect, HttpResponseBadRequest)
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -143,13 +143,12 @@ class IdPHandlerViewMixin:
         return broker.get_authn_by_accr(req_authn_context)
 
     def build_authn_response(self, user, authn, resp_args):
-        name_id_format = getattr(resp_args.get('name_id_policy'), "format", None) or self.IDP.config.getattr(
-            "name_id_format", "idp")[0] or NAMEID_FORMAT_UNSPECIFIED
-        name_id = NameID(format=name_id_format, sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user, self.sp['config']))
+        name_id_format = getattr(resp_args.get('name_id_policy'), "format", None) or self.IDP.config.getattr("name_id_format", "idp")[0] or NAMEID_FORMAT_UNSPECIFIED
+        name_id = NameID(format=name_id_format, sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user, self.sp))
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
-            identity=self.processor.create_identity(user, self.sp['config']),
-            userid=self.processor.get_user_id(user, self.sp['config']),
+            identity=self.processor.create_identity(user, self.sp),
+            userid=self.processor.get_user_id(user, self.sp),
             name_id=name_id,
             sp_entity_id=self.sp['id'],
             # Signing
@@ -211,7 +210,7 @@ class IdPHandlerViewMixin:
             getattr(settings, "SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE", [])
         request.session['identity'] = {
             k: v
-            for k, v in self.processor.create_identity(request.user, self.sp['config']).items()
+            for k, v in self.processor.create_identity(request.user, self.sp).items()
             if k not in attrs_to_exclude
         }
         request.session['sp_display_info'] = (
