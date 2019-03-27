@@ -7,7 +7,8 @@ from django.contrib.auth import logout, login as auth_login
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import (ImproperlyConfigured,
-                                    PermissionDenied)
+                                    PermissionDenied,
+                                    SuspiciousOperation)
 from django.http import (HttpResponse,
                          HttpResponseBadRequest,
                          HttpResponseRedirect)
@@ -143,18 +144,30 @@ class IdPHandlerViewMixin(ErrorHandler):
     def build_authn_response(self, user, authn, resp_args):
         """ pysaml2 server.Server.create_authn_response wrapper
         """
+        sp_name_id_format = resp_args.get('name_id_policy').format
+        idp_name_id_format_list = self.IDP.config.getattr("name_id_format",
+                                                          "idp")
 
-        name_id_formats = [resp_args.get('name_id_policy').format] or \
-                           self.IDP.config.getattr("name_id_format", "idp") or \
-                           [NAMEID_FORMAT_UNSPECIFIED]
+        if sp_name_id_format and idp_name_id_format_list:
+           if sp_name_id_format not in idp_name_id_format_list:
+                return self.handle_error(request,
+                                         exception=_('SP requested a name_id_format '
+                                                     'that is not supported in the IDP'))
+        # Too low about security, DEPRECATED
+        # name_id_formats = [resp_args.get('name_id_policy').format] or \
+                           # self.IDP.config.getattr("name_id_format", "idp") or \
+                           # [NAMEID_FORMAT_UNSPECIFIED]
+
+        user_id = self.processor.get_user_id(user, self.sp)
+        name_id = NameID(format=sp_name_id_format,
+                         sp_name_qualifier=self.sp['id'],
+                         text=user_id)
+
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
-            identity=self.processor.create_identity(user, self.sp['config']),
-            userid=self.processor.get_user_id(user, self.sp['config']),
-            name_id=NameID(format=name_id_formats[0],
-                           sp_name_qualifier=self.sp['id'],
-                           text=self.processor.get_user_id(user,
-                                                           self.sp['config'])),
+            identity=self.processor.create_identity(user, self.sp),
+            userid=user_id,
+            name_id=name_id,
             # signature
             sign_response=self.sp['config'].get("sign_response") or \
                           self.IDP.config.getattr("sign_response", "idp") or \
@@ -162,12 +175,18 @@ class IdPHandlerViewMixin(ErrorHandler):
             sign_assertion=self.sp['config'].get("sign_assertion") or \
                            self.IDP.config.getattr("sign_assertion", "idp") or \
                            False,
-            sign_alg=self.sp['config'].get("signing_algorithm") or getattr(settings, 'SAML_AUTHN_SIGN_ALG', False),
-            digest_alg=self.sp['config'].get("digest_algorithm") or getattr(settings, 'SAML_AUTHN_DIGEST_ALG', False),
+            sign_alg=self.sp['config'].get("signing_algorithm") or \
+                     getattr(settings, 'SAML_AUTHN_SIGN_ALG', False),
+            digest_alg=self.sp['config'].get("digest_algorithm") or \
+                       getattr(settings, 'SAML_AUTHN_DIGEST_ALG', False),
 
             # Encryption
-            encrypt_assertion = getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
-            encrypted_advice_attributes = getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
+            encrypt_assertion=getattr(settings,
+                                      'SAML_ENCRYPT_AUTHN_RESPONSE',
+                                      False),
+            encrypted_advice_attributes=getattr(settings,
+                                                'SAML_ENCRYPT_AUTHN_RESPONSE',
+                                                False),
             **resp_args
         )
         return authn_resp
@@ -213,7 +232,7 @@ class IdPHandlerViewMixin(ErrorHandler):
         request.session['identity'] = {
             k: v
             for k, v in self.processor.create_identity(request.user,
-                                                       self.sp['config']).items()
+                                                       self.sp).items()
             if k not in attrs_to_exclude
         }
         request.session['sp_display_info'] = {
