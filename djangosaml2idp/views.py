@@ -202,7 +202,7 @@ class IdPHandlerViewMixin(ErrorHandler):
                 "saml_response": base64.b64encode(authn_resp.encode()).decode(),
                 "relay_state": relay_state,
             }
-            template = "djangosaml2idp/login.html"
+            template = "login.html"
             html_response = render_to_string(template, context=context,
                                              request=request)
         else:
@@ -278,7 +278,7 @@ class IdPHandlerViewMixin(ErrorHandler):
 class LoginAuthView(LoginView):
     """ First Login Form
     """
-    template_name = "djangosaml2idp/login.html"
+    template_name = "login.html"
     form_class = LoginForm
 
     def form_valid(self, form):
@@ -396,7 +396,7 @@ class UserAgreementScreen(LoginRequiredMixin, View):
     """
 
     def get(self, request, *args, **kwargs):
-        template = 'djangosaml2idp/user_agreement.html'
+        template = 'user_agreement.html'
 
         context = {}
         try:

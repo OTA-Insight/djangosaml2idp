@@ -10,13 +10,12 @@ from django.utils.translation import gettext as _
 class AgreementRecord(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL,
                              on_delete=models.CASCADE)
-    sp_entity_id = models.CharField(max_length=512)
+    sp_entity_id = models.TextField()
     attrs = models.TextField()
     created = models.DateTimeField(auto_now_add=True)
-    modified = models.DateTimeField(auto_now=True)
 
     class Meta:
-        unique_together = ("user", "sp_entity_id")
+        # unique_together = ("user", "sp_entity_id")
         verbose_name = _('Agreement Record')
         verbose_name_plural = _('Agreement Records')
 

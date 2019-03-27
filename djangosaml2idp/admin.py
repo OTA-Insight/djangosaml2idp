@@ -7,6 +7,5 @@ from .models import AgreementRecord
 class AgreementRecordAdmin(admin.ModelAdmin):
     list_display = ('user',
                     'sp_entity_id',
-                    'created',
-                    'modified')
+                    'created')
     readonly_fields = ('attrs', 'sp_entity_id', 'user')
