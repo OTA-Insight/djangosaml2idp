@@ -5,7 +5,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError, SuspiciousOperation
+from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
 from django.http import (HttpResponse, HttpResponseRedirect, HttpResponseBadRequest)
 from django.template.loader import render_to_string
 from django.urls import reverse
@@ -143,13 +143,22 @@ class IdPHandlerViewMixin:
         return broker.get_authn_by_accr(req_authn_context)
 
     def build_authn_response(self, user, authn, resp_args):
-        name_id_format = getattr(resp_args.get('name_id_policy'), "format", None) or self.IDP.config.getattr("name_id_format", "idp")[0] or NAMEID_FORMAT_UNSPECIFIED
-        name_id = NameID(format=name_id_format, sp_name_qualifier=self.sp['id'], text=self.processor.get_user_id(user, self.sp))
+        """ pysaml2 server.Server.create_authn_response wrapper
+        """
+        self.sp['name_id_format'] = resp_args.get('name_id_policy').format or NAMEID_FORMAT_UNSPECIFIED
+        idp_name_id_format_list = self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
+
+        if self.sp['name_id_format'] not in idp_name_id_format_list:
+            raise ImproperlyConfigured(_('SP requested a name_id_format that is not supported in the IDP'))
+
+        user_id = self.processor.get_user_id(user, self.sp, self.IDP.config)
+        name_id = NameID(format=self.sp['name_id_format'], sp_name_qualifier=self.sp['id'], text=user_id)
+
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
             identity=self.processor.create_identity(user, self.sp),
-            userid=self.processor.get_user_id(user, self.sp),
             name_id=name_id,
+            userid=user_id,
             sp_entity_id=self.sp['id'],
             # Signing
             sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
