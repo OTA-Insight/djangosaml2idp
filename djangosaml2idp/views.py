@@ -144,12 +144,12 @@ class IdPHandlerViewMixin(ErrorHandler):
     def build_authn_response(self, user, authn, resp_args):
         """ pysaml2 server.Server.create_authn_response wrapper
         """
-        sp_name_id_format = resp_args.get('name_id_policy').format
+        self.sp['name_id_format'] = resp_args.get('name_id_policy').format
         idp_name_id_format_list = self.IDP.config.getattr("name_id_format",
                                                           "idp")
 
-        if sp_name_id_format and idp_name_id_format_list:
-           if sp_name_id_format not in idp_name_id_format_list:
+        if self.sp['name_id_format'] and idp_name_id_format_list:
+           if self.sp['name_id_format'] not in idp_name_id_format_list:
                 return self.handle_error(request,
                                          exception=_('SP requested a name_id_format '
                                                      'that is not supported in the IDP'))
@@ -158,14 +158,15 @@ class IdPHandlerViewMixin(ErrorHandler):
                            # self.IDP.config.getattr("name_id_format", "idp") or \
                            # [NAMEID_FORMAT_UNSPECIFIED]
 
-        user_id = self.processor.get_user_id(user, self.sp)
-        name_id = NameID(format=sp_name_id_format,
+        user_id = self.processor.get_user_id(user, self.sp, self.IDP.config)
+        name_id = NameID(format=self.sp['name_id_format'],
                          sp_name_qualifier=self.sp['id'],
                          text=user_id)
+        user_attrs = self.processor.create_identity(user, self.sp)
 
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
-            identity=self.processor.create_identity(user, self.sp),
+            identity=user_attrs,
             userid=user_id,
             name_id=name_id,
             # signature
