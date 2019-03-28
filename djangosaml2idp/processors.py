@@ -18,12 +18,12 @@ class NameIdBuilder:
         see: https://wiki.shibboleth.net/confluence/display/CONCEPT/NameIdentifiers
     """
 
-    # None needs to be implemented
     format_mappings = {
         NAMEID_FORMAT_UNSPECIFIED: 'get_nameid_unspecified',
         NAMEID_FORMAT_TRANSIENT: 'get_nameid_transient',
         NAMEID_FORMAT_PERSISTENT: 'get_nameid_persistent',
         NAMEID_FORMAT_EMAILADDRESS: 'get_nameid_email',
+        # TODO: need to be implemented
         NAMEID_FORMAT_X509SUBJECTNAME: None,
         NAMEID_FORMAT_WINDOWSDOMAINQUALIFIEDNAME: None,
         NAMEID_FORMAT_KERBEROS: None,
@@ -32,20 +32,19 @@ class NameIdBuilder:
     }
 
     @classmethod
-    def get_nameid_opaque(cls, user_id, salt=False):
+    def get_nameid_opaque(cls, user_id, salt=b''):
         """ Returns opaque salted unique identifiers
         """
-        salt = str(random.getrandbits(8)).encode() if salt else b''
         salted_value = user_id.encode()+salt
         opaque = hashlib.sha256(salted_value)
         return opaque.hexdigest()
 
     @classmethod
-    def get_nameid_persistent(cls, user_id, sp_entityid='', idp_entityid=''):
+    def get_nameid_persistent(cls, user_id, sp_entityid='', idp_entityid='', user=None):
         """ Get PersistentID in TransientID format
             see: http://software.internet2.edu/eduperson/internet2-mace-dir-eduperson-201602.html#eduPersonTargetedID
         """
-        return '!'.join((idp_entityid, sp_entityid, cls.get_nameid_opaque(user_id)))
+        return '!'.join([idp_entityid, sp_entityid, cls.get_nameid_opaque(user_id, salt=str(user.pk).encode())])
 
     @classmethod
     def get_nameid_email(cls, user_id):
@@ -109,7 +108,7 @@ class BaseProcessor:
             user_id = str(user_field)
 
         # returns in a real name_id format
-        return NameIdBuilder.get_nameid(user_id, sp['name_id_format'], sp_entityid=sp['id'], idp_entityid=idp_config.entityid)
+        return NameIdBuilder.get_nameid(user_id, sp['name_id_format'], sp_entityid=sp['id'], idp_entityid=idp_config.entityid, user=user)
 
     def create_identity(self, user, sp):
         """ Generate an identity dictionary of the user based on the
