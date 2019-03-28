@@ -22,6 +22,7 @@ from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.shortcuts import render_to_response
 from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import (PASSWORD,
                                  AuthnBroker,
@@ -392,7 +393,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 
 @method_decorator(never_cache, name='dispatch')
-class UserAgreementScreen(LoginRequiredMixin, View, ErrorHandler):
+class UserAgreementScreen(LoginRequiredMixin, View):
     """This view shows the user an overview of the data being sent to the SP.
     """
 
@@ -424,21 +425,17 @@ class UserAgreementScreen(LoginRequiredMixin, View, ErrorHandler):
 
     def post(self, request, *args, **kwargs):
         form = AgreementForm(request.POST)
-        # confirm = int(request.POST.get('confirm'))
-        # dont_show_again = request.POST.get('dont_show_again')
         if not form.is_valid():
-            return self.handle_error(request,
-                                     exception=_("Invalid submission"),
-                                     extra_message=msg)
+            return HttpResponseBadRequest(_("Invalid submission"))
 
         confirm = int(form.cleaned_data['confirm'])
         dont_show_again = form.cleaned_data['dont_show_again']
 
         if not confirm:
             logout(request)
-            return self.handle_error(request,
-                                     exception=_("You cannot access "
-                                                 "to this service"))
+            return render_to_response('error.html',
+                                      {'exception_type':_("You cannot access to this service")},
+                                      status=403)
 
         if dont_show_again:
             record = AgreementRecord(
