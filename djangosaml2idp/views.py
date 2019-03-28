@@ -202,7 +202,7 @@ class IdPHandlerViewMixin(ErrorHandler):
                 "saml_response": base64.b64encode(authn_resp.encode()).decode(),
                 "relay_state": relay_state,
             }
-            template = "login.html"
+            template = "saml_login.html"
             html_response = render_to_string(template, context=context,
                                              request=request)
         else:
@@ -239,8 +239,7 @@ class IdPHandlerViewMixin(ErrorHandler):
         request.session['sp_display_info'] = {
             'display_name': self.sp['config'].get('display_name', self.sp['id']),
             'display_description': self.sp['config'].get('display_description'),
-            'display_agreement_message': self.sp['config'].get('display_agreement_message',
-                                         _(settings.SAML_IDP_AGREEMENT_MSG))
+            'display_agreement_message': self.sp['config'].get('display_agreement_message')
             }
         request.session['sp_entity_id'] = self.sp['id']
 
@@ -278,7 +277,7 @@ class IdPHandlerViewMixin(ErrorHandler):
 class LoginAuthView(LoginView):
     """ First Login Form
     """
-    template_name = "login.html"
+    template_name = "saml_login.html"
     form_class = LoginForm
 
     def form_valid(self, form):
@@ -391,7 +390,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 
 @method_decorator(never_cache, name='dispatch')
-class UserAgreementScreen(LoginRequiredMixin, View):
+class UserAgreementScreen(LoginRequiredMixin, View, ErrorHandler):
     """This view shows the user an overview of the data being sent to the SP.
     """
 
@@ -403,7 +402,7 @@ class UserAgreementScreen(LoginRequiredMixin, View):
             # prevents KeyError at /login/process_user_agreement/: 'sp_display_info'
             context['sp_display_name'] = request.session['sp_display_info']['display_name']
             context['sp_display_description'] = request.session['sp_display_info']['display_description']
-            context['sp_display_agreement_message'] = request.session['sp_display_info']['display_agreement_message'].replace('\n', '<br>')
+            context['sp_display_agreement_message'] = request.session['sp_display_info'].get('display_agreement_message')
             context['attrs_passed_to_sp'] = request.session['identity']
         except Exception as excp:
             logout(request)
@@ -412,7 +411,8 @@ class UserAgreementScreen(LoginRequiredMixin, View):
                     'expired or you refreshed your page getting in a stale '
                     'request. Please come back to your SP and renew '
                     'the authentication request')
-            return HttpResponseBadRequest(msg)
+            return self.handle_error(request, exception=excp,
+                                     extra_message=msg)
 
         context['form'] = AgreementForm()
 
@@ -425,14 +425,18 @@ class UserAgreementScreen(LoginRequiredMixin, View):
         # confirm = int(request.POST.get('confirm'))
         # dont_show_again = request.POST.get('dont_show_again')
         if not form.is_valid():
-            return HttpResponseBadRequest(_("Invalid submission"))
+            return self.handle_error(request,
+                                     exception=_("Invalid submission"),
+                                     extra_message=msg)
 
         confirm = int(form.cleaned_data['confirm'])
         dont_show_again = form.cleaned_data['dont_show_again']
 
         if not confirm:
             logout(request)
-            return HttpResponse(_("You cannot access to this service"))
+            return self.handle_error(request,
+                                     exception=_("You cannot access "
+                                                 "to this service"))
 
         if dont_show_again:
             record = AgreementRecord(
