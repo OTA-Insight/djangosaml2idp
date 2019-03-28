@@ -97,6 +97,9 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
                 'name_id_format': [NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED],
                 'sign_response': True,
                 'sign_assertion': True,
+                'validate_certificate': True,
+                # this is default
+                'only_use_keys_in_metadata': True,
             },
         },
 
@@ -113,6 +116,21 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
         }],
         'valid_for': 365 * 24,
     }
+
+    # IDP DATA CONSENT AGREEMENT
+    SAML_IDP_SHOW_USER_AGREEMENT_SCREEN = True
+    SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE = []
+    # User agreements will be valid for 1 year unless overriden. If this attribute is not used, user agreements will not expire
+    SAML_IDP_USER_AGREEMENT_VALID_FOR = 24 * 365
+
+    # if an alternative field will be used...
+    #SAML_IDP_DJANGO_USERNAME_FIELD = 'username'
+
+    # SIGNING AND ENCRYPTION
+    SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA1
+    SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA1
+    # Encrypt authn response
+    SAML_ENCRYPT_AUTHN_RESPONSE = False
 
 
 Notice the configuration requires a private key and public certificate to be available on the filesystem in order to sign and encrypt messages.
@@ -214,8 +232,31 @@ An example setup can be found below::
             'display_agreement_message': "Customized agreement data consent message here",
             'user_agreement_valid_for': 24 * 3650  # User agreements will be valid for 10 years for this SP only
         },
+    },
+    '{}'.format(SP_METADATA_URL): {
+            #'processor': 'djangosaml2idp.processors.BaseProcessor',
+            'processor': 'idp.processors.LdapAcademiaProcessor',
+            'attribute_mapping': {
+                # all these must be present in attribute_mapping files
+                'schacPersonalUniqueID': 'schacPersonalUniqueID',
+                'eduPersonPrincipalName': 'eduPersonPrincipalName',
+                'eduPersonEntitlement': 'eduPersonEntitlement',
+                'schacPersonalUniqueCode': 'schacPersonalUniqueCode',
+                'cn': 'cn',
+                'sn': 'sn',
+                'mail': 'mail',
+            },
+            #'user_agreement_attr_exclude': ['sp_specific_secret_attr'],
+            # Because we specify display name, that will be shown instead of entity id.
+            'display_name': 'SP Number 4',
+            'display_description': 'This SP does something that\'s probably important',
+            # 'display_agreement_message': "ciao mamma",
+            'user_agreement_valid_for': 24 * 3650 , # User agreements will be valid for 10 years for this SP only
+            'signing_algorithm': saml2.xmldsig.SIG_RSA_SHA256,
+            'digest_algorithm': saml2.xmldsig.DIGEST_SHA256,
+            # 'encrypt_saml_responses': True,
+        }
     }
-
 
 
 Customizing error handling
