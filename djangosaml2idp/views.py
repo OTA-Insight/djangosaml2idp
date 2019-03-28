@@ -163,11 +163,11 @@ class IdPHandlerViewMixin:
             # Signing
             sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
             sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
-            sign_alg=self.sp['config'].get("signing_algorithm") or settings.SAML_AUTHN_SIGN_ALG,
-            digest_alg=self.sp['config'].get("digest_algorithm") or settings.SAML_AUTHN_DIGEST_ALG,
+            sign_alg=self.sp['config'].get("signing_algorithm") or getattr(settings, "SAML_AUTHN_SIGN_ALG", False),
+            digest_alg=self.sp['config'].get("digest_algorithm") or getattr(settings, "SAML_AUTHN_DIGEST_ALG", False),
             # Encryption
-            encrypt_assertion=getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
-            encrypted_advice_attributes=getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
+            encrypt_assertion=self.sp['config'].get('encrypt_saml_responses') or getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
+            encrypted_advice_attributes=self.sp['config'].get('encrypt_saml_responses') or getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
             **resp_args
         )
         return authn_resp
