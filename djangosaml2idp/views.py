@@ -182,10 +182,12 @@ class IdPHandlerViewMixin(ErrorHandler):
                        getattr(settings, 'SAML_AUTHN_DIGEST_ALG', False),
 
             # Encryption
-            encrypt_assertion=getattr(settings,
+            encrypt_assertion=self.sp['config'].get('encrypt_saml_responses') or \
+                              getattr(settings,
                                       'SAML_ENCRYPT_AUTHN_RESPONSE',
                                       False),
-            encrypted_advice_attributes=getattr(settings,
+            encrypted_advice_attributes=self.sp['config'].get('encrypt_saml_responses') or \
+                                        getattr(settings,
                                                 'SAML_ENCRYPT_AUTHN_RESPONSE',
                                                 False),
             **resp_args
