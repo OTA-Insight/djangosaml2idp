@@ -149,8 +149,11 @@ class IdPHandlerViewMixin(ErrorHandler):
         idp_name_id_format_list = self.IDP.config.getattr("name_id_format",
                                                           "idp")
 
+        # In SPID fed -> SP do authn request unspecified and IDP do auth response as transient
+        # so if SP request for an NAMEID_FORMAT_UNSPECIFIED the IDP can response whatever he wants
         if self.sp['name_id_format'] and idp_name_id_format_list:
-           if self.sp['name_id_format'] not in idp_name_id_format_list:
+           if self.sp['name_id_format'] not in idp_name_id_format_list and \
+                self.sp['name_id_format'] != NAMEID_FORMAT_UNSPECIFIED:
                 return self.handle_error(request,
                                          exception=_('SP requested a name_id_format '
                                                      'that is not supported in the IDP'))
@@ -172,12 +175,12 @@ class IdPHandlerViewMixin(ErrorHandler):
         if 'encrypt_saml_responses' in self.sp['config'].keys():
             enrypt_response = self.sp['config'].get('encrypt_saml_responses')
 
-
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
             identity=user_attrs,
             userid=user_id,
             name_id=name_id,
+
             # signature
             sign_response=self.sp['config'].get("sign_response") or \
                           self.IDP.config.getattr("sign_response", "idp") or \
@@ -397,7 +400,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 
 @method_decorator(never_cache, name='dispatch')
-class UserAgreementScreen(LoginRequiredMixin, View):
+class UserAgreementScreen(ErrorHandler, LoginRequiredMixin, View):
     """This view shows the user an overview of the data being sent to the SP.
     """
 
