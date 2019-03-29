@@ -165,6 +165,14 @@ class IdPHandlerViewMixin(ErrorHandler):
                          text=user_id)
         user_attrs = self.processor.create_identity(user, self.sp)
 
+        # ASSERTION ENCRYPTED
+        enrypt_response = getattr(settings,
+                                  'SAML_ENCRYPT_AUTHN_RESPONSE',
+                                  False)
+        if 'encrypt_saml_responses' in self.sp['config'].keys():
+            enrypt_response = self.sp['config'].get('encrypt_saml_responses')
+
+
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
             identity=user_attrs,
@@ -177,20 +185,16 @@ class IdPHandlerViewMixin(ErrorHandler):
             sign_assertion=self.sp['config'].get("sign_assertion") or \
                            self.IDP.config.getattr("sign_assertion", "idp") or \
                            False,
+
+            # default will be sha1 in pySAML2
             sign_alg=self.sp['config'].get("signing_algorithm") or \
                      getattr(settings, 'SAML_AUTHN_SIGN_ALG', False),
             digest_alg=self.sp['config'].get("digest_algorithm") or \
                        getattr(settings, 'SAML_AUTHN_DIGEST_ALG', False),
 
             # Encryption
-            encrypt_assertion=self.sp['config'].get('encrypt_saml_responses') or \
-                              getattr(settings,
-                                      'SAML_ENCRYPT_AUTHN_RESPONSE',
-                                      False),
-            encrypted_advice_attributes=self.sp['config'].get('encrypt_saml_responses') or \
-                                        getattr(settings,
-                                                'SAML_ENCRYPT_AUTHN_RESPONSE',
-                                                False),
+            encrypt_assertion=enrypt_response,
+            encrypted_advice_attributes=enrypt_response,
             **resp_args
         )
         return authn_resp
