@@ -37,7 +37,7 @@ class AgreementRecord(models.Model):
         if not valid_for:
             return False
         else:
-            return timezone.now() > self.modified + timedelta(hours=valid_for)
+            return timezone.now() > self.created + timedelta(hours=valid_for)
 
     def wants_more_attrs(self, newAttrs):
         return bool(set(newAttrs).difference(self.attrs.split(",")))

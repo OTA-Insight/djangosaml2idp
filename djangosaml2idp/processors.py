@@ -31,7 +31,7 @@ class NameIdBuilder:
                        NAMEID_FORMAT_ENCRYPTED : None}
 
     @classmethod
-    def get_nameid_opaque(cls, user_id, salt=b''):
+    def get_nameid_opaque(cls, user_id, salt=b'', **kwargs):
         """ Returns opaque salted unique identifiers
         """
         salted_value = user_id.encode()+salt
@@ -50,12 +50,12 @@ class NameIdBuilder:
                          cls.get_nameid_opaque(user_id,
                                                salt=str(user.pk).encode())))
     @classmethod
-    def get_nameid_email(cls, user_id):
+    def get_nameid_email(cls, user_id, **kwargs):
         assert '@' in user_id
         return user_id
 
     @classmethod
-    def get_nameid_transient(cls, user_id):
+    def get_nameid_transient(cls, user_id, **kwargs):
         """ This would return EPPN
         """
         return user_id
