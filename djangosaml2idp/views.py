@@ -64,7 +64,7 @@ def store_params_in_session(request):
 @never_cache
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
-def sso_entry(request, *args):
+def sso_entry(request, *args, **kwargs):
     """ Entrypoint view for SSO. Build the saml session and redirects
         the requester to the login_process view.
     """
