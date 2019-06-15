@@ -58,6 +58,7 @@ def store_params_in_session(request):
         logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True)))
         request.session['SAMLRequest'] = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
+        logger.error("Not valid SAMLRequest\nPassed data: {}\nRequest Get: {}\n Request Post: {}".format(passed_data, request.GET, request. POST))
         raise ValidationError(_('not a valid SAMLRequest: {}').format(e))
     request.session['RelayState'] = passed_data.get('RelayState', '')
 
