@@ -18,7 +18,7 @@ from django.views.generic import TemplateView
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT, xmldsig
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
@@ -155,8 +155,8 @@ class IdPHandlerViewMixin:
             sp_entity_id=self.sp['id'],
             sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
             sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
-            sign_alg=self.sp['config'].get("signing_algorithm") or settings.SAML_AUTHN_SIGN_ALG,
-            digest_alg=self.sp['config'].get("digest_algorithm") or settings.SAML_AUTHN_DIGEST_ALG,
+            sign_alg=self.sp['config'].get("signing_algorithm") or settings.get("SAML_AUTHN_SIGN_ALG", xmldsig.SIG_RSA_SHA256),
+            digest_alg=self.sp['config'].get("digest_algorithm") or settings.get("SAML_AUTHN_DIGEST_ALG", xmldsig.DIGEST_SHA256),
             **resp_args
         )
         return authn_resp
