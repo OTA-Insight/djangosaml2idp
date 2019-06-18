@@ -257,7 +257,7 @@ class IdPHandlerViewMixin(ErrorHandler):
         """
         if not hasattr(self, 'processor'):
             # In case of SLO, where processor isn't relevant
-            return HttpResponse(html_response)
+            return SLOHttpResponse(request, html_response)
 
         request.session['saml_data'] = html_response
 
@@ -476,7 +476,7 @@ class UserAgreementScreen(ErrorHandler, LoginRequiredMixin, View):
             )
             record.save()
 
-        return HttpResponse(request.session.get('saml_data'))
+        return SSOHttpResponse(request.session.get('saml_data'))
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -580,7 +580,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         logout(request)
 
         if hinfo['method'] == 'GET':
-            return HttpResponseRedirect(hinfo['headers'][0][1])
+            return SLOHttpResponseRedirect(request, hinfo['headers'][0][1])
         else:
             html_response = self.create_html_response(
                 request,
@@ -622,6 +622,29 @@ class SSOHttpResponse(HttpResponse):
     """
     def __init__(self, request, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        host = request.get_host()
-        domain = '.'.join([''] + host.split('.')[-2:])
+        domain = '.'.join([''] + request.get_host().split('.')[-2:])
         self.set_cookie('_im_logged_in', 1, domain=domain, path='/', secure=True, httponly=True)
+
+
+class CustomSLOMixin:
+    def remove_hint_cookie(self, request):
+        domain = '.'.join([''] + request.get_host().split('.')[-2:])
+        self.delete_cookie('_im_logged_in', domain=domain)
+
+
+class SLOHttpResponse(HttpResponse, CustomSLOMixin):
+    """
+    Removes the top level domain hint cookie
+    """
+    def __init__(self, request, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.remove_hint_cookie(request)
+
+
+class SLOHttpResponseRedirect(HttpResponseRedirect, CustomSLOMixin):
+    """
+    Removes the top level domain hint cookie
+    """
+    def __init__(self, request, redirect_to, *args, **kwargs):
+        super().__init__(redirect_to, *args, **kwargs)
+        self.remove_hint_cookie(request)
