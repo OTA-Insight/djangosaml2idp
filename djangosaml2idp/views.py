@@ -305,7 +305,7 @@ class IdPHandlerViewMixin(ErrorHandler):
 
         # No multifactor or user agreement
         logger.debug("Performing SAML redirect")
-        return HttpResponse(html_response)
+        return SSOHttpResponse(request, html_response)
 
 
 class LoginAuthView(LoginView):
@@ -503,7 +503,7 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
             if request.session.get('sp_display_info'):
                 # Arbitrary value that's only set if user agreement needed.
                 return HttpResponseRedirect(reverse('djangosaml2idp:saml_user_agreement'))
-            return HttpResponse(request.session['saml_data'])
+            return SSOHttpResponse(request, request.session['saml_data'])
         logger.debug(_("MultiFactor failed; %s will not be able to log in") % request.user)
         logout(request)
         raise PermissionDenied(_("MultiFactor authentication factor failed"))
@@ -612,3 +612,16 @@ def metadata(request):
     metadata = entity_descriptor(conf)
     return HttpResponse(content=text_type(metadata).encode('utf-8'),
                         content_type="text/xml; charset=utf8")
+
+
+class SSOHttpResponse(HttpResponse):
+    """
+    Also sets a top level domain cookie which acts as a hint for any SPs hosted in
+    one of the sub domains. The SPs can leverage this cookie to make the SSO or SLO
+    flows a bit more seamless.
+    """
+    def __init__(self, request, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        host = request.get_host()
+        domain = '.'.join([''] + host.split('.')[-2:])
+        self.set_cookie('_im_logged_in', 1, domain=domain, path='/', secure=True, httponly=True)
