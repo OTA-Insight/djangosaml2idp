@@ -10,6 +10,7 @@ from django.core.exceptions import (ImproperlyConfigured,
                                     PermissionDenied,
                                     SuspiciousOperation)
 from django.http import (HttpResponse,
+                        HttpResponseNotFound,
                          HttpResponseBadRequest,
                          HttpResponseRedirect)
 from django.template.loader import render_to_string
@@ -58,7 +59,28 @@ def sso_entry(request, binding):
         the requester to the login_process view.
     """
     # fill request.session with SAML attributes
-    # logger.info("--- Single SignOn requested [{}] to IDP ---".format(request.session['Binding']))
+    if binding == 'post' and request.method == 'POST':
+        data = request.POST
+    elif binding == 'redirect' and request.method == 'GET':
+        data = request.GET
+    else:
+        return HttpResponseNotFound()
+
+    request.session['Binding'] = binding
+
+    try:
+        request.session['SAMLRequest'] = data['SAMLRequest']
+    except (KeyError, MultiValueDictKeyError) as e:
+        return HttpResponseBadRequest(e)
+
+    request.session['RelayState'] = data.get('RelayState', '')
+
+    # TODO check how the redirect saml way works. Taken from example idp in pysaml2.
+    if "SigAlg" in data and "Signature" in data:
+        request.session['SigAlg'] = data['SigAlg']
+        request.session['Signature'] = data['Signature']
+
+    logger.info("--- Single SignOn requested [{}] to IDP ---".format(request.session['Binding']))
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
 
