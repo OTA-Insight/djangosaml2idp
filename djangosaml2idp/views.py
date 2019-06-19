@@ -61,8 +61,10 @@ def sso_entry(request, binding):
     # fill request.session with SAML attributes
     if binding == 'post' and request.method == 'POST':
         data = request.POST
+        binding = BINDING_HTTP_POST
     elif binding == 'redirect' and request.method == 'GET':
         data = request.GET
+        binding = BINDING_HTTP_REDIRECT
     else:
         return HttpResponseNotFound()
 
