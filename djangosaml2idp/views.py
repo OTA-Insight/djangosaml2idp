@@ -58,7 +58,7 @@ def sso_entry(request, binding):
         the requester to the login_process view.
     """
     # fill request.session with SAML attributes
-    logger.info("--- Single SignOn requested [{}] to IDP ---".format(request.session['Binding']))
+    # logger.info("--- Single SignOn requested [{}] to IDP ---".format(request.session['Binding']))
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
 
