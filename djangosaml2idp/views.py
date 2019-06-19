@@ -280,7 +280,7 @@ class IdPHandlerViewMixin(ErrorHandler):
         # Conditions for showing user agreement screen
         user_agreement_enabled_for_sp = self.sp['config'].get('show_user_agreement_screen',
                                                               getattr(settings,
-                                                                      "SAML_IDP_SHOW_USER_AGREEMENT_SCREEN"))
+                                                                      "SAML_IDP_SHOW_USER_AGREEMENT_SCREEN", False))
         try:
             agreement_for_sp = AgreementRecord.objects.get(user=request.user,
                                                            sp_entity_id=self.sp['id'])
