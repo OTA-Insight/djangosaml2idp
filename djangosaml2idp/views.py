@@ -623,7 +623,8 @@ class SSOHttpResponse(HttpResponse):
     def __init__(self, request, *args, **kwargs):
         super().__init__(*args, **kwargs)
         hostname = request.get_host().split(':')[0]
-        domain = '.'.join([''] + hostname.split('.')[-2:])
+        parts = hostname.split('.')
+        domain = '.'.join([''] + parts[-2:]) if len(parts) > 2 else hostname
         self.set_cookie('_im_logged_in', 1, domain=domain, max_age=31536000, path='/', secure=True, httponly=True)
 
 
