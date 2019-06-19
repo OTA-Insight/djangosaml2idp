@@ -624,7 +624,7 @@ class SSOHttpResponse(HttpResponse):
         super().__init__(*args, **kwargs)
         hostname = request.get_host().split(':')[0]
         domain = '.'.join([''] + hostname.split('.')[-2:])
-        self.set_cookie('_im_logged_in', 1, domain=domain, path='/', secure=True, httponly=True)
+        self.set_cookie('_im_logged_in', 1, domain=domain, max_age=31536000, path='/', secure=True, httponly=True)
 
 
 class CustomSLOMixin:
