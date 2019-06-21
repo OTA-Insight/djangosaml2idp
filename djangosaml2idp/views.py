@@ -614,7 +614,24 @@ def metadata(request):
                         content_type="text/xml; charset=utf8")
 
 
-class SSOHttpResponse(HttpResponse):
+class HintCookieMixin:
+    hint_cookie_name = 'im_logged_in'
+
+    @staticmethod
+    def get_parent_domain(request):
+        hostname = request.get_host().split(':')[0]
+        parts = hostname.split('.')
+        return '.'.join([''] + parts[-2:]) if len(parts) > 2 else hostname
+
+    def remove_hint_cookie(self, request):
+        self.delete_cookie(self.hint_cookie_name, domain=self.get_parent_domain(request))
+
+    def set_hint_cookie(self, request):
+        self.set_cookie(self.hint_cookie_name, 1, domain=self.get_parent_domain(request),
+                        max_age=31536000, path='/', secure=True, httponly=True)
+
+
+class SSOHttpResponse(HttpResponse, HintCookieMixin):
     """
     Also sets a top level domain cookie which acts as a hint for any SPs hosted in
     one of the sub domains. The SPs can leverage this cookie to make the SSO or SLO
@@ -622,19 +639,10 @@ class SSOHttpResponse(HttpResponse):
     """
     def __init__(self, request, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        hostname = request.get_host().split(':')[0]
-        parts = hostname.split('.')
-        domain = '.'.join([''] + parts[-2:]) if len(parts) > 2 else hostname
-        self.set_cookie('_im_logged_in', 1, domain=domain, max_age=31536000, path='/', secure=True, httponly=True)
+        self.set_hint_cookie(request)
 
 
-class CustomSLOMixin:
-    def remove_hint_cookie(self, request):
-        domain = '.'.join([''] + request.get_host().split('.')[-2:])
-        self.delete_cookie('_im_logged_in', domain=domain)
-
-
-class SLOHttpResponse(HttpResponse, CustomSLOMixin):
+class SLOHttpResponse(HttpResponse, HintCookieMixin):
     """
     Removes the top level domain hint cookie
     """
@@ -643,7 +651,7 @@ class SLOHttpResponse(HttpResponse, CustomSLOMixin):
         self.remove_hint_cookie(request)
 
 
-class SLOHttpResponseRedirect(HttpResponseRedirect, CustomSLOMixin):
+class SLOHttpResponseRedirect(HttpResponseRedirect, HintCookieMixin):
     """
     Removes the top level domain hint cookie
     """
