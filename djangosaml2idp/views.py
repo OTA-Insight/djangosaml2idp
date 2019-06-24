@@ -615,7 +615,6 @@ def metadata(request):
 
 
 class HintCookieMixin:
-    hint_cookie_name = 'im_logged_in'
 
     @staticmethod
     def get_parent_domain(request):
@@ -624,10 +623,10 @@ class HintCookieMixin:
         return '.'.join([''] + parts[-2:]) if len(parts) > 2 else hostname
 
     def remove_hint_cookie(self, request):
-        self.delete_cookie(self.hint_cookie_name, domain=self.get_parent_domain(request))
+        self.delete_cookie(settings.SAML_HINT_COOKIE_NAME, domain=self.get_parent_domain(request))
 
     def set_hint_cookie(self, request):
-        self.set_cookie(self.hint_cookie_name, 1, domain=self.get_parent_domain(request),
+        self.set_cookie(settings.SAML_HINT_COOKIE_NAME, 1, domain=self.get_parent_domain(request),
                         max_age=31536000, path='/', secure=True, httponly=True)
 
 
