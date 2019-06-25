@@ -257,7 +257,7 @@ class IdPHandlerViewMixin(ErrorHandler):
         """
         if not hasattr(self, 'processor'):
             # In case of SLO, where processor isn't relevant
-            return HttpResponse(html_response)
+            return SLOHttpResponse(request, html_response)
 
         request.session['saml_data'] = html_response
 
@@ -305,7 +305,7 @@ class IdPHandlerViewMixin(ErrorHandler):
 
         # No multifactor or user agreement
         logger.debug("Performing SAML redirect")
-        return HttpResponse(html_response)
+        return SSOHttpResponse(request, html_response)
 
 
 class LoginAuthView(LoginView):
@@ -476,7 +476,7 @@ class UserAgreementScreen(ErrorHandler, LoginRequiredMixin, View):
             )
             record.save()
 
-        return HttpResponse(request.session.get('saml_data'))
+        return SSOHttpResponse(request.session.get('saml_data'))
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -503,7 +503,7 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
             if request.session.get('sp_display_info'):
                 # Arbitrary value that's only set if user agreement needed.
                 return HttpResponseRedirect(reverse('djangosaml2idp:saml_user_agreement'))
-            return HttpResponse(request.session['saml_data'])
+            return SSOHttpResponse(request, request.session['saml_data'])
         logger.debug(_("MultiFactor failed; %s will not be able to log in") % request.user)
         logout(request)
         raise PermissionDenied(_("MultiFactor authentication factor failed"))
@@ -580,7 +580,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         logout(request)
 
         if hinfo['method'] == 'GET':
-            return HttpResponseRedirect(hinfo['headers'][0][1])
+            return SLOHttpResponseRedirect(request, hinfo['headers'][0][1])
         else:
             html_response = self.create_html_response(
                 request,
@@ -612,3 +612,48 @@ def metadata(request):
     metadata = entity_descriptor(conf)
     return HttpResponse(content=text_type(metadata).encode('utf-8'),
                         content_type="text/xml; charset=utf8")
+
+
+class HintCookieMixin:
+
+    @staticmethod
+    def get_parent_domain(request):
+        hostname = request.get_host().split(':')[0]
+        parts = hostname.split('.')
+        return '.'.join([''] + parts[-2:]) if len(parts) > 2 else hostname
+
+    def remove_hint_cookie(self, request):
+        self.delete_cookie(settings.SAML_HINT_COOKIE_NAME, domain=self.get_parent_domain(request))
+
+    def set_hint_cookie(self, request):
+        self.set_cookie(settings.SAML_HINT_COOKIE_NAME, 1, domain=self.get_parent_domain(request),
+                        max_age=31536000, path='/', secure=True, httponly=True)
+
+
+class SSOHttpResponse(HttpResponse, HintCookieMixin):
+    """
+    Also sets a top level domain cookie which acts as a hint for any SPs hosted in
+    one of the sub domains. The SPs can leverage this cookie to make the SSO or SLO
+    flows a bit more seamless.
+    """
+    def __init__(self, request, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_hint_cookie(request)
+
+
+class SLOHttpResponse(HttpResponse, HintCookieMixin):
+    """
+    Removes the top level domain hint cookie
+    """
+    def __init__(self, request, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.remove_hint_cookie(request)
+
+
+class SLOHttpResponseRedirect(HttpResponseRedirect, HintCookieMixin):
+    """
+    Removes the top level domain hint cookie
+    """
+    def __init__(self, request, redirect_to, *args, **kwargs):
+        super().__init__(redirect_to, *args, **kwargs)
+        self.remove_hint_cookie(request)
