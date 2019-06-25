@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+{% load i18n %}
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <title>{% trans "User Agreement" %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+    <h2>{{sp_display_name}}</h2>
+    <p>{{sp_display_description}}
+
+    <h2>{% trans "Agreement Screen" %}</h2>
+    <p>{{ sp_display_agreement_message|safe }}</p>
+
+    <h3>This app will receive the following information:</h3>
+    <div>
+    <table>
+        <thead>
+            <th>attribute name</th>
+            <th>value</th>
+        </thead>
+        <tbody>
+    {% for attr, value in attrs_passed_to_sp.items %}
+        <tr>
+            <td>{{ attr }}</td>
+            <td>{{ value }}</td>
+        </tr>
+    {% endfor %}
+        </tbody>
+    </table>
+    </div>
+
+
+    <div>
+        <p>{% trans "Do you agree to transmit to " %}
+            <b>{{ sp_display_name }}</b>
+            {% trans "the previous personal attributes" %}?</p>
+    </div>
+    <form method="post" action="">
+        {% csrf_token %}
+        <div>
+            </div>
+                {{ form }}
+            </div>
+        <div>
+
+            <input type="submit" value="{% trans 'Submit' %}"  />
+        </div>
+    </form>
+</body>
+
+</html>

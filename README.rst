@@ -52,11 +52,11 @@ Configuration & Usage
 
 The first thing you need to do is add ``djangosaml2idp`` to the list of installed apps::
 
-  INSTALLED_APPS = (
-      'django.contrib.admin',
-      'djangosaml2idp',
-      ...
-  )
+    INSTALLED_APPS = (
+        'django.contrib.admin',
+        'djangosaml2idp',
+        ...
+    )
 
 Now include ``djangosaml2idp`` in your project by adding it in the url config::
 
@@ -97,6 +97,9 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
                 'name_id_format': [NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED],
                 'sign_response': True,
                 'sign_assertion': True,
+                'validate_certificate': True,
+                # this is default
+                'only_use_keys_in_metadata': True,
             },
         },
 
@@ -114,16 +117,34 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
         'valid_for': 365 * 24,
     }
 
+    # IDP DATA CONSENT AGREEMENT
+    SAML_IDP_SHOW_USER_AGREEMENT_SCREEN = True
+    SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE = []
+    # User agreements will be valid for 1 year unless overriden. If this attribute is not used, user agreements will not expire
+    SAML_IDP_USER_AGREEMENT_VALID_FOR = 24 * 365
+
+    # if an alternative field will be used...
+    #SAML_IDP_DJANGO_USERNAME_FIELD = 'username'
+
+    # SIGNING AND ENCRYPTION
+    SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA1
+    SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA1
+    # Encrypt authn response
+    SAML_ENCRYPT_AUTHN_RESPONSE = False
+
 
 Notice the configuration requires a private key and public certificate to be available on the filesystem in order to sign and encrypt messages.
 
 
-You also have to define a mapping for each SP you talk to::
+You also have to define a mapping for each SP you talk to. An example SP config::
 
     ...
     SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
             'processor': 'djangosaml2idp.processors.BaseProcessor',
+            'nameid_field': 'staffID'
+            'sign_response': False,
+            'sign_assertion': False,
             'attribute_mapping': {
                 # DJANGO: SAML
                 'email': 'email',
@@ -131,13 +152,23 @@ You also have to define a mapping for each SP you talk to::
                 'last_name': 'last_name',
                 'is_staff': 'is_staff',
                 'is_superuser':  'is_superuser',
+                'method_to_get_id': 'id',
             }
-        }
+        },
+        'bare_minimum_config': {}
     }
 
+Please note that the only required field for each SP is the Entity ID, which is the key for each individual SP config dict. The bare minimum is setting ``SAML_IDP_CONFIG[Your Entity Id] = {}``.
+Also, ``attribute_mapping`` will default to ``{'username': 'username'}``.
+If you would like to not send any attributes to the SP, set ``attribute_mapping`` to an empty dict (``{}``).
+You can provide methods instead of attributes from the Django side in the attribute mapping. Just make sure that the method only accepts 1 parameter (self), and that you don't put parentheses in the attribute mapping.
 
-That's all for the IdP configuration. Assuming you run the Django development server on localhost:8000, you can get its metadata by visiting http://localhost:8000/idp/metadata/.
-Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
+If you want to override ``sign_assertion`` and/or ``sign_response`` for individual SPs, you can do so in ``SAML_IDP_SPCONFIG``, as seen above. If unset, these will default to the values set in ``SAML_IDP_CONFIG``.
+
+
+The last step is configuring metadata.
+Download a copy of the IdP's metadata from <YOUR_SERVER_URL>/idp/metadata (assuming that's how you set up your urls.py). Use it to configure your SPs as required by them.
+Obtain a copy of the metadata for each of your SPs, and upload them where you indicated in ``SAML_IDP_CONFIG['metadata]``
 
 Further optional configuration options
 ======================================
@@ -148,9 +179,85 @@ You can customize this behaviour by subclassing the `BaseProcessor` and overridi
 The processor has the SP entity ID available as `self._entity_id`, and received the request (with an authenticated request.user on it) as parameter to the `has_access` function.
 This way, you should have the necessary flexibility to perform whatever checks you need.
 An example `processor subclass <https://github.com/OTA-Insight/djangosaml2idp/blob/master/example_setup/idp/idp/processors.py>`_ can be found in the IdP of the included example.
+Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
 
 Without custom setting, users will be identified by the ``USERNAME_FIELD`` property on the user Model you use. By Django defaults this will be the username.
 You can customize which field is used for the identifier by adding ``SAML_IDP_DJANGO_USERNAME_FIELD`` to your settings with as value the attribute to use on your user instance.
+You can also override this per SP by setting ``nameid_field`` in the SP config, as seen in the sample ``SAML_IDP_SPCONFIG`` above.
+
+User Agreement Screen
+=====================
+
+The User Agreement Screen shows users information about what is being sent to the SP, as well as information about the given SP. This can be toggled globally through the `SAML_IDP_SHOW_USER_AGREEMENT_SCREEN = True` setting. That can be overriden per-SP with `show_user_agreement_screen`.
+
+By default, the only information available about the SP is the entity id, which is often non-descriptive. You can manually add in a title and description through `display_name` and `display_description` respectively.
+
+By default, the user agreement screen will show all transmitted attributes to the user. If there are any attributes you wish to exclude, you can do so with the `SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE = []` setting. You can supplement this on a per-SP level with `user_agreement_attr_exclude`.
+
+Finally, by default, user agreements never expire. You can override this globally with `SAML_IDP_USER_AGREEMENT_VALID_FOR` (in hours), or per-SP through `user_agreement_valid_for`.
+
+An example setup can be found below::
+
+    SAML_IDP_SHOW_USER_AGREEMENT_SCREEN = True
+    SAML_IDP_AGREEMENT_MSG = ("Businesses will have to provide the following information to internet users when seeking their consent.")
+    SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE = ['secret_attr']
+    SAML_IDP_USER_AGREEMENT_VALID_FOR = 24 * 365  # User agreements will be valid for 1 year unless overriden. If this attribute is not used, user agreements will not expire
+
+    SAML_IDP_SPCONFIG = {
+        'sample_sp_entity_id': {
+            'show_user_agreement_screen': False,
+        },
+        'sample_sp_2': { # User Agreement Screen will be shown because default is enabled below
+            'attribute_mapping': {
+                # DJANGO: SAML
+                'email': 'email',
+                'first_name': 'first_name',
+                'last_name': 'last_name',
+                'is_staff': 'is_staff',
+                'is_superuser':  'is_superuser',
+                'method_to_get_id': 'id',
+                'top_secret_attr': 'secret_attr', # This will not be shown to user as per default
+            },
+        },
+        'sample_sp_3': { # User Agreement Screen will be shown because default is enabled below
+            'attribute_mapping': {
+                # DJANGO: SAML
+                'sp_specific_secret_attr': 'sp_specific_secret_attr', # This will not be shown because specified in this sp conf
+                'top_secret_attr': 'secret_attr', # This will still not be shown because sp-specific excludes supplements, not overrides
+            },
+            'user_agreement_attr_exclude': ['sp_specific_secret_attr'],
+            # Because we specify display name, that will be shown instead of entity id.
+            'display_name': 'SP Number 3',
+            'display_description': 'This SP does something that's probably important',
+            'display_agreement_message': "Customized agreement data consent message here",
+            'user_agreement_valid_for': 24 * 3650  # User agreements will be valid for 10 years for this SP only
+        },
+    },
+    '{}'.format(SP_METADATA_URL): {
+            #'processor': 'djangosaml2idp.processors.BaseProcessor',
+            'processor': 'idp.processors.LdapAcademiaProcessor',
+            'attribute_mapping': {
+                # all these must be present in attribute_mapping files
+                'schacPersonalUniqueID': 'schacPersonalUniqueID',
+                'eduPersonPrincipalName': 'eduPersonPrincipalName',
+                'eduPersonEntitlement': 'eduPersonEntitlement',
+                'schacPersonalUniqueCode': 'schacPersonalUniqueCode',
+                'cn': 'cn',
+                'sn': 'sn',
+                'mail': 'mail',
+            },
+            #'user_agreement_attr_exclude': ['sp_specific_secret_attr'],
+            # Because we specify display name, that will be shown instead of entity id.
+            'display_name': 'SP Number 4',
+            'display_description': 'This SP does something that\'s probably important',
+            # 'display_agreement_message': "ciao mamma",
+            'user_agreement_valid_for': 24 * 3650 , # User agreements will be valid for 10 years for this SP only
+            'signing_algorithm': saml2.xmldsig.SIG_RSA_SHA256,
+            'digest_algorithm': saml2.xmldsig.DIGEST_SHA256,
+            # 'encrypt_saml_responses': True,
+        }
+    }
+
 
 Customizing error handling
 ==========================
@@ -184,7 +291,8 @@ There are three main components to adding multiple factor support.
 
 2. Sublass the `djangosaml2idp.views.ProcessMultiFactorView` view to make the appropriate calls for your environment. Implement your custom verification logic in the `multifactor_is_valid` method: this could call a helper script, an internal SMS triggering service, a data source only the IdP can access or an external second factor provider (e.g. Symantec VIP). By default this view will log that it was called then redirect.
 
-3. Update your urls.py and add an override for name='saml_multi_factor' - ensure it comes before importing the djangosaml2idp urls file so your custom view is used instead of the built-in one.
+3. Add an entry to settings.py with a string representing the path to your multifactor view. The first package should be the app name:
+`SAML_IDP_MULTIFACTOR_VIEW = "this.is.the.path.to.your.multifactor.view`
 
 
 Running the test suite
