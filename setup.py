@@ -16,7 +16,7 @@ setup(
         open(os.path.join(os.path.dirname(__file__), 'README.rst')).read(),
     ]),
     install_requires=[
-        'django>=2.0',
+        'django>=1.11',
         'pysaml2>=4.5.0'
         ],
     license='Apache Software License 2.0',
@@ -28,6 +28,7 @@ setup(
         "Development Status :: 5 - Production/Stable",
         'Environment :: Web Environment',
         "Framework :: Django",
+        "Framework :: Django :: 1.11",
         "Framework :: Django :: 2.0",
         "Framework :: Django :: 2.1",
         "Framework :: Django :: 2.2",
