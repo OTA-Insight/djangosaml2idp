@@ -22,3 +22,9 @@ def repr_saml(saml_str, b64=False):
 
 def encode_http_redirect_saml(saml_envelope):
     return base64.b64encode(zlib.compress(saml_envelope.encode()))
+
+
+def get_root_cookie_domain(request):
+    hostname = request.get_host().split(':')[0]
+    parts = hostname.split('.')
+    return '.'.join([''] + parts[-2:]) if len(parts) > 2 else hostname

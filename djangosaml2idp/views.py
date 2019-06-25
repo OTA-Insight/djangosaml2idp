@@ -39,7 +39,7 @@ from six import text_type
 from .forms import AgreementForm, LoginForm
 from .models import AgreementRecord
 from .processors import BaseProcessor
-from .utils import repr_saml
+from .utils import repr_saml, get_root_cookie_domain
 
 from .decorators import *
 logger = logging.getLogger(__name__)
@@ -616,17 +616,11 @@ def metadata(request):
 
 class HintCookieMixin:
 
-    @staticmethod
-    def get_parent_domain(request):
-        hostname = request.get_host().split(':')[0]
-        parts = hostname.split('.')
-        return '.'.join([''] + parts[-2:]) if len(parts) > 2 else hostname
-
     def remove_hint_cookie(self, request):
-        self.delete_cookie(settings.SAML_HINT_COOKIE_NAME, domain=self.get_parent_domain(request))
+        self.delete_cookie(settings.SAML_HINT_COOKIE_NAME, domain=get_root_cookie_domain(request))
 
     def set_hint_cookie(self, request):
-        self.set_cookie(settings.SAML_HINT_COOKIE_NAME, 1, domain=self.get_parent_domain(request),
+        self.set_cookie(settings.SAML_HINT_COOKIE_NAME, 1, domain=get_root_cookie_domain(request),
                         max_age=31536000, path='/', secure=True, httponly=True)
 
 
