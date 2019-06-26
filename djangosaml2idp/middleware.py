@@ -16,10 +16,10 @@ class HintCookieMiddleWare(MiddlewareMixin):
 
         hint_cookie_name = settings.SAML_HINT_COOKIE_NAME
         if request.user.is_authenticated and not request.COOKIES.get(hint_cookie_name):
-            self.set_cookie(hint_cookie_name, 1, domain=get_root_cookie_domain(request),
-                            max_age=31536000, path='/', secure=True, httponly=True)
+            response.set_cookie(hint_cookie_name, 1, domain=get_root_cookie_domain(request),
+                                max_age=31536000, path='/', secure=True, httponly=True)
 
         elif not request.user.is_authenticated and request.COOKIES.get(hint_cookie_name):
-            self.delete_cookie(hint_cookie_name, domain=get_root_cookie_domain(request))
+            response.delete_cookie(hint_cookie_name, domain=get_root_cookie_domain(request))
 
         return response
