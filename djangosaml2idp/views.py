@@ -236,7 +236,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             sign_assertion = self.IDP.config.getattr("sign_assertion", "idp") or False
             authn_resp = self.IDP.create_authn_response(
                 identity=identity,
-                in_response_to="IdP_Initiated_Login",
+                in_response_to=None,
                 destination=destination,
                 sp_entity_id=sp_entity_id,
                 userid=user_id,
