@@ -134,7 +134,7 @@ You also have to define a mapping for each SP you talk to. An example SP config:
                 'last_name': 'last_name',
                 'is_staff': 'is_staff',
                 'is_superuser':  'is_superuser',
-                'method_to_get_id': 'id',
+                'callable_to_get_id': 'id',
             }
         },
         'bare_minimum_config': {}
@@ -143,7 +143,7 @@ You also have to define a mapping for each SP you talk to. An example SP config:
 Please note that the only required field for each SP is the Entity ID, which is the key for each individual SP config dict. The bare minimum is setting ``SAML_IDP_CONFIG[Your Entity Id] = {}``.
 Also, ``attribute_mapping`` will default to ``{'username': 'username'}``.
 If you would like to not send any attributes to the SP, set ``attribute_mapping`` to an empty dict (``{}``).
-You can provide methods instead of attributes from the Django side in the attribute mapping. Just make sure that the method only accepts 1 parameter (self), and that you don't put parentheses in the attribute mapping.
+You can provide object attributes or callables names on the Django side in the attribute mapping. The callable needs to be a method on the object accepts 1 parameter (self), don't put parentheses in the attribute mapping.
 
 If you want to override ``sign_assertion`` and/or ``sign_response`` for individual SPs, you can do so in ``SAML_IDP_SPCONFIG``, as seen above. If unset, these will default to the values set in ``SAML_IDP_CONFIG``.
 

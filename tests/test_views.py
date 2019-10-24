@@ -21,7 +21,7 @@ from djangosaml2idp.utils import encode_saml
 from djangosaml2idp.views import (BINDING_HTTP_POST, BINDING_HTTP_REDIRECT,
                                   IdPHandlerViewMixin, LoginProcessView,
                                   LogoutProcessView, ProcessMultiFactorView,
-                                  Server, SSOInitView, UserAgreementScreen,
+                                  Server, SSOInitView,
                                   get_multifactor, metadata, sso_entry,
                                   store_params_in_session)
 
@@ -450,14 +450,6 @@ class TestMultifactor:
         assert ProcessMultiFactorView().multifactor_is_valid(request) is True
 
     @pytest.mark.django_db
-    def test_redirects_to_user_agreement_if_relevant(self):
-        request = get_logged_in_request()
-        request.session['sp_display_info'] = 'This exists'
-        response = ProcessMultiFactorView.as_view()(request)
-        assert isinstance(response, HttpResponseRedirect)
-        assert response.url == '/login/process_user_agreement/'
-
-    @pytest.mark.django_db
     def test_loads_data_when_appropriate_with_post(self):
         request = get_logged_in_request()
         request.session['saml_data'] = {
@@ -490,89 +482,6 @@ class TestMultifactor:
         with pytest.raises(PermissionDenied):
             ProcessMultiFactorView.as_view()(request)
         ProcessMultiFactorView.multifactor_is_valid = a
-
-
-class TestUserAgreementScreen:
-    @pytest.mark.django_db
-    def test_get_context_data_properly_assembles_context(self):
-        request = get_logged_in_request()
-        request.session.update({
-            "sp_display_info": ("SP Name", "SP Description"),
-            "identity": {
-                "Attr": "Value"
-            }
-        })
-
-        expected_context = {
-            "sp_display_name": "SP Name",
-            "sp_display_description": "SP Description",
-            "attrs_passed_to_sp": {
-                "Attr": "Value"
-            }
-        }
-
-        screen = UserAgreementScreen()
-        screen.request = request
-        context = screen.get_context_data()
-        assert(context)
-        assert all(item in context.items() for item in expected_context.items())
-
-    @pytest.mark.django_db
-    def test_logs_out_if_doesnt_agree(self):
-        request = get_logged_in_request()
-        request.method = 'POST'
-        request.POST.update({
-            "confirm": "No"
-        })
-
-        response = UserAgreementScreen.as_view()(request)
-        assert isinstance(response, HttpResponseRedirect)
-        assert not request.user.is_authenticated
-        assert response.url == '/accounts/login/'
-
-    @pytest.mark.django_db
-    def test_goes_through_with_post_binding(self):
-        request = get_logged_in_request()
-        request.method = 'POST'
-        request.POST.update({
-            "confirm": "Yes",
-        })
-        request.session.update({
-            "sp_entity_id": "test_generic_sp",
-            "identity": {
-                "Attr": "Val"
-            },
-            "saml_data": {
-                "type": "POST",
-                "data": "<html></html>"
-            }
-        })
-
-        response = UserAgreementScreen.as_view()(request)
-        assert isinstance(response, HttpResponse)
-        assert response.content == b"<html></html>"
-
-    @pytest.mark.django_db
-    def test_goes_through_with_redirect_binding(self):
-        request = get_logged_in_request()
-        request.method = 'POST'
-        request.POST.update({
-            "confirm": "Yes",
-        })
-        request.session.update({
-            "sp_entity_id": "test_generic_sp",
-            "identity": {
-                "Attr": "Val"
-            },
-            "saml_data": {
-                "type": "REDIRECT",
-                "data": "https://example.com"
-            }
-        })
-
-        response = UserAgreementScreen.as_view()(request)
-        assert isinstance(response, HttpResponse)
-        assert response.url == "https://example.com"
 
 
 class TestLogoutProcessView:

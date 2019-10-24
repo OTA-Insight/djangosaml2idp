@@ -9,7 +9,6 @@ urlpatterns = [
     path('sso/<str:binding>/', views.sso_entry, name="saml_login_binding"),
     path('login/process/', views.LoginProcessView.as_view(), name='saml_login_process'),
     path('login/process_multi_factor/', views.get_multifactor, name='saml_multi_factor'),
-    # path('login/process_user_agreement/', views.UserAgreementScreen.as_view(), name='saml_user_agreement'),
     path('slo/<str:binding>/', views.LogoutProcessView.as_view(), name="saml_logout_binding"),
     path('metadata/', views.metadata, name='saml2_idp_metadata'),
 ]

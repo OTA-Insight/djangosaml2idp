@@ -38,10 +38,7 @@ except AttributeError:
 
 
 def store_params_in_session(request):
-    """ Entrypoint view for SSO. Gathers the parameters from the
-        HTTP request and stores them in the session
-
-        do not return anything because request come as pointer
+    """ Gathers the SAML parameters from the HTTP request and store them in the session
     """
     if request.method == 'POST':
         # future TODO: parse also SOAP and PAOS format from POST
@@ -51,12 +48,13 @@ def store_params_in_session(request):
         passed_data = request.GET
         binding = BINDING_HTTP_REDIRECT
 
-    request.session['Binding'] = binding
     try:
-        logger.debug("--- SAML request [\n{}] ---".format(repr_saml(passed_data['SAMLRequest'], b64=True)))
-        request.session['SAMLRequest'] = passed_data['SAMLRequest']
+        saml_request = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
         raise ValidationError(_('not a valid SAMLRequest: {}').format(e))
+
+    request.session['Binding'] = binding
+    request.session['SAMLRequest'] = saml_request
     request.session['RelayState'] = passed_data.get('RelayState', '')
 
 
@@ -64,15 +62,17 @@ def store_params_in_session(request):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 def sso_entry(request, *args, **kwargs):
-    """ Entrypoint view for SSO. Build the saml session and redirects
-        the requester to the login_process view.
+    """ Entrypoint view for SSO. Store the saml info in the request session
+        and redirects to the login_process view.
     """
-    # fill request.session with SAML attributes
     try:
         store_params_in_session(request)
     except ValidationError as e:
-        return HttpResponseBadRequest(_('not a valid SAMLRequest: {}').format(e))
-    logger.info("--- Single SignOn requested [{}] to IDP ---".format(request.session['Binding']))
+        return HttpResponseBadRequest(str(e))
+
+    logger.debug("SSO requested to IDP with binding {}".format(request.session['Binding']))
+    logger.debug("SAML request [\n{}]".format(repr_saml(request.session['SAMLRequest'], b64=True)))
+
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
 
