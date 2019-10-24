@@ -1,7 +1,6 @@
 import base64
 import copy
 import xml
-from datetime import timedelta
 from urllib import parse
 
 import pytest
@@ -17,7 +16,6 @@ from saml2.client import Saml2Client
 from saml2.config import SPConfig
 from saml2.samlp import Response
 
-from djangosaml2idp.models import AgreementRecord
 from djangosaml2idp.processors import BaseProcessor
 from djangosaml2idp.utils import encode_saml
 from djangosaml2idp.views import (BINDING_HTTP_POST, BINDING_HTTP_REDIRECT,
@@ -361,81 +359,6 @@ class TestIdPHandlerViewMixin:
         assert isinstance(response, HttpResponseRedirect)
         assert response.url == "/login/process_multi_factor/"
 
-    @pytest.mark.django_db
-    def test_redirects_to_user_agreement_if_appropriate(self):
-        (mixin, request, html_response) = self.compile_data_for_render_response()
-
-        # Enable user agreement for this sp
-        mixin.sp['config']['show_user_agreement_screen'] = True
-
-        response = mixin.render_response(request, html_response)
-        # Disable user agreement for this sp
-        mixin.sp['config']['show_user_agreement_screen'] = False
-        assert isinstance(response, HttpResponseRedirect)
-        assert response.url == "/login/process_user_agreement/"
-
-    @pytest.mark.django_db
-    def test_doesnt_redirect_to_user_agreement_when_enabled_but_agreement_record_exists(self):
-        (mixin, request, html_response) = self.compile_data_for_render_response()
-
-        attr_string = "email,first_name,last_name,is_staff,is_superuser"
-        # Enable user agreement for this sp
-        mixin.sp['config']['show_user_agreement_screen'] = True
-        AgreementRecord.objects.create(user=request.user, sp_entity_id=mixin.sp['id'], attrs=attr_string)
-
-        response = mixin.render_response(request, html_response)
-
-        # Disable user agreement for this sp
-        mixin.sp['config']['show_user_agreement_screen'] = False
-        assert isinstance(response, HttpResponse)
-        assert response.content == '<html></html>'.encode()
-
-    @pytest.mark.django_db
-    def test_redirects_to_user_agreement_when_enabled_but_agreement_record_exists_but_expired(self):
-        (mixin, request, html_response) = self.compile_data_for_render_response()
-
-        attr_string = "email,first_name,last_name,is_staff,is_superuser"
-        # Enable user agreement for this sp
-        mixin.sp['config']['show_user_agreement_screen'] = True
-        expired_time = timezone.now() - timedelta(days=400)
-        AgreementRecord.objects.create(user=request.user, sp_entity_id=mixin.sp['id'], attrs=attr_string, date=expired_time)
-
-        response = mixin.render_response(request, html_response)
-
-        # Disable user agreement for this sp
-        mixin.sp['config']['show_user_agreement_screen'] = False
-        assert isinstance(response, HttpResponseRedirect)
-        assert response.url == '/login/process_user_agreement/'
-
-    @pytest.mark.django_db
-    def test_redirects_to_user_agreement_when_enabled_but_agreement_record_exists_but_more_attrs_needed(self):
-        (mixin, request, html_response) = self.compile_data_for_render_response()
-
-        # Enable user agreement for this sp
-        mixin.sp['config']['show_user_agreement_screen'] = True
-        AgreementRecord.objects.create(user=request.user, sp_entity_id=mixin.sp['id'])
-
-        response = mixin.render_response(request, html_response)
-
-        # Disable user agreement for this sp
-        mixin.sp['config']['show_user_agreement_screen'] = False
-        assert isinstance(response, HttpResponseRedirect)
-        assert response.url == '/login/process_user_agreement/'
-
-    @pytest.mark.django_db
-    def test_render_response_works_for_redirect_binding_if_not_multifactor_or_user_agreement(self):
-        (mixin, request, html_response) = self.compile_data_for_render_response()
-        html_response = {
-            "type": "REDIRECT",
-            "data": 'https://example.com'
-        }
-
-        attr_string = "email,first_name,last_name,is_staff,is_superuser"
-        AgreementRecord.objects.create(user=request.user, sp_entity_id=mixin.sp['id'], attrs=attr_string)
-        response = mixin.render_response(request, html_response)
-        assert isinstance(response, HttpResponseRedirect)
-        assert response.url == 'https://example.com'
-
 
 class TestLoginProcessView:
     @pytest.mark.django_db
@@ -606,49 +529,6 @@ class TestUserAgreementScreen:
         assert isinstance(response, HttpResponseRedirect)
         assert not request.user.is_authenticated
         assert response.url == '/accounts/login/'
-
-    @pytest.mark.django_db
-    def test_create_record_if_requested(self):
-        request = get_logged_in_request()
-        request.method = 'POST'
-        request.POST.update({
-            "confirm": "Yes",
-            'dont_show_again': "Yes"
-        })
-        request.session.update({
-            "sp_entity_id": "test_generic_sp",
-            "identity": {
-                "Attr": "Val"
-            },
-            "saml_data": {
-                "type": "POST",
-                "data": "<html></html>"
-            }
-        })
-
-        UserAgreementScreen.as_view()(request)
-        assert AgreementRecord.objects.filter(user=request.user, sp_entity_id="test_generic_sp", attrs="Attr").exists()
-
-    @pytest.mark.django_db
-    def test_doesnt_create_record_if_not_requested(self):
-        request = get_logged_in_request()
-        request.method = 'POST'
-        request.POST.update({
-            "confirm": "Yes"
-        })
-        request.session.update({
-            "sp_entity_id": "test_generic_sp",
-            "identity": {
-                "Attr": "Val"
-            },
-            "saml_data": {
-                "type": "POST",
-                "data": "<html></html>"
-            }
-        })
-
-        UserAgreementScreen.as_view()(request)
-        assert not AgreementRecord.objects.filter(user=request.user, sp_entity_id="test_generic_sp", attrs="Attr").exists()
 
     @pytest.mark.django_db
     def test_goes_through_with_post_binding(self):

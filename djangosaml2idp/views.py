@@ -27,7 +27,6 @@ from saml2.server import Server
 from six import text_type
 
 from .processors import BaseProcessor
-# from .models import AgreementRecord
 from .utils import repr_saml
 
 logger = logging.getLogger(__name__)
@@ -213,45 +212,10 @@ class IdPHandlerViewMixin:
 
         request.session['saml_data'] = html_response
 
-        """
-        # Generate request session stuff needed for user agreement screen
-        attrs_to_exclude = self.sp['config'].get('user_agreement_attr_exclude', []) + \
-            getattr(settings, "SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE", [])
-        request.session['identity'] = {
-            k: v
-            for k, v in self.processor.create_identity(request.user, self.sp).items()
-            if k not in attrs_to_exclude
-        }
-        request.session['sp_display_info'] = (
-            self.sp['config'].get('display_name', self.sp['id']),
-            self.sp['config'].get('display_description')
-        )
-        request.session['sp_entity_id'] = self.sp['id']
-
-        # Conditions for showing user agreement screen
-        user_agreement_enabled_for_sp = self.sp['config'].get('show_user_agreement_screen', getattr(settings, "SAML_IDP_SHOW_USER_AGREEMENT_SCREEN", False))
-        try:
-            agreement_for_sp = AgreementRecord.objects.get(user=request.user, sp_entity_id=self.sp['id'])
-            if agreement_for_sp.is_expired() or agreement_for_sp.wants_more_attrs(request.session['identity'].keys()):
-                agreement_for_sp.delete()
-                already_agreed = False
-            else:
-                already_agreed = True
-        except AgreementRecord.DoesNotExist:
-            already_agreed = False
-        """
-
         # Multifactor goes before user agreement because might result in user not being authenticated
         if self.processor.enable_multifactor(request.user):
             logger.debug("Redirecting to process_multi_factor")
             return HttpResponseRedirect(reverse('djangosaml2idp:saml_multi_factor'))
-
-        """
-        # If we are here, there's no multifactor. Check whether to show user agreement
-        if user_agreement_enabled_for_sp and not already_agreed:
-            logger.debug("Redirecting to process_user_agreement")
-            return HttpResponseRedirect(reverse('djangosaml2idp:saml_user_agreement'))
-        """
 
         # No multifactor or user agreement
         logger.debug("Performing SAML redirect")
@@ -337,40 +301,6 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         html_response = self.create_html_response(request, binding_out, authn_resp, destination, passed_data.get('RelayState', ""))
         return self.render_response(request, html_response)
-
-
-"""
-@method_decorator(never_cache, name='dispatch')
-class UserAgreementScreen(LoginRequiredMixin, TemplateView):
-    "This view shows the user an overview of the data being sent to the SP."
-    template_name = 'djangosaml2idp/user_agreement.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['sp_display_name'] = self.request.session['sp_display_info'][0]
-        context['sp_display_description'] = self.request.session['sp_display_info'][1]
-        context['attrs_passed_to_sp'] = self.request.session['identity']
-        return context
-
-    def post(self, request, *args, **kwargs):
-        if request.POST.get('confirm') != "Yes":
-            logout(request)
-            return HttpResponseRedirect(settings.LOGIN_URL)
-
-        if request.POST.get('dont_show_again') == "Yes":
-            record = AgreementRecord(
-                user=request.user,
-                sp_entity_id=request.session['sp_entity_id'],
-                attrs=",".join(request.session['identity'].keys())
-            )
-            record.save()
-
-        html_response = request.session['saml_data']
-        if html_response['type'] == 'POST':
-            return HttpResponse(html_response['data'])
-        else:
-            return HttpResponseRedirect(html_response['data'])
-"""
 
 
 @method_decorator(never_cache, name='dispatch')

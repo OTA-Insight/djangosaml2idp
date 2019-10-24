@@ -1,5 +1,4 @@
 import hashlib
-import random
 
 from django.conf import settings
 from saml2.saml import (NAMEID_FORMAT_UNSPECIFIED,
