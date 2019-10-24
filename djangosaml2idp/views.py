@@ -1,6 +1,7 @@
 import base64
 import copy
 import logging
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import logout
@@ -106,19 +107,29 @@ class IdPHandlerViewMixin:
         except KeyError:
             raise ImproperlyConfigured(_("No config for SP {} defined in SAML_IDP_SPCONFIG").format(sp_entity_id))
 
-    def set_processor(self):
+    def get_processor(self, sp_entity_id: str, processor_class_path: str) -> BaseProcessor:
         """ Instantiate user-specified processor or default to an all-access base processor.
-            Raises an exception if the configured processor class can not be found or initialized.
+            Raises an exception if the processor class can not be found or initialized.
         """
-        processor_string = self.sp['config'].get('processor', None)
-        if processor_string:
+        if processor_class_path:
             try:
-                self.processor = import_string(processor_string)(self.sp['id'])
-                return
-            except Exception as e:
-                logger.error(_("Failed to instantiate processor: {} - {}").format(processor_string, e), exc_info=True)
-                raise ImproperlyConfigured(_("Failed to instantiate processor: {} - {}").format(processor_string, e), exc_info=True)
-        self.processor = BaseProcessor(self.sp['id'])
+                processor_cls = import_string(processor_class_path)
+            except ImportError as e:
+                msg = _("Failed to import processor class {}").format(processor_class_path)
+                logger.error(msg, exc_info=True)
+                raise ImproperlyConfigured(msg) from e
+        else:
+            processor_cls = BaseProcessor
+        
+        try:
+            processor_instance = processor_cls(sp_entity_id)
+        except Exception as e:
+            msg = _("Failed to instantiate processor: {} - {}").format(processor_cls, e)
+            logger.error(msg, exc_info=True)
+            raise
+
+        self.processor = processor_instance  # todo get rid of the self.processor usage
+        return processor_instance
 
     def verify_request_signature(self, req_info):
         """ Signature verification
@@ -129,10 +140,10 @@ class IdPHandlerViewMixin:
         if not req_info.signature_check(req_info.xmlstr):
             raise ValueError(_("Message signature verification failure"))
 
-    def check_access(self, request):
+    def check_access(self, processor, request) -> bool:
         """ Check if user has access to the service of this SP
         """
-        if not self.processor.has_access(request):
+        if not processor.has_access(request):
             raise PermissionDenied(_("You do not have access to this resource"))
 
     def get_authn(self, req_info=None):
@@ -141,7 +152,7 @@ class IdPHandlerViewMixin:
         broker.add(authn_context_class_ref(req_authn_context), "")
         return broker.get_authn_by_accr(req_authn_context)
 
-    def build_authn_response(self, user, authn, resp_args):
+    def build_authn_response(self, user, authn, resp_args, processor: BaseProcessor):
         """ pysaml2 server.Server.create_authn_response wrapper
         """
         self.sp['name_id_format'] = resp_args.get('name_id_policy').format or NAMEID_FORMAT_UNSPECIFIED
@@ -150,12 +161,12 @@ class IdPHandlerViewMixin:
         if self.sp['name_id_format'] not in idp_name_id_format_list:
             raise ImproperlyConfigured(_('SP requested a name_id_format that is not supported in the IDP'))
 
-        user_id = self.processor.get_user_id(user, self.sp, self.IDP.config)
+        user_id = processor.get_user_id(user, self.sp, self.IDP.config)
         name_id = NameID(format=self.sp['name_id_format'], sp_name_qualifier=self.sp['id'], text=user_id)
 
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
-            identity=self.processor.create_identity(user, self.sp),
+            identity=processor.create_identity(user, self.sp),
             name_id=name_id,
             userid=user_id,
             sp_entity_id=self.sp['id'],
@@ -200,10 +211,10 @@ class IdPHandlerViewMixin:
             }
         return html_response
 
-    def render_response(self, request, html_response):
+    def render_response(self, request, html_response, processor: BaseProcessor = None):
         """ Return either as redirect to MultiFactorView or as html with self-submitting form.
         """
-        if not hasattr(self, 'processor'):
+        if not processor:
             # In case of SLO, where processor isn't relevant
             if html_response['type'] == 'POST':
                 return HttpResponse(html_response['data'])
@@ -212,12 +223,11 @@ class IdPHandlerViewMixin:
 
         request.session['saml_data'] = html_response
 
-        # Multifactor goes before user agreement because might result in user not being authenticated
-        if self.processor.enable_multifactor(request.user):
+        if processor.enable_multifactor(request.user):
             logger.debug("Redirecting to process_multi_factor")
             return HttpResponseRedirect(reverse('djangosaml2idp:saml_multi_factor'))
 
-        # No multifactor or user agreement
+        # No multifactor
         logger.debug("Performing SAML redirect")
         if html_response['type'] == 'POST':
             return HttpResponse(html_response['data'])
@@ -245,12 +255,13 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             # Compile Response Arguments
             self.resp_args = self.IDP.response_args(req_info.message)
             # Set SP and Processor
-            self.set_sp(self.resp_args.pop('sp_entity_id'))
-            self.set_processor()
+            sp_entity_id = self.resp_args.pop('sp_entity_id')
+            self.set_sp(sp_entity_id)
+            processor = self.get_processor(sp_entity_id, self.sp['config'].get('processor', ''))
             # Check if user has access
-            self.check_access(request)
+            self.check_access(processor, request)
             # Construct SamlResponse message
-            self.authn_resp = self.build_authn_response(request.user, self.get_authn(), self.resp_args)
+            self.authn_resp = self.build_authn_response(request.user, self.get_authn(), self.resp_args, processor)
         except Exception as e:
             return self.handle_error(request, exception=e, status=500)
 
@@ -262,7 +273,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             relay_state=request.session['RelayState'])
 
         logger.debug("--- SAML Authn Response [\n{}] ---".format(repr_saml(str(self.authn_resp))))
-        return self.render_response(request, html_response)
+        return self.render_response(request, html_response, processor)
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -276,15 +287,18 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
     def get(self, request, *args, **kwargs):
         passed_data = request.POST or request.GET
-        sp_entity_id = passed_data['sp']
+
         try:
             # get sp information from the parameters
+            sp_entity_id = passed_data['sp']
             self.set_sp(sp_entity_id)
-            self.set_processor()
-            # Check if user has access to SP
-            self.check_access(request)
+            processor = self.get_processor(sp_entity_id, self.sp['config'].get('processor', ''))
         except (KeyError, ImproperlyConfigured) as excp:
             return self.handle_error(request, exception=excp, status=400)
+
+        try:
+            # Check if user has access to SP
+            self.check_access(processor, request)
         except PermissionDenied as excp:
             return self.handle_error(request, exception=excp, status=403)
 
@@ -297,10 +311,10 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         passed_data['in_response_to'] = "IdP_Initiated_Login"
 
         # Construct SamlResponse messages
-        authn_resp = self.build_authn_response(request.user, self.get_authn(), passed_data)
+        authn_resp = self.build_authn_response(request.user, self.get_authn(), passed_data, processor)
 
         html_response = self.create_html_response(request, binding_out, authn_resp, destination, passed_data.get('RelayState', ""))
-        return self.render_response(request, html_response)
+        return self.render_response(request, html_response, processor)
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -318,13 +332,6 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         if self.multifactor_is_valid(request):
             logger.debug('MultiFactor succeeded for %s' % request.user)
-
-            """
-            # Check if user agreement redirect needed
-            if request.session.get('sp_display_info'):
-                # Arbitrary value that's only set if user agreement needed.
-                return HttpResponseRedirect(reverse('djangosaml2idp:saml_user_agreement'))
-            """
             html_response = request.session['saml_data']
             if html_response['type'] == 'POST':
                 return HttpResponse(html_response['data'])
@@ -406,7 +413,8 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 authn_resp=resp.__str__(),
                 destination=resp.destination,
                 relay_state=relay_state)
-        return self.render_response(request, html_response)
+        # todo: processor?
+        return self.render_response(request, html_response, None)
 
 
 @never_cache
