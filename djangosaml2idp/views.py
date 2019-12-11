@@ -97,15 +97,16 @@ class IdPHandlerViewMixin:
             return self.handle_error(request, exception=e)
         return super().dispatch(request, *args, **kwargs)
 
-    def set_sp(self, sp_entity_id):
-        """ Saves SP info to instance variable
-            Raises an exception if sp matching the given entity id cannot be found.
+    def get_sp_config(self, sp_entity_id):
+        """ Get a dict with the configuration for a SP according to the SAML_IDP_SPCONFIG settings.
+            Raises an exception if no SP matching the given entity id can be found.
         """
-        self.sp = {'id': sp_entity_id}
+        d = {'id': sp_entity_id}
         try:
-            self.sp['config'] = settings.SAML_IDP_SPCONFIG[sp_entity_id]
+            d['config'] = settings.SAML_IDP_SPCONFIG[sp_entity_id]
         except KeyError:
             raise ImproperlyConfigured(_("No config for SP {} defined in SAML_IDP_SPCONFIG").format(sp_entity_id))
+        return d
 
     def get_processor(self, sp_entity_id: str, processor_class_path: str) -> BaseProcessor:
         """ Instantiate user-specified processor or default to an all-access base processor.
@@ -120,20 +121,17 @@ class IdPHandlerViewMixin:
                 raise ImproperlyConfigured(msg) from e
         else:
             processor_cls = BaseProcessor
-        
+
         try:
             processor_instance = processor_cls(sp_entity_id)
         except Exception as e:
             msg = _("Failed to instantiate processor: {} - {}").format(processor_cls, e)
             logger.error(msg, exc_info=True)
             raise
-
-        self.processor = processor_instance  # todo get rid of the self.processor usage
         return processor_instance
 
     def verify_request_signature(self, req_info):
-        """ Signature verification
-            for authn request signature_check is at
+        """ Signature verification for authn request signature_check is at
             saml2.sigver.SecurityContext.correctly_signed_authn_request
         """
         # TODO: Add unit tests for this
@@ -152,32 +150,32 @@ class IdPHandlerViewMixin:
         broker.add(authn_context_class_ref(req_authn_context), "")
         return broker.get_authn_by_accr(req_authn_context)
 
-    def build_authn_response(self, user, authn, resp_args, processor: BaseProcessor):
+    def build_authn_response(self, user, authn, resp_args, processor: BaseProcessor, sp_config: dict):
         """ pysaml2 server.Server.create_authn_response wrapper
         """
-        self.sp['name_id_format'] = resp_args.get('name_id_policy').format or NAMEID_FORMAT_UNSPECIFIED
+        sp_config['name_id_format'] = resp_args.get('name_id_policy').format or NAMEID_FORMAT_UNSPECIFIED
         idp_name_id_format_list = self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
 
-        if self.sp['name_id_format'] not in idp_name_id_format_list:
+        if sp_config['name_id_format'] not in idp_name_id_format_list:
             raise ImproperlyConfigured(_('SP requested a name_id_format that is not supported in the IDP'))
 
-        user_id = processor.get_user_id(user, self.sp, self.IDP.config)
-        name_id = NameID(format=self.sp['name_id_format'], sp_name_qualifier=self.sp['id'], text=user_id)
+        user_id = processor.get_user_id(user, sp_config, self.IDP.config)
+        name_id = NameID(format=sp_config['name_id_format'], sp_name_qualifier=sp_config['id'], text=user_id)
 
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
-            identity=processor.create_identity(user, self.sp),
+            identity=processor.create_identity(user, sp_config),
             name_id=name_id,
             userid=user_id,
-            sp_entity_id=self.sp['id'],
+            sp_entity_id=sp_config['id'],
             # Signing
-            sign_response=self.sp['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
-            sign_assertion=self.sp['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
-            sign_alg=self.sp['config'].get("signing_algorithm") or getattr(settings, "SAML_AUTHN_SIGN_ALG", False),
-            digest_alg=self.sp['config'].get("digest_algorithm") or getattr(settings, "SAML_AUTHN_DIGEST_ALG", False),
+            sign_response=sp_config['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
+            sign_assertion=sp_config['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
+            sign_alg=sp_config['config'].get("signing_algorithm") or getattr(settings, "SAML_AUTHN_SIGN_ALG", False),
+            digest_alg=sp_config['config'].get("digest_algorithm") or getattr(settings, "SAML_AUTHN_DIGEST_ALG", False),
             # Encryption
-            encrypt_assertion=self.sp['config'].get('encrypt_saml_responses') or getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
-            encrypted_advice_attributes=self.sp['config'].get('encrypt_saml_responses') or getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
+            encrypt_assertion=sp_config['config'].get('encrypt_saml_responses') or getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
+            encrypted_advice_attributes=sp_config['config'].get('encrypt_saml_responses') or getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
             **resp_args
         )
         return authn_resp
@@ -256,12 +254,12 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             self.resp_args = self.IDP.response_args(req_info.message)
             # Set SP and Processor
             sp_entity_id = self.resp_args.pop('sp_entity_id')
-            self.set_sp(sp_entity_id)
-            processor = self.get_processor(sp_entity_id, self.sp['config'].get('processor', ''))
+            sp_config = self.get_sp_config(sp_entity_id)
+            processor = self.get_processor(sp_entity_id, sp_config['config'].get('processor', ''))
             # Check if user has access
             self.check_access(processor, request)
             # Construct SamlResponse message
-            self.authn_resp = self.build_authn_response(request.user, self.get_authn(), self.resp_args, processor)
+            self.authn_resp = self.build_authn_response(request.user, self.get_authn(), self.resp_args, processor, sp_config)
         except Exception as e:
             return self.handle_error(request, exception=e, status=500)
 
@@ -291,8 +289,8 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         try:
             # get sp information from the parameters
             sp_entity_id = passed_data['sp']
-            self.set_sp(sp_entity_id)
-            processor = self.get_processor(sp_entity_id, self.sp['config'].get('processor', ''))
+            sp_config = self.get_sp_config(sp_entity_id)
+            processor = self.get_processor(sp_entity_id, sp_config['config'].get('processor', ''))
         except (KeyError, ImproperlyConfigured) as excp:
             return self.handle_error(request, exception=excp, status=400)
 
@@ -311,7 +309,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         passed_data['in_response_to'] = "IdP_Initiated_Login"
 
         # Construct SamlResponse messages
-        authn_resp = self.build_authn_response(request.user, self.get_authn(), passed_data, processor)
+        authn_resp = self.build_authn_response(request.user, self.get_authn(), passed_data, processor, sp_config)
 
         html_response = self.create_html_response(request, binding_out, authn_resp, destination, passed_data.get('RelayState', ""))
         return self.render_response(request, html_response, processor)
