@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0] - 2019-12-12
+
+Many thanks for contributions to [@askvortsov1](https://github.com/askvortsov1) and [@peppelinux](https://github.com/peppelinux)
+
+### Added
+- More NameID formats supported. The field on user to be used for the NameID can now be selected per SP via the `nameid_field` in the `SAML_IDP_SPCONFIG`.
+
 ## [0.5.0] - 2019-01-12
 
 Many thanks for contributions to [@lgarvey](https://github.com/lgarvey)

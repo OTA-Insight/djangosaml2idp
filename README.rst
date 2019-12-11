@@ -120,7 +120,7 @@ Notice the configuration requires a private key and public certificate to be ava
 
 You also have to define a mapping for each SP you talk to. An example SP config::
 
-    ...python
+    ...
     SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
             'processor': 'djangosaml2idp.processors.BaseProcessor',
