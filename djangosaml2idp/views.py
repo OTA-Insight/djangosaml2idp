@@ -1,14 +1,17 @@
 import base64
 import copy
 import logging
-from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import ImproperlyConfigured, PermissionDenied, ValidationError
-from django.http import (HttpResponse, HttpResponseRedirect, HttpResponseBadRequest)
-from django.template.loader import render_to_string
+from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
+                                    ValidationError)
+from django.http import (HttpResponse, HttpResponseBadRequest,
+                         HttpResponseRedirect)
+from django.template import get_template
+from django.template.exceptions import (TemplateDoesNotExist,
+                                        TemplateSyntaxError)
 from django.urls import reverse
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.decorators import method_decorator
@@ -180,6 +183,20 @@ class IdPHandlerViewMixin:
         )
         return authn_resp
 
+    def render_login_html_to_string(self, template_name, context=None, request=None, using=None):
+        """ Render the html response for the login action. Can be using a custom html template if set on the view. """
+        default_login_template_name = 'djangosaml2idp/login.html'
+        custom_login_template_name = getattr(self, 'login_html_template')
+        if custom_login_template_name:
+            try:
+                template = get_template(custom_login_template_name, using=using)
+            except (TemplateDoesNotExist, TemplateSyntaxError) as e:
+                logger.error('Specified template {} cannot be used due to: {}. Falling back to default login template'.format(custom_login_template_name, str(e)))
+                template = get_template(default_login_template_name, using=using)
+        else:
+            template = get_template(default_login_template_name, using=using)
+        return template.render(context, request)
+
     def create_html_response(self, request, binding, authn_resp, destination, relay_state):
         """ Login form for SSO
         """
@@ -189,9 +206,8 @@ class IdPHandlerViewMixin:
                 "saml_response": base64.b64encode(str(authn_resp).encode()).decode(),
                 "relay_state": relay_state,
             }
-            template = "djangosaml2idp/login.html"
             html_response = {
-                "data": render_to_string(template, context=context, request=request),
+                "data": self.render_login_html_to_string(context=context, request=request),
                 "type": "POST",
             }
         else:
@@ -210,7 +226,7 @@ class IdPHandlerViewMixin:
         return html_response
 
     def render_response(self, request, html_response, processor: BaseProcessor = None):
-        """ Return either as redirect to MultiFactorView or as html with self-submitting form.
+        """ Return either a response as redirect to MultiFactorView or as html with self-submitting form to log in.
         """
         if not processor:
             # In case of SLO, where processor isn't relevant
@@ -251,33 +267,32 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             # check SAML request signature
             self.verify_request_signature(req_info)
             # Compile Response Arguments
-            self.resp_args = self.IDP.response_args(req_info.message)
+            resp_args = self.IDP.response_args(req_info.message)
             # Set SP and Processor
-            sp_entity_id = self.resp_args.pop('sp_entity_id')
+            sp_entity_id = resp_args.pop('sp_entity_id')
             sp_config = self.get_sp_config(sp_entity_id)
             processor = self.get_processor(sp_entity_id, sp_config['config'].get('processor', ''))
             # Check if user has access
             self.check_access(processor, request)
             # Construct SamlResponse message
-            self.authn_resp = self.build_authn_response(request.user, self.get_authn(), self.resp_args, processor, sp_config)
+            authn_resp = self.build_authn_response(request.user, self.get_authn(), resp_args, processor, sp_config)
         except Exception as e:
             return self.handle_error(request, exception=e, status=500)
 
         html_response = self.create_html_response(
             request,
-            binding=self.resp_args['binding'],
-            authn_resp=self.authn_resp,
-            destination=self.resp_args['destination'],
+            binding=resp_args['binding'],
+            authn_resp=authn_resp,
+            destination=resp_args['destination'],
             relay_state=request.session['RelayState'])
 
-        logger.debug("--- SAML Authn Response [\n{}] ---".format(repr_saml(str(self.authn_resp))))
+        logger.debug("--- SAML Authn Response [\n{}] ---".format(repr_saml(str(authn_resp))))
         return self.render_response(request, html_response, processor)
 
 
 @method_decorator(never_cache, name='dispatch')
 class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
-    """ View used for IDP initialized login,
-        doesn't handle any SAML authn request
+    """ View used for IDP initialized login, doesn't handle any SAML authn request
     """
 
     def post(self, request, *args, **kwargs):
@@ -340,8 +355,7 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
         raise PermissionDenied(_("MultiFactor authentication factor failed"))
 
 
-@method_decorator(never_cache, name='dispatch')
-@method_decorator(csrf_exempt, name='dispatch')
+@method_decorator([never_cache, csrf_exempt], name='dispatch')
 class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """ View which processes the actual SAML Single Logout request
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' way.
