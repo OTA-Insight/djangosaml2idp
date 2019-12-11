@@ -120,7 +120,7 @@ Notice the configuration requires a private key and public certificate to be ava
 
 You also have to define a mapping for each SP you talk to. An example SP config::
 
-    ...
+    ...python
     SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
             'processor': 'djangosaml2idp.processors.BaseProcessor',
@@ -134,10 +134,12 @@ You also have to define a mapping for each SP you talk to. An example SP config:
                 'last_name': 'last_name',
                 'is_staff': 'is_staff',
                 'is_superuser':  'is_superuser',
-                'callable_to_get_id': 'id',
+                'callable_to_get_id': 'calculate_id',  # assuming <user_instance>.calculate_id() is a method
             }
         },
-        'bare_minimum_config': {}
+        # ...
+        # config of additional Service Providers
+        # ...
     }
 
 Please note that the only required field for each SP is the Entity ID, which is the key for each individual SP config dict. The bare minimum is setting ``SAML_IDP_CONFIG[Your Entity Id] = {}``.

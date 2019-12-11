@@ -31,7 +31,7 @@ class NameIdBuilder:
     }
 
     @classmethod
-    def get_nameid_opaque(cls, user_id, salt=b''):
+    def _get_nameid_opaque(cls, user_id, salt=b''):
         """ Returns opaque salted unique identifiers
         """
         salted_value = user_id.encode()+salt
@@ -43,11 +43,12 @@ class NameIdBuilder:
         """ Get PersistentID in TransientID format
             see: http://software.internet2.edu/eduperson/internet2-mace-dir-eduperson-201602.html#eduPersonTargetedID
         """
-        return '!'.join([idp_entityid, sp_entityid, cls.get_nameid_opaque(user_id, salt=str(user.pk).encode())])
+        return '!'.join([idp_entityid, sp_entityid, cls._get_nameid_opaque(user_id, salt=str(user.pk).encode())])
 
     @classmethod
     def get_nameid_email(cls, user_id):
-        assert '@' in user_id
+        if '@' not in user_id:
+            raise Exception("user_id {} does not contain the '@' symbol, so is not a valid NameID Email address format.".format(user_id))
         return user_id
 
     @classmethod
@@ -74,9 +75,10 @@ class NameIdBuilder:
 
 
 class BaseProcessor:
-    """ Processor class is used to determine if a user has access to a
-        client service of this IDP
-        and to construct the identity dictionary which is sent to the SP
+    """ Processor class is used to:
+        - determine if a user has access to a client service of this IDP
+        - construct the identity dictionary which is sent to the SP
+        Subclass this to provide your own desired behaviour.
     """
 
     def __init__(self, entity_id):
