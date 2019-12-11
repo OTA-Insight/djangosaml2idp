@@ -111,15 +111,18 @@ class BaseProcessor:
         # returns in a real name_id format
         return NameIdBuilder.get_nameid(user_id, sp['name_id_format'], sp_entityid=sp['id'], idp_entityid=idp_config.entityid, user=user)
 
-    def create_identity(self, user, sp):
+    def create_identity(self, user, sp_attribute_mapping: dict = None):
         """ Generate an identity dictionary of the user based on the
             given mapping of desired user attributes by the SP
         """
-        default_mapping = {'username': 'username'}
-        sp_mapping = sp['config'].get('attribute_mapping', default_mapping)
+        if sp_attribute_mapping is None:
+            attribute_mapping = {'username': 'username'}
+        else:
+            attribute_mapping = sp_attribute_mapping
+        # sp_mapping = sp['config'].get('attribute_mapping')
 
         results = {}
-        for user_attr, out_attr in sp_mapping.items():
+        for user_attr, out_attr in attribute_mapping.items():
             if hasattr(user, user_attr):
                 attr = getattr(user, user_attr)
                 results[out_attr] = attr() if callable(attr) else attr

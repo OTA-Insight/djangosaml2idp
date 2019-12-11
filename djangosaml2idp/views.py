@@ -21,7 +21,7 @@ from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT, xmldsig
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
@@ -168,15 +168,15 @@ class IdPHandlerViewMixin:
 
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
-            identity=processor.create_identity(user, sp_config),
+            identity=processor.create_identity(user, sp_config.get('attribute_mapping')),
             name_id=name_id,
             userid=user_id,
             sp_entity_id=sp_config['id'],
             # Signing
             sign_response=sp_config['config'].get("sign_response") or self.IDP.config.getattr("sign_response", "idp") or False,
             sign_assertion=sp_config['config'].get("sign_assertion") or self.IDP.config.getattr("sign_assertion", "idp") or False,
-            sign_alg=sp_config['config'].get("signing_algorithm") or getattr(settings, "SAML_AUTHN_SIGN_ALG", False),
-            digest_alg=sp_config['config'].get("digest_algorithm") or getattr(settings, "SAML_AUTHN_DIGEST_ALG", False),
+            sign_alg=sp_config['config'].get("signing_algorithm") or getattr(settings, "SAML_AUTHN_SIGN_ALG", xmldsig.SIG_RSA_SHA256),
+            digest_alg=sp_config['config'].get("digest_algorithm") or getattr(settings, "SAML_AUTHN_DIGEST_ALG", xmldsig.DIGEST_SHA256),
             # Encryption
             encrypt_assertion=sp_config['config'].get('encrypt_saml_responses') or getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
             encrypted_advice_attributes=sp_config['config'].get('encrypt_saml_responses') or getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False),
