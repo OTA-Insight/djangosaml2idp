@@ -86,6 +86,7 @@ class IdPHandlerViewMixin:
     error_view = import_string(getattr(settings, 'SAML_IDP_ERROR_VIEW_CLASS', 'djangosaml2idp.error_views.SamlIDPErrorView'))
 
     def handle_error(self, request, **kwargs):
+        # Log the exception and the statuscode
         logger.error(kwargs)
         return self.error_view.as_view()(request, **kwargs)
 
@@ -141,8 +142,8 @@ class IdPHandlerViewMixin:
         if not req_info.signature_check(req_info.xmlstr):
             raise ValueError(_("Message signature verification failure"))
 
-    def check_access(self, processor, request) -> bool:
-        """ Check if user has access to the service of this SP
+    def check_access(self, processor, request):
+        """ Check if user has access to the service of this SP. Raises a PermissionDenied exception if not.
         """
         if not processor.has_access(request):
             raise PermissionDenied(_("You do not have access to this resource"))
@@ -273,7 +274,11 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             sp_config = self.get_sp_config(sp_entity_id)
             processor = self.get_processor(sp_entity_id, sp_config['config'].get('processor', ''))
             # Check if user has access
-            self.check_access(processor, request)
+            try:
+                # Check if user has access to SP
+                self.check_access(processor, request)
+            except PermissionDenied as excp:
+                return self.handle_error(request, exception=excp, status=403)
             # Construct SamlResponse message
             authn_resp = self.build_authn_response(request.user, self.get_authn(), resp_args, processor, sp_config)
         except Exception as e:
@@ -407,7 +412,6 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception as excp:
             logger.error("ServiceError: %s", excp)
             return self.handle_error(request, exception=excp, status=400)
-            # return resp(self.environ, self.start_response)
 
         logger.debug("--- {} Response [\n{}] ---".format(self.__service_name, repr_saml(resp.__str__().encode())))
         logger.debug("--- binding: {} destination:{} relay_state:{} ---".format(binding, resp.destination, relay_state))
@@ -425,7 +429,6 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 authn_resp=resp.__str__(),
                 destination=resp.destination,
                 relay_state=relay_state)
-        # todo: processor?
         return self.render_response(request, html_response, None)
 
 
