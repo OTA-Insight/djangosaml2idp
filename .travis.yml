@@ -1,16 +1,23 @@
 language: python
+sudo: required
+dist: buster
 python:
-  - "3.4"
   - "3.5"
   - "3.6"
   - "3.7"
+  - "3.8"
 env:
   - DJANGO_VERSION=2.0
   - DJANGO_VERSION=2.1
+  - DJANGO_VERSION=2.2
 install:
+  - sudo apt-get update
+  - sudo apt-get install xmlsec1
   - pip install -q Django==$DJANGO_VERSION
   - pip install -q -r requirements-dev.txt
   - python setup.py install
 script:
   - pylama -o pytest.ini
-  - python -Wall runtests.py
+  - py.test --cov=djangosaml2idp
+after_success:
+  codecov

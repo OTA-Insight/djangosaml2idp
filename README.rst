@@ -52,11 +52,11 @@ Configuration & Usage
 
 The first thing you need to do is add ``djangosaml2idp`` to the list of installed apps::
 
-  INSTALLED_APPS = (
-      'django.contrib.admin',
-      'djangosaml2idp',
-      ...
-  )
+    INSTALLED_APPS = (
+        'django.contrib.admin',
+        'djangosaml2idp',
+        ...
+    )
 
 Now include ``djangosaml2idp`` in your project by adding it in the url config::
 
@@ -118,12 +118,15 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
 Notice the configuration requires a private key and public certificate to be available on the filesystem in order to sign and encrypt messages.
 
 
-You also have to define a mapping for each SP you talk to::
+You also have to define a mapping for each SP you talk to. An example SP config::
 
     ...
     SAML_IDP_SPCONFIG = {
         'http://localhost:8000/saml2/metadata/': {
             'processor': 'djangosaml2idp.processors.BaseProcessor',
+            'nameid_field': 'staffID'
+            'sign_response': False,
+            'sign_assertion': False,
             'attribute_mapping': {
                 # DJANGO: SAML
                 'email': 'email',
@@ -131,13 +134,25 @@ You also have to define a mapping for each SP you talk to::
                 'last_name': 'last_name',
                 'is_staff': 'is_staff',
                 'is_superuser':  'is_superuser',
+                'callable_to_get_id': 'calculate_id',  # assuming <user_instance>.calculate_id() is a method
             }
-        }
+        },
+        # ...
+        # config of additional Service Providers
+        # ...
     }
 
+Please note that the only required field for each SP is the Entity ID, which is the key for each individual SP config dict. The bare minimum is setting ``SAML_IDP_CONFIG[Your Entity Id] = {}``.
+Also, ``attribute_mapping`` will default to ``{'username': 'username'}``.
+If you would like to not send any attributes to the SP, set ``attribute_mapping`` to an empty dict (``{}``).
+You can provide object attributes or callables names on the Django side in the attribute mapping. The callable needs to be a method on the object accepts 1 parameter (self), don't put parentheses in the attribute mapping.
 
-That's all for the IdP configuration. Assuming you run the Django development server on localhost:8000, you can get its metadata by visiting http://localhost:8000/idp/metadata/.
-Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
+If you want to override ``sign_assertion`` and/or ``sign_response`` for individual SPs, you can do so in ``SAML_IDP_SPCONFIG``, as seen above. If unset, these will default to the values set in ``SAML_IDP_CONFIG``.
+
+
+The last step is configuring metadata.
+Download a copy of the IdP's metadata from <YOUR_SERVER_URL>/idp/metadata (assuming that's how you set up your urls.py). Use it to configure your SPs as required by them.
+Obtain a copy of the metadata for each of your SPs, and upload them where you indicated in ``SAML_IDP_CONFIG['metadata]``
 
 Further optional configuration options
 ======================================
@@ -148,9 +163,11 @@ You can customize this behaviour by subclassing the `BaseProcessor` and overridi
 The processor has the SP entity ID available as `self._entity_id`, and received the request (with an authenticated request.user on it) as parameter to the `has_access` function.
 This way, you should have the necessary flexibility to perform whatever checks you need.
 An example `processor subclass <https://github.com/OTA-Insight/djangosaml2idp/blob/master/example_setup/idp/idp/processors.py>`_ can be found in the IdP of the included example.
+Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
 
 Without custom setting, users will be identified by the ``USERNAME_FIELD`` property on the user Model you use. By Django defaults this will be the username.
 You can customize which field is used for the identifier by adding ``SAML_IDP_DJANGO_USERNAME_FIELD`` to your settings with as value the attribute to use on your user instance.
+You can also override this per SP by setting ``nameid_field`` in the SP config, as seen in the sample ``SAML_IDP_SPCONFIG`` above.
 
 Customizing error handling
 ==========================
@@ -184,7 +201,8 @@ There are three main components to adding multiple factor support.
 
 2. Sublass the `djangosaml2idp.views.ProcessMultiFactorView` view to make the appropriate calls for your environment. Implement your custom verification logic in the `multifactor_is_valid` method: this could call a helper script, an internal SMS triggering service, a data source only the IdP can access or an external second factor provider (e.g. Symantec VIP). By default this view will log that it was called then redirect.
 
-3. Update your urls.py and add an override for name='saml_multi_factor' - ensure it comes before importing the djangosaml2idp urls file so your custom view is used instead of the built-in one.
+3. Add an entry to settings.py with a string representing the path to your multifactor view. The first package should be the app name:
+`SAML_IDP_MULTIFACTOR_VIEW = "this.is.the.path.to.your.multifactor.view`
 
 
 Running the test suite
