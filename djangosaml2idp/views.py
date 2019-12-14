@@ -9,7 +9,7 @@ from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
                                     ValidationError)
 from django.http import (HttpResponse, HttpResponseBadRequest,
                          HttpResponseRedirect)
-from django.template import get_template
+from django.template.loader import get_template
 from django.template.exceptions import (TemplateDoesNotExist,
                                         TemplateSyntaxError)
 from django.urls import reverse
