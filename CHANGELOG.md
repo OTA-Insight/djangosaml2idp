@@ -1,8 +1,8 @@
 # Changelog
 
-## [0.6.0] - 2019-12-13
+## [0.6.1] - 2019-12-13
 
-Many thanks for contributions to [@askvortsov1](https://github.com/askvortsov1) and [@peppelinux](https://github.com/peppelinux)
+Many thanks for contributions to [@askvortsov1](https://github.com/askvortsov1) and [@peppelinux](https://github.com/peppelinux) for the contributions in this release
 
 ### Added
 - More NameID formats supported, and a check on support for a format by the IDP was added. [#32](https://github.com/OTA-Insight/djangosaml2idp/issues/32), [#38](https://github.com/OTA-Insight/djangosaml2idp/issues/38), [#46](https://github.com/OTA-Insight/djangosaml2idp/issues/45)
