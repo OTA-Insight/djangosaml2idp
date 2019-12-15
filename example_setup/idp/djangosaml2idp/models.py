@@ -56,11 +56,17 @@ class ServiceProvider(models.Model):
 
     _nameid_field = models.CharField(verbose_name='NameID Field', blank=True, max_length=64, help_text='Attribute on the user to use as identifier during the NameID construction. Can be a callable. If not set, this will default to settings.SAML_IDP_DJANGO_USERNAME_FIELD; if that is not set, it will use the `USERNAME_FIELD` attribute on the active user model.')
 
-    sign_response = models.BooleanField(verbose_name='Sign response', default=True)
-    sign_assertion = models.BooleanField(verbose_name='Sign assertion', default=True)
+    # TODO: allow null, in which case it should default to global setting
+    # TODO: access property with fallback to default
+    _sign_response = models.BooleanField(verbose_name='Sign response', null=True)
+    _sign_assertion = models.BooleanField(verbose_name='Sign assertion', null=True)
 
     signing_algorithm = models.CharField(verbose_name='Signing algorithm', choices=[(constant, pretty) for (pretty, constant) in saml2.xmldsig.SIG_ALLOWED_ALG], default=settings.SAML_AUTHN_SIGN_ALG, max_length=256)
     digest_algorithm = models.CharField(verbose_name='Digest algorithm', choices=[(constant, pretty) for (pretty, constant) in saml2.xmldsig.DIGEST_ALLOWED_ALG], default=settings.SAML_AUTHN_DIGEST_ALG, max_length=256)
+
+    # TODO: help_text, what does this do exactly?
+    # TODO: access property with fallback to default
+    _encrypt_saml_responses = models.BooleanField(verbose_name='Encrypt SAML Response', default=False, null=True)
 
     class Meta:
         verbose_name = "Service Provider"
@@ -112,3 +118,23 @@ class ServiceProvider(models.Model):
     def processor(self, value: str):
         processor_cls = validate_processor_path(value)
         instantiate_processor(processor_cls, self.entity_id)
+
+    @property
+    def sign_response(self):
+        if self._sign_response is None:
+            idp = get_idp_config()
+            return idp.config.getattr("sign_response", False)
+        return self._sign_response
+
+    @property
+    def sign_assertion(self):
+        if self._sign_assertion is None:
+            idp = get_idp_config()
+            return idp.config.getattr("sign_assertion", False)
+        return self._sign_assertion
+
+    @property
+    def encrypt_saml_responses(self):
+        if self._encrypt_saml_responses is None:
+            return getattr(settings, "SAML_AUTHN_SIGN_ALG", xmldsig.SIG_RSA_SHA256)
+        return self._encrypt_saml_responses
