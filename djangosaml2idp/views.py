@@ -87,9 +87,9 @@ class IdPHandlerViewMixin:
             Raises an exception if no SP matching the given entity id can be found.
         """
         try:
-            sp = ServiceProvider.objects.get(entity_id=sp_entity_id)
+            sp = ServiceProvider.objects.get(entity_id=sp_entity_id, active=True)
         except ObjectDoesNotExist:
-            raise ImproperlyConfigured(_("No Service Provider object matching the entity_id '{}' found").format(sp_entity_id))
+            raise ImproperlyConfigured(_("No active Service Provider object matching the entity_id '{}' found").format(sp_entity_id))
         return sp
 
     def verify_request_signature(self, req_info):
