@@ -1,39 +1,33 @@
 import base64
-import copy
 import logging
 
 from django.conf import settings
 from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
-                                    ValidationError)
+from django.core.exceptions import (ImproperlyConfigured, ObjectDoesNotExist,
+                                    PermissionDenied, ValidationError)
 from django.http import (HttpResponse, HttpResponseBadRequest,
                          HttpResponseRedirect)
-from django.template.loader import get_template
-from django.core.exceptions import ObjectDoesNotExist
 from django.template.exceptions import (TemplateDoesNotExist,
                                         TemplateSyntaxError)
+from django.template.loader import get_template
 from django.urls import reverse
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.decorators import method_decorator
 from django.utils.module_loading import import_string
-from .idp import IDP
 from django.utils.translation import gettext as _
 from django.views import View
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT, xmldsig
+from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
-from saml2.config import IdPConfig
 from saml2.ident import NameID
-from saml2.metadata import entity_descriptor
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
-from saml2.server import Server
-from six import text_type
 
-from .processors import BaseProcessor
+from .idp import IDP
 from .models import ServiceProvider
+from .processors import BaseProcessor
 from .utils import repr_saml
 
 logger = logging.getLogger(__name__)
@@ -128,7 +122,7 @@ class IdPHandlerViewMixin:
         if name_id_format not in idp_name_id_format_list:
             raise ImproperlyConfigured(_('SP requested a name_id_format that is not supported in the IDP'))
 
-        user_id = processor.get_user_id(user, service_provider, idp_server.config)
+        user_id = processor.get_user_id(user, name_id_format, service_provider, idp_server.config)
         name_id = NameID(format=name_id_format, sp_name_qualifier=service_provider.entity_id, text=user_id)
 
         authn_resp = idp_server.create_authn_response(
@@ -418,7 +412,4 @@ def metadata(request):
     """ Returns an XML with the SAML 2.0 metadata for this Idp.
         The metadata is constructed on-the-fly based on the config dict in the django settings.
     """
-    conf = IdPConfig()
-    conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
-    metadata = entity_descriptor(conf)
-    return HttpResponse(content=text_type(metadata).encode('utf-8'), content_type="text/xml; charset=utf8")
+    return HttpResponse(content=IDP.metadata().encode('utf-8'), content_type="text/xml; charset=utf8")

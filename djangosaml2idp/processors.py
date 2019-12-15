@@ -1,15 +1,20 @@
 import hashlib
+import logging
+from typing import Dict
 
-from django.conf import settings
-from saml2.saml import (NAMEID_FORMAT_UNSPECIFIED,
-                        NAMEID_FORMAT_TRANSIENT,
-                        NAMEID_FORMAT_PERSISTENT,
-                        NAMEID_FORMAT_EMAILADDRESS,
-                        NAMEID_FORMAT_X509SUBJECTNAME,
+from django.core.exceptions import ValidationError
+from django.utils.module_loading import import_string
+from django.utils.translation import gettext as _
+from saml2.saml import (NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_ENCRYPTED,
+                        NAMEID_FORMAT_ENTITY, NAMEID_FORMAT_KERBEROS,
+                        NAMEID_FORMAT_PERSISTENT, NAMEID_FORMAT_TRANSIENT,
+                        NAMEID_FORMAT_UNSPECIFIED,
                         NAMEID_FORMAT_WINDOWSDOMAINQUALIFIEDNAME,
-                        NAMEID_FORMAT_KERBEROS,
-                        NAMEID_FORMAT_ENTITY,
-                        NAMEID_FORMAT_ENCRYPTED)
+                        NAMEID_FORMAT_X509SUBJECTNAME)
+
+from .models import ServiceProvider
+
+logger = logging.getLogger(__name__)
 
 
 class NameIdBuilder:
@@ -94,13 +99,10 @@ class BaseProcessor:
         """
         return False
 
-    def get_user_id(self, user, sp, idp_config):
-        """ Get identifier for a user. Take the one defined in
-            settings.SAML_IDP_DJANGO_USERNAME_FIELD first, if not set
-            use the USERNAME_FIELD property which is set on the
-            user Model. This defaults to the user.username field.
+    def get_user_id(self, user, name_id_format: str, service_provider: ServiceProvider, idp_config):
+        """ Get identifier for a user.
         """
-        user_field_str = sp['config'].get('nameid_field') or getattr(settings, 'SAML_IDP_DJANGO_USERNAME_FIELD', None) or getattr(user, 'USERNAME_FIELD', 'username')
+        user_field_str = service_provider.nameid_field
         user_field = getattr(user, user_field_str)
 
         if callable(user_field):
@@ -109,21 +111,37 @@ class BaseProcessor:
             user_id = str(user_field)
 
         # returns in a real name_id format
-        return NameIdBuilder.get_nameid(user_id, sp['name_id_format'], sp_entityid=sp['id'], idp_entityid=idp_config.entityid, user=user)
+        return NameIdBuilder.get_nameid(user_id, name_id_format, sp_entityid=service_provider.entity_id, idp_entityid=idp_config.entityid, user=user)
 
-    def create_identity(self, user, sp_attribute_mapping: dict = None):
+    def create_identity(self, user, sp_attribute_mapping: Dict[str, str]):
         """ Generate an identity dictionary of the user based on the
             given mapping of desired user attributes by the SP
         """
-        if sp_attribute_mapping is None:
-            attribute_mapping = {'username': 'username'}
-        else:
-            attribute_mapping = sp_attribute_mapping
-        # sp_mapping = sp['config'].get('attribute_mapping')
-
         results = {}
-        for user_attr, out_attr in attribute_mapping.items():
+        for user_attr, out_attr in sp_attribute_mapping.items():
             if hasattr(user, user_attr):
                 attr = getattr(user, user_attr)
                 results[out_attr] = attr() if callable(attr) else attr
         return results
+
+
+def validate_processor_path(processor_class_path):
+    try:
+        processor_cls = import_string(processor_class_path)
+    except ImportError as e:
+        msg = _("Failed to import processor class {}").format(processor_class_path)
+        logger.error(msg, exc_info=True)
+        raise ValidationError(msg) from e
+    return processor_cls
+
+
+def instantiate_processor(processor_cls, entity_id: str):
+    try:
+        processor_instance = processor_cls(entity_id)
+    except Exception as e:
+        msg = _("Failed to instantiate processor: {} - {}").format(processor_cls, e)
+        logger.error(msg, exc_info=True)
+        raise
+    if not isinstance(processor_instance, BaseProcessor):
+        raise ValidationError('{} should be a subclass of djangosaml2idp.processors.BaseProcessor'.format(processor_cls))
+    return processor_instance
