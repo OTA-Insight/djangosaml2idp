@@ -36,7 +36,7 @@ class NameIdBuilder:
     }
 
     @classmethod
-    def _get_nameid_opaque(cls, user_id, salt=b''):
+    def _get_nameid_opaque(cls, user_id, salt=b'', *args, **kwargs) -> str:
         """ Returns opaque salted unique identifiers
         """
         salted_value = user_id.encode()+salt
@@ -44,32 +44,32 @@ class NameIdBuilder:
         return opaque.hexdigest()
 
     @classmethod
-    def get_nameid_persistent(cls, user_id, sp_entityid='', idp_entityid='', user=None):
+    def get_nameid_persistent(cls, user_id, sp_entityid='', idp_entityid='', user=None) -> str:
         """ Get PersistentID in TransientID format
             see: http://software.internet2.edu/eduperson/internet2-mace-dir-eduperson-201602.html#eduPersonTargetedID
         """
         return '!'.join([idp_entityid, sp_entityid, cls._get_nameid_opaque(user_id, salt=str(user.pk).encode())])
 
     @classmethod
-    def get_nameid_email(cls, user_id, *args, **kwargs):
+    def get_nameid_email(cls, user_id, *args, **kwargs) -> str:
         if '@' not in user_id:
             raise Exception("user_id {} does not contain the '@' symbol, so is not a valid NameID Email address format.".format(user_id))
         return user_id
 
     @classmethod
-    def get_nameid_transient(cls, user_id, *args, **kwargs):
+    def get_nameid_transient(cls, user_id, *args, **kwargs) -> str:
         """ This would return EPPN
         """
         return user_id
 
     @classmethod
-    def get_nameid_unspecified(cls, user_id, *args, **kwargs):
+    def get_nameid_unspecified(cls, user_id, *args, **kwargs) -> str:
         """ returns user_id as is
         """
         return user_id
 
     @classmethod
-    def get_nameid(cls, user_id, nameid_format, **kwargs):
+    def get_nameid(cls, user_id, nameid_format, **kwargs) -> str:
         method = cls.format_mappings.get(nameid_format)
         if not method:
             raise NotImplementedError('{} was not been mapped in NameIdBuilder.format_mappings'.format(nameid_format))
@@ -89,17 +89,17 @@ class BaseProcessor:
     def __init__(self, entity_id):
         self._entity_id = entity_id
 
-    def has_access(self, request):
+    def has_access(self, request) -> bool:
         """ Check if this user is allowed to use this IDP
         """
         return True
 
-    def enable_multifactor(self, user):
+    def enable_multifactor(self, user) -> bool:
         """ Check if this user should use a second authentication system
         """
         return False
 
-    def get_user_id(self, user, name_id_format: str, service_provider: ServiceProvider, idp_config):
+    def get_user_id(self, user, name_id_format: str, service_provider: ServiceProvider, idp_config) -> bool:
         """ Get identifier for a user.
         """
         user_field_str = service_provider.nameid_field
@@ -113,7 +113,7 @@ class BaseProcessor:
         # returns in a real name_id format
         return NameIdBuilder.get_nameid(user_id, name_id_format, sp_entityid=service_provider.entity_id, idp_entityid=idp_config.entityid, user=user)
 
-    def create_identity(self, user, sp_attribute_mapping: Dict[str, str]):
+    def create_identity(self, user, sp_attribute_mapping: Dict[str, str]) -> Dict[str, str]:
         """ Generate an identity dictionary of the user based on the
             given mapping of desired user attributes by the SP
         """
@@ -135,7 +135,7 @@ def validate_processor_path(processor_class_path):
     return processor_cls
 
 
-def instantiate_processor(processor_cls, entity_id: str):
+def instantiate_processor(processor_cls, entity_id: str) -> 'BaseProcessor':
     try:
         processor_instance = processor_cls(entity_id)
     except Exception as e:

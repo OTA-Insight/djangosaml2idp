@@ -6,6 +6,7 @@ from django.conf import settings
 from django.db import models
 from django.utils.safestring import mark_safe
 from saml2 import xmldsig
+from django.utils.functional import cached_property
 
 from .idp import IDP
 
@@ -66,7 +67,7 @@ class ServiceProvider(models.Model):
         return json.loads(self._attribute_mapping)
 
     @property
-    def nameid_field(self):
+    def nameid_field(self) -> str:
         if self._nameid_field:
             return self._nameid_field
         if hasattr(settings, 'SAML_IDP_DJANGO_USERNAME_FIELD'):
@@ -76,38 +77,38 @@ class ServiceProvider(models.Model):
     # Do checks on validity of processor string both on setting and getting, as the
     # codebase can change regardless of the objects persisted in the database.
 
-    @property
-    def processor(self):
+    @cached_property
+    def processor(self) -> 'BaseProcessor':
         from .processors import validate_processor_path, instantiate_processor
         processor_cls = validate_processor_path(self._processor)
         return instantiate_processor(processor_cls, self.entity_id)
 
     @property
-    def sign_response(self):
+    def sign_response(self) -> bool:
         if self._sign_response is None:
             return getattr(IDP.load().config, "sign_response", False)
         return self._sign_response
 
     @property
-    def sign_assertion(self):
+    def sign_assertion(self) -> bool:
         if self._sign_assertion is None:
             return getattr(IDP.load().config, "sign_assertion", False)
         return self._sign_assertion
 
     @property
-    def encrypt_saml_responses(self):
+    def encrypt_saml_responses(self) -> bool:
         if self._encrypt_saml_responses is None:
             return getattr(settings, 'SAML_ENCRYPT_AUTHN_RESPONSE', False)
         return self._encrypt_saml_responses
 
     @property
-    def signing_algorithm(self):
+    def signing_algorithm(self) -> str:
         if self._signing_algorithm is None:
             return settings.SAML_AUTHN_SIGN_ALG
         return self._signing_algorithm
 
     @property
-    def digest_algorithm(self):
+    def digest_algorithm(self) -> str:
         if self._digest_algorithm is None:
             return settings.SAML_AUTHN_DIGEST_ALG
         return self._digest_algorithm

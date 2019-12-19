@@ -312,7 +312,7 @@ class TestIdPHandlerViewMixin:
                 "in_response_to": "SP_Initiated_Login",
                 "destination": "https://sp.example.com/SAML2",
             }
-            assert isinstance(mixin.build_authn_response(user, authn, resp_args, processor, sp), Response)
+            assert isinstance(mixin.build_authn_response(user, authn, resp_args, sp), Response)
 
     def test_create_html_response_with_post(self):
         html_response = IdPHandlerViewMixin().create_html_response(HttpRequest(), BINDING_HTTP_POST, "SAMLResponse", "https://sp.example.com/SAML2", "")

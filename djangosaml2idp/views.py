@@ -1,5 +1,6 @@
 import base64
 import logging
+from typing import NoReturn
 
 from django.conf import settings
 from django.contrib.auth import logout
@@ -92,7 +93,7 @@ class IdPHandlerViewMixin:
             raise ImproperlyConfigured(_("No active Service Provider object matching the entity_id '{}' found").format(sp_entity_id))
         return sp
 
-    def verify_request_signature(self, req_info):
+    def verify_request_signature(self, req_info) -> NoReturn:
         """ Signature verification for authn request signature_check is at
             saml2.sigver.SecurityContext.correctly_signed_authn_request
         """
@@ -100,7 +101,7 @@ class IdPHandlerViewMixin:
         if not req_info.signature_check(req_info.xmlstr):
             raise ValueError(_("Message signature verification failure"))
 
-    def check_access(self, processor, request):
+    def check_access(self, processor: BaseProcessor, request) -> NoReturn:
         """ Check if user has access to the service of this SP. Raises a PermissionDenied exception if not.
         """
         if not processor.has_access(request):
@@ -112,7 +113,7 @@ class IdPHandlerViewMixin:
         broker.add(authn_context_class_ref(req_authn_context), "")
         return broker.get_authn_by_accr(req_authn_context)
 
-    def build_authn_response(self, user, authn, resp_args, processor: BaseProcessor, service_provider: ServiceProvider):
+    def build_authn_response(self, user, authn, resp_args, service_provider: ServiceProvider):
         """ pysaml2 server.Server.create_authn_response wrapper
         """
         name_id_format = resp_args.get('name_id_policy') or NAMEID_FORMAT_UNSPECIFIED
@@ -122,6 +123,7 @@ class IdPHandlerViewMixin:
         if name_id_format not in idp_name_id_format_list:
             raise ImproperlyConfigured(_('SP requested a name_id_format that is not supported in the IDP: {}').format(name_id_format))
 
+        processor: BaseProcessor = service_provider.processor
         user_id = processor.get_user_id(user, name_id_format, service_provider, idp_server.config)
         name_id = NameID(format=name_id_format, sp_name_qualifier=service_provider.entity_id, text=user_id)
 
@@ -186,7 +188,7 @@ class IdPHandlerViewMixin:
             }
         return html_response
 
-    def render_response(self, request, html_response, processor: BaseProcessor = None):
+    def render_response(self, request, html_response, processor: BaseProcessor = None) -> HttpResponse:
         """ Return either a response as redirect to MultiFactorView or as html with self-submitting form to log in.
         """
         if not processor:
@@ -234,15 +236,14 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             # Set SP and Processor
             sp_entity_id = resp_args.pop('sp_entity_id')
             service_provider = self.get_sp(sp_entity_id)
-            processor = service_provider.processor
             # Check if user has access
             try:
                 # Check if user has access to SP
-                self.check_access(processor, request)
+                self.check_access(service_provider.processor, request)
             except PermissionDenied as excp:
                 return self.handle_error(request, exception=excp, status=403)
             # Construct SamlResponse message
-            authn_resp = self.build_authn_response(request.user, self.get_authn(), resp_args, processor, service_provider)
+            authn_resp = self.build_authn_response(request.user, self.get_authn(), resp_args, service_provider)
         except Exception as e:
             return self.handle_error(request, exception=e, status=500)
 
@@ -254,7 +255,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             relay_state=request.session['RelayState'])
 
         logger.debug("--- SAML Authn Response [\n{}] ---".format(repr_saml(str(authn_resp))))
-        return self.render_response(request, html_response, processor)
+        return self.render_response(request, html_response, service_provider.processor)
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -293,7 +294,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         passed_data['in_response_to'] = "IdP_Initiated_Login"
 
         # Construct SamlResponse messages
-        authn_resp = self.build_authn_response(request.user, self.get_authn(), passed_data, processor, service_provider)
+        authn_resp = self.build_authn_response(request.user, self.get_authn(), passed_data, service_provider)
 
         html_response = self.create_html_response(request, binding_out, authn_resp, destination, passed_data.get('RelayState', ""))
         return self.render_response(request, html_response, processor)
@@ -305,7 +306,7 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
         Override this view per the documentation if using this functionality to plug in your custom validation logic.
     """
 
-    def multifactor_is_valid(self, request):
+    def multifactor_is_valid(self, request) -> bool:
         """ The code here can do whatever it needs to validate your user (via request.user or elsewise).
             It must return True for authentication to be considered a success.
         """
