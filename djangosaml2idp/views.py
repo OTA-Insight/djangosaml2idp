@@ -115,12 +115,12 @@ class IdPHandlerViewMixin:
     def build_authn_response(self, user, authn, resp_args, processor: BaseProcessor, service_provider: ServiceProvider):
         """ pysaml2 server.Server.create_authn_response wrapper
         """
-        name_id_format = resp_args.get('name_id_policy').format or NAMEID_FORMAT_UNSPECIFIED
+        name_id_format = resp_args.get('name_id_policy') or NAMEID_FORMAT_UNSPECIFIED
         idp_server = IDP.load()
         idp_name_id_format_list = idp_server.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
 
         if name_id_format not in idp_name_id_format_list:
-            raise ImproperlyConfigured(_('SP requested a name_id_format that is not supported in the IDP'))
+            raise ImproperlyConfigured(_('SP requested a name_id_format that is not supported in the IDP: {}').format(name_id_format))
 
         user_id = processor.get_user_id(user, name_id_format, service_provider, idp_server.config)
         name_id = NameID(format=name_id_format, sp_name_qualifier=service_provider.entity_id, text=user_id)
