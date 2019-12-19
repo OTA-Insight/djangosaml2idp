@@ -1,5 +1,6 @@
 import base64
 import copy
+import logging
 import xml
 from urllib import parse
 
@@ -8,23 +9,26 @@ from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.sessions.backends.db import SessionStore
 from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
                                     ValidationError)
-from django.http import (HttpRequest, HttpResponse, HttpResponseBadRequest, HttpResponseRedirect)
+from django.http import (HttpRequest, HttpResponse, HttpResponseBadRequest,
+                         HttpResponseRedirect)
 from django.utils import timezone
 from django.utils.six import binary_type
 from saml2 import saml
 from saml2.client import Saml2Client
 from saml2.config import SPConfig
 from saml2.samlp import Response
+
 from djangosaml2idp.models import ServiceProvider
 from djangosaml2idp.processors import BaseProcessor
 from djangosaml2idp.utils import encode_saml
-from djangosaml2idp.views import (BINDING_HTTP_POST, BINDING_HTTP_REDIRECT,
-                                  IdPHandlerViewMixin, LoginProcessView,
-                                  LogoutProcessView, ProcessMultiFactorView,
-                                #   Server,
-                                  SSOInitView,
+from djangosaml2idp.views import (BINDING_HTTP_POST,  # Server,
+                                  BINDING_HTTP_REDIRECT, IdPHandlerViewMixin,
+                                  LoginProcessView, LogoutProcessView,
+                                  ProcessMultiFactorView, SSOInitView,
                                   get_multifactor, metadata, sso_entry,
                                   store_params_in_session)
+
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
@@ -310,231 +314,235 @@ class TestIdPHandlerViewMixin:
             }
             assert isinstance(mixin.build_authn_response(user, authn, resp_args, processor, sp), Response)
 
-    # def test_create_html_response_with_post(self):
-    #     html_response = IdPHandlerViewMixin().create_html_response(HttpRequest(), BINDING_HTTP_POST, "SAMLResponse", "https://sp.example.com/SAML2", "")
-    #     assert isinstance(html_response['data'], str)
+    def test_create_html_response_with_post(self):
+        html_response = IdPHandlerViewMixin().create_html_response(HttpRequest(), BINDING_HTTP_POST, "SAMLResponse", "https://sp.example.com/SAML2", "")
+        assert isinstance(html_response['data'], str)
 
-#     def test_create_html_response_with_get(self):
-#         mixin = IdPHandlerViewMixin()
-#         try:
-#             mixin.dispatch(HttpRequest())
-#         except AttributeError:
-#             html_response = mixin.create_html_response(HttpRequest(), BINDING_HTTP_REDIRECT, "SAMLResponse", "https://sp.example.com/SAML2", "")
-#             assert isinstance(html_response['data'], str)
+    def test_create_html_response_with_get(self):
+        mixin = IdPHandlerViewMixin()
+        try:
+            mixin.dispatch(HttpRequest())
+        except AttributeError:
+            html_response = mixin.create_html_response(HttpRequest(), BINDING_HTTP_REDIRECT, "SAMLResponse", "https://sp.example.com/SAML2", "")
+            assert isinstance(html_response['data'], str)
 
-#     def test_render_response_with_no_processor_and_post_binding(self):
-#         html_response = {
-#             "type": "POST",
-#             "data": "<html></html>"
-#         }
-#         response = IdPHandlerViewMixin().render_response(HttpRequest(), html_response)
+    def test_render_response_with_no_processor_and_post_binding(self):
+        html_response = {
+            "type": "POST",
+            "data": "<html></html>"
+        }
+        response = IdPHandlerViewMixin().render_response(HttpRequest(), html_response)
 
-#         assert response.content.decode() == "<html></html>"
-#         assert isinstance(response, HttpResponse)
+        assert response.content.decode() == "<html></html>"
+        assert isinstance(response, HttpResponse)
 
-#     def compile_data_for_render_response(self):
-#         mixin = IdPHandlerViewMixin()
-#         mixin.set_sp("test_generic_sp")
-#         mixin.set_processor()
+    def compile_data_for_render_response(self):
+        ServiceProvider.objects.create(entity_id='test_generic_sp', metadata=sp_metadata_xml)
 
-#         user = User.objects.create()
-#         user.email = "test@gmail.com",
-#         user.first_name = 'First Name',
-#         user.last_name = 'Last Name',
-#         user.is_staff = True
-#         user.is_superuser = False
+        mixin = IdPHandlerViewMixin()
+        sp = mixin.get_sp("test_generic_sp")
 
-#         request = HttpRequest()
-#         request.user = user
-#         request.session = {}
+        user = User.objects.create()
+        user.email = "test@gmail.com",
+        user.first_name = 'First Name',
+        user.last_name = 'Last Name',
+        user.is_staff = True
+        user.is_superuser = False
 
-#         html_response = {
-#             "type": "POST",
-#             "data": "<html></html>"
-#         }
-#         return mixin, request, html_response
+        request = HttpRequest()
+        request.user = user
+        request.session = {}
 
-#     def test_render_response_with_no_processor_and_redirect_binding(self):
-#         html_response = {
-#             "type": "REDIRECT",
-#             "data": "https://example.com"
-#         }
-#         response = IdPHandlerViewMixin().render_response(HttpRequest(), html_response)
+        html_response = {
+            "type": "POST",
+            "data": "<html></html>"
+        }
+        return mixin, request, html_response
 
-#         assert response.url == "https://example.com"
-#         assert isinstance(response, HttpResponseRedirect)
+    @pytest.mark.django_db
+    def test_render_response_with_no_processor_and_redirect_binding(self):
+        html_response = {
+            "type": "REDIRECT",
+            "data": "https://example.com"
+        }
+        response = IdPHandlerViewMixin().render_response(HttpRequest(), html_response)
 
-#     @pytest.mark.django_db
-#     def test_render_response_constructs_request_session_properly(self):
-#         (mixin, request, html_response) = self.compile_data_for_render_response()
+        assert response.url == "https://example.com"
+        assert isinstance(response, HttpResponseRedirect)
 
-#         expected_session = {
-#             "identity": {
-#                 "email": ("test@gmail.com",),
-#                 "first_name": ("First Name",),
-#                 "last_name": ("Last Name",),
-#                 "is_staff": True,
-#                 "is_superuser": False
-#             },
-#             "sp_display_info": ("test_generic_sp", None),
-#             "sp_entity_id": "test_generic_sp",
-#             "saml_data": html_response
-#         }
+    @pytest.mark.django_db
+    def test_render_response_constructs_request_session_properly(self):
+        (mixin, request, html_response) = self.compile_data_for_render_response()
 
-#         mixin.render_response(request, html_response)
-#         assert all(item in request.session.items() for item in expected_session.items())
+        expected_session = {
+            "saml_data": html_response
+        }
 
-#     @pytest.mark.django_db
-#     def test_redirects_multifactor_if_relevant(self):
-#         (mixin, request, html_response) = self.compile_data_for_render_response()
+        mixin.render_response(request, html_response, mixin.get_sp('test_generic_sp').processor)
 
-#         def multifactor(self, user):
-#             return True
-#         # Bind enable_multifactor being true to mixin processor.
-#         mixin.processor.enable_multifactor = multifactor.__get__(mixin.processor)
-#         response = mixin.render_response(request, html_response)
-#         assert isinstance(response, HttpResponseRedirect)
-#         assert response.url == "/login/process_multi_factor/"
+        assert all(item in request.session.items() for item in expected_session.items())
+
+    @pytest.mark.django_db
+    def test_redirects_multifactor_if_relevant(self):
+        (mixin, request, html_response) = self.compile_data_for_render_response()
+
+        def multifactor(self, user):
+            return True
+
+        # Bind enable_multifactor being true to mixin processor.
+        processor = mixin.get_sp('test_generic_sp').processor
+        processor.enable_multifactor = multifactor.__get__(processor)
+        response = mixin.render_response(request, html_response, processor)
+        assert isinstance(response, HttpResponseRedirect)
+        assert response.url == "/login/process_multi_factor/"
 
 
-# class TestLoginProcessView:
-#     @pytest.mark.django_db
-#     def test_requires_authentication(self):
-#         request = get_logged_in_request()
-#         logout(request)
+class TestLoginProcessView:
+    @pytest.mark.django_db
+    def test_requires_authentication(self):
+        request = get_logged_in_request()
+        logout(request)
 
-#         response = LoginProcessView.as_view()(request)
-#         assert isinstance(response, HttpResponseRedirect)
-#         assert response.url == '/accounts/login/?next='
+        response = LoginProcessView.as_view()(request)
+        assert isinstance(response, HttpResponseRedirect)
+        assert response.url == '/accounts/login/?next='
 
-#     @pytest.mark.django_db
-#     def test_goes_through_normally_redirect(self):
-#         request = get_logged_in_request()
-#         # Simulating having already gone through sso_entry
-#         request.session.update({
-#             "SAMLRequest": get_saml_login_request(),
-#             "RelayState": "",
-#             "Binding": BINDING_HTTP_REDIRECT
-#         })
+    @pytest.mark.django_db
+    def test_goes_through_normally_redirect(self):
+        ServiceProvider.objects.create(entity_id='test_generic_sp', metadata=sp_metadata_xml)
 
-#         response = LoginProcessView.as_view()(request)
-#         assert isinstance(response, HttpResponse)
+        request = get_logged_in_request()
+        # Simulating having already gone through sso_entry
+        request.session.update({
+            "SAMLRequest": get_saml_login_request(),
+            "RelayState": "",
+            "Binding": BINDING_HTTP_REDIRECT
+        })
 
-#     @pytest.mark.django_db
-#     def test_goes_through_normally_post(self):
-#         request = get_logged_in_request()
-#         request.session.update({
-#             "SAMLRequest": get_saml_login_request(),
-#             "RelayState": "",
-#             "Binding": BINDING_HTTP_POST
-#         })
+        response = LoginProcessView.as_view()(request)
+        assert isinstance(response, HttpResponse)
 
+    @pytest.mark.django_db
+    def test_goes_through_normally_post(self):
+        ServiceProvider.objects.create(entity_id='test_generic_sp', metadata=sp_metadata_xml)
 
-# class TestIdpInitiatedFlow:
-#     @pytest.mark.django_db
-#     def test_goes_through_correctly_get(self):
-#         request = get_logged_in_request()
-#         request.GET['sp'] = "test_generic_sp"
+        request = get_logged_in_request()
+        request.session.update({
+            "SAMLRequest": get_saml_login_request(),
+            "RelayState": "",
+            "Binding": BINDING_HTTP_POST
+        })
 
-#         response = SSOInitView.as_view()(request)
-#         assert isinstance(response, HttpResponse)
-
-#     @pytest.mark.django_db
-#     def test_goes_through_correctly_post(self):
-#         request = get_logged_in_request()
-#         request.method = 'POST'
-#         request.POST['sp'] = "test_generic_sp"
-
-#         response = SSOInitView.as_view()(request)
-#         assert isinstance(response, HttpResponse)
-
-#     @pytest.mark.django_db
-#     def test_requires_authentication(self):
-#         request = get_logged_in_request()
-
-#         logout(request)
-#         response = SSOInitView.as_view()(request)
-#         assert isinstance(response, HttpResponseRedirect)
-#         assert response.url == '/accounts/login/?next='
+        response = LoginProcessView.as_view()(request)
+        assert isinstance(response, HttpResponse)
 
 
-# class TestGetMultifactor:
-#     @pytest.mark.django_db
-#     def test_loads_data_when_appropriate_with_post(self):
-#         # We only really need to test one aspect. If the system doesn't work, it won't work.
-#         request = get_logged_in_request()
-#         request.session['saml_data'] = {
-#             "type": "POST",
-#             "data": "<html></html>",
-#         }
-#         response = get_multifactor(request)
-#         assert isinstance(response, HttpResponse)
-#         assert response.content == '<html></html>'.encode()
+class TestIdpInitiatedFlow:
+    @pytest.mark.django_db
+    def test_goes_through_correctly_get(self):
+        request = get_logged_in_request()
+        request.GET['sp'] = "test_generic_sp"
 
-#     @pytest.mark.django_db
-#     def test_works_with_replacement(self, settings):
-#         settings.SAML_IDP_MULTIFACTOR_VIEW = "tests.test_views.CustomMultifactorView"
-#         request = get_logged_in_request()
-#         response = get_multifactor(request)
-#         assert isinstance(response, HttpResponse)
-#         assert response.content == b""
+        response = SSOInitView.as_view()(request)
+        assert isinstance(response, HttpResponse)
 
+    @pytest.mark.django_db
+    def test_goes_through_correctly_post(self):
+        request = get_logged_in_request()
+        request.method = 'POST'
+        request.POST['sp'] = "test_generic_sp"
 
-# class TestMultifactor:
-#     @pytest.mark.django_db
-#     def test_multifactor_is_valid_returns_true_by_default(self):
-#         request = get_logged_in_request()
-#         assert ProcessMultiFactorView().multifactor_is_valid(request) is True
+        response = SSOInitView.as_view()(request)
+        assert isinstance(response, HttpResponse)
 
-#     @pytest.mark.django_db
-#     def test_loads_data_when_appropriate_with_post(self):
-#         request = get_logged_in_request()
-#         request.session['saml_data'] = {
-#             "type": "POST",
-#             "data": "<html></html>",
-#         }
-#         response = ProcessMultiFactorView.as_view()(request)
-#         assert isinstance(response, HttpResponse)
-#         assert response.content == '<html></html>'.encode()
+    @pytest.mark.django_db
+    def test_requires_authentication(self):
+        request = get_logged_in_request()
 
-#     @pytest.mark.django_db
-#     def test_loads_data_when_appropriate_with_redirect(self):
-#         request = get_logged_in_request()
-#         request.session['saml_data'] = {
-#             "type": "REDIRECT",
-#             "data": "https://example.com",
-#         }
-#         response = ProcessMultiFactorView.as_view()(request)
-#         assert isinstance(response, HttpResponseRedirect)
-#         assert response.url == "https://example.com"
-
-#     @pytest.mark.django_db
-#     def test_get_logs_out_if_multifactor_invalid(self):
-#         request = get_logged_in_request()
-
-#         def valid(self, request):
-#             return False
-#         a = ProcessMultiFactorView.multifactor_is_valid
-#         ProcessMultiFactorView.multifactor_is_valid = valid
-#         with pytest.raises(PermissionDenied):
-#             ProcessMultiFactorView.as_view()(request)
-#         ProcessMultiFactorView.multifactor_is_valid = a
+        logout(request)
+        response = SSOInitView.as_view()(request)
+        assert isinstance(response, HttpResponseRedirect)
+        assert response.url == '/accounts/login/?next='
 
 
-# class TestLogoutProcessView:
-#     @pytest.mark.django_db
-#     def test_slo_view_works_properly_redirect(self):
-#         request = get_logged_in_request()
-#         request.GET['SAMLRequest'] = get_saml_logout_request()
+class TestGetMultifactor:
+    @pytest.mark.django_db
+    def test_loads_data_when_appropriate_with_post(self):
+        # We only really need to test one aspect. If the system doesn't work, it won't work.
+        request = get_logged_in_request()
+        request.session['saml_data'] = {
+            "type": "POST",
+            "data": "<html></html>",
+        }
+        response = get_multifactor(request)
+        assert isinstance(response, HttpResponse)
+        assert response.content == '<html></html>'.encode()
 
-#         response = LogoutProcessView.as_view()(request)
+    @pytest.mark.django_db
+    def test_works_with_replacement(self, settings):
+        settings.SAML_IDP_MULTIFACTOR_VIEW = "tests.test_views.CustomMultifactorView"
+        request = get_logged_in_request()
+        response = get_multifactor(request)
+        assert isinstance(response, HttpResponse)
+        assert response.content == b""
 
-#         assert isinstance(response, HttpResponse)
+
+class TestMultifactor:
+    @pytest.mark.django_db
+    def test_multifactor_is_valid_returns_true_by_default(self):
+        request = get_logged_in_request()
+        assert ProcessMultiFactorView().multifactor_is_valid(request) is True
+
+    @pytest.mark.django_db
+    def test_loads_data_when_appropriate_with_post(self):
+        request = get_logged_in_request()
+        request.session['saml_data'] = {
+            "type": "POST",
+            "data": "<html></html>",
+        }
+        response = ProcessMultiFactorView.as_view()(request)
+        assert isinstance(response, HttpResponse)
+        assert response.content == '<html></html>'.encode()
+
+    @pytest.mark.django_db
+    def test_loads_data_when_appropriate_with_redirect(self):
+        request = get_logged_in_request()
+        request.session['saml_data'] = {
+            "type": "REDIRECT",
+            "data": "https://example.com",
+        }
+        response = ProcessMultiFactorView.as_view()(request)
+        assert isinstance(response, HttpResponseRedirect)
+        assert response.url == "https://example.com"
+
+    @pytest.mark.django_db
+    def test_get_logs_out_if_multifactor_invalid(self):
+        request = get_logged_in_request()
+
+        def valid(self, request):
+            return False
+        a = ProcessMultiFactorView.multifactor_is_valid
+        ProcessMultiFactorView.multifactor_is_valid = valid
+        with pytest.raises(PermissionDenied):
+            ProcessMultiFactorView.as_view()(request)
+        ProcessMultiFactorView.multifactor_is_valid = a
 
 
-# class TestMetadata:
-#     def test_metadata_works_correctly(self):
-#         response = metadata(HttpRequest())
-#         assert isinstance(response, HttpResponse)
-#         assert response.charset == 'utf8'
-#         assert response.status_code == 200
+class TestLogoutProcessView:
+    @pytest.mark.django_db
+    def test_slo_view_works_properly_redirect(self):
+        request = get_logged_in_request()
+        request.GET['SAMLRequest'] = get_saml_logout_request()
+
+        response = LogoutProcessView.as_view()(request)
+
+        assert isinstance(response, HttpResponse)
+
+
+class TestMetadata:
+    def test_metadata_works_correctly(self):
+        response = metadata(HttpRequest())
+        assert isinstance(response, HttpResponse)
+        assert response.charset == 'utf8'
+        assert response.status_code == 200
+        assert 'Location="http://localhost:9000/idp' in response.content.decode()
