@@ -219,6 +219,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """
 
     def get(self, request, *args, **kwargs):
+        import ipdb; ipdb.set_trace()
         binding = request.session.get('Binding', BINDING_HTTP_POST)
 
         # TODO: would it be better to store SAML info in request objects?
@@ -227,8 +228,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             idp_server = IDP.load()
 
             # Parse incoming request
-            req_info = idp_server.parse_authn_request(request.session['SAMLRequest'],
-                                                    binding)
+            req_info = idp_server.parse_authn_request(request.session['SAMLRequest'], binding)
             # check SAML request signature
             self.verify_request_signature(req_info)
             # Compile Response Arguments
