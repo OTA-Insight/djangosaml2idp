@@ -134,16 +134,18 @@ You also have to define a mapping for each SP you talk to. An example SP config:
                 'last_name': 'last_name',
                 'is_staff': 'is_staff',
                 'is_superuser':  'is_superuser',
-                'method_to_get_id': 'id',
+                'callable_to_get_id': 'calculate_id',  # assuming <user_instance>.calculate_id() is a method
             }
         },
-        'bare_minimum_config': {}
+        # ...
+        # config of additional Service Providers
+        # ...
     }
 
 Please note that the only required field for each SP is the Entity ID, which is the key for each individual SP config dict. The bare minimum is setting ``SAML_IDP_CONFIG[Your Entity Id] = {}``.
 Also, ``attribute_mapping`` will default to ``{'username': 'username'}``.
 If you would like to not send any attributes to the SP, set ``attribute_mapping`` to an empty dict (``{}``).
-You can provide methods instead of attributes from the Django side in the attribute mapping. Just make sure that the method only accepts 1 parameter (self), and that you don't put parentheses in the attribute mapping.
+You can provide object attributes or callables names on the Django side in the attribute mapping. The callable needs to be a method on the object accepts 1 parameter (self), don't put parentheses in the attribute mapping.
 
 If you want to override ``sign_assertion`` and/or ``sign_response`` for individual SPs, you can do so in ``SAML_IDP_SPCONFIG``, as seen above. If unset, these will default to the values set in ``SAML_IDP_CONFIG``.
 
@@ -166,9 +168,6 @@ Use this metadata xml to configure your SP. Place the metadata xml from that SP 
 Without custom setting, users will be identified by the ``USERNAME_FIELD`` property on the user Model you use. By Django defaults this will be the username.
 You can customize which field is used for the identifier by adding ``SAML_IDP_DJANGO_USERNAME_FIELD`` to your settings with as value the attribute to use on your user instance.
 You can also override this per SP by setting ``nameid_field`` in the SP config, as seen in the sample ``SAML_IDP_SPCONFIG`` above.
-
-User Agreement Screen
-=====================
 
 The User Agreement Screen shows users information about what is being sent to the SP, as well as information about the given SP. This can be toggled globally through the `SAML_IDP_SHOW_USER_AGREEMENT_SCREEN = True` setting. That can be overriden per-SP with `show_user_agreement_screen`.
 
@@ -214,6 +213,7 @@ An example setup can be found below::
     SAML_IDP_USER_AGREEMENT_ATTR_EXCLUDE = ['secret_attr']
     SAML_IDP_USER_AGREEMENT_VALID_FOR = 24 * 365  # User agreements will be valid for 1 year unless overriden. If this attribute is not used, user agreements will not expire
 
+=======
 
 Customizing error handling
 ==========================
