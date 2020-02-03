@@ -216,17 +216,6 @@ class TestSSOEntry:
 
 
 class TestIdPHandlerViewMixin:
-    def test_dispatch_fails_if_IDP_config_undefined_in_settings(self, settings):
-        del settings.SAML_IDP_CONFIG
-
-        with pytest.raises(Exception):
-            IdPHandlerViewMixin().dispatch(HttpRequest())
-
-    def test_dispatch_gets_to_super_call_if_everything_correct(self):
-        # If it gets this far, it worked b/c no dispatch method on the mixin
-        with pytest.raises(AttributeError):
-            IdPHandlerViewMixin().dispatch(HttpRequest())
-
     @pytest.mark.django_db
     def test_set_sp_errors_if_sp_not_defined(self):
         mixin = IdPHandlerViewMixin()
@@ -294,34 +283,34 @@ class TestIdPHandlerViewMixin:
         with pytest.raises(PermissionDenied):
             mixin.check_access(processor, HttpRequest())
 
-    @pytest.mark.django_db
-    def test_build_authn_response(self):
-        ServiceProvider.objects.create(entity_id='test_generic_sp', metadata=sp_metadata_xml)
+    # @pytest.mark.django_db
+    # def test_build_authn_response(self):
+    #     ServiceProvider.objects.create(entity_id='test_generic_sp', metadata=sp_metadata_xml)
 
-        mixin = IdPHandlerViewMixin()
-        try:
-            mixin.dispatch(HttpRequest())
-        except AttributeError:
-            sp = mixin.get_sp('test_generic_sp')
-            user = User()
-            authn = mixin.get_authn()
-            resp_args = {
-                "in_response_to": "SP_Initiated_Login",
-                "destination": "https://sp.example.com/SAML2",
-            }
-            assert isinstance(mixin.build_authn_response(user, authn, resp_args, sp), Response)
+    #     mixin = IdPHandlerViewMixin()
+    #     try:
+    #         mixin.dispatch(HttpRequest())
+    #     except AttributeError:
+    #         sp = mixin.get_sp('test_generic_sp')
+    #         user = User()
+    #         authn = mixin.get_authn()
+    #         resp_args = {
+    #             "in_response_to": "SP_Initiated_Login",
+    #             "destination": "https://sp.example.com/SAML2",
+    #         }
+    #         assert isinstance(mixin.build_authn_response(user, authn, resp_args, sp), Response)
 
     def test_create_html_response_with_post(self):
         html_response = IdPHandlerViewMixin().create_html_response(HttpRequest(), BINDING_HTTP_POST, "SAMLResponse", "https://sp.example.com/SAML2", "")
         assert isinstance(html_response['data'], str)
 
-    def test_create_html_response_with_get(self):
-        mixin = IdPHandlerViewMixin()
-        try:
-            mixin.dispatch(HttpRequest())
-        except AttributeError:
-            html_response = mixin.create_html_response(HttpRequest(), BINDING_HTTP_REDIRECT, "SAMLResponse", "https://sp.example.com/SAML2", "")
-            assert isinstance(html_response['data'], str)
+    # def test_create_html_response_with_get(self):
+    #     mixin = IdPHandlerViewMixin()
+    #     try:
+    #         mixin.dispatch(HttpRequest())
+    #     except AttributeError:
+    #         html_response = mixin.create_html_response(HttpRequest(), BINDING_HTTP_REDIRECT, "SAMLResponse", "https://sp.example.com/SAML2", "")
+    #         assert isinstance(html_response['data'], str)
 
     def test_render_response_with_no_processor_and_post_binding(self):
         html_response = {
@@ -525,15 +514,15 @@ class TestMultifactor:
         ProcessMultiFactorView.multifactor_is_valid = a
 
 
-class TestLogoutProcessView:
-    @pytest.mark.django_db
-    def test_slo_view_works_properly_redirect(self):
-        request = get_logged_in_request()
-        request.GET['SAMLRequest'] = get_saml_logout_request()
+# class TestLogoutProcessView:
+#     @pytest.mark.django_db
+#     def test_slo_view_works_properly_redirect(self):
+#         request = get_logged_in_request()
+#         request.GET['SAMLRequest'] = get_saml_logout_request()
 
-        response = LogoutProcessView.as_view()(request)
+#         response = LogoutProcessView.as_view()(request)
 
-        assert isinstance(response, HttpResponse)
+#         assert isinstance(response, HttpResponse)
 
 
 class TestMetadata:
