@@ -1,5 +1,5 @@
-:Release: 0.5.0
-:Date: 12-01-2019
+:Release: 0.6.1
+:Date: 2019-12-13
 
 Welcome to djangosaml2idp's documentation!
 ==========================================

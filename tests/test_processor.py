@@ -89,4 +89,4 @@ class TestBaseProcessor:
             'randomMethodTest': 'test method result'
         }
 
-        assert BaseProcessor('entity_id').create_identity(user, sp_config) == expected_result
+        assert BaseProcessor('entity_id').create_identity(user, sp_config.get('attribute_mapping')) == expected_result
