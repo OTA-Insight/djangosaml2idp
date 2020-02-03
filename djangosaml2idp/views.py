@@ -157,7 +157,12 @@ class IdPHandlerViewMixin:
     def build_authn_response(self, user, authn, resp_args, processor: BaseProcessor, sp_config: dict):
         """ pysaml2 server.Server.create_authn_response wrapper
         """
-        sp_config['name_id_format'] = resp_args.get('name_id_policy').format or NAMEID_FORMAT_UNSPECIFIED
+        policy = resp_args.get('name_id_policy', None)
+        if policy is None:
+            sp_config['name_id_format'] = NAMEID_FORMAT_UNSPECIFIED
+        else:
+            sp_config['name_id_format'] = policy.format
+
         idp_name_id_format_list = self.IDP.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
 
         if sp_config['name_id_format'] not in idp_name_id_format_list:
