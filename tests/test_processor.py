@@ -1,5 +1,6 @@
 import json
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.http import HttpRequest
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
@@ -24,6 +25,7 @@ class TestBaseProcessor:
 
         assert BaseProcessor('entity-id').enable_multifactor(user) is False
 
+    @pytest.mark.django_db
     def test_extract_user_id_default_to_username(self):
         user = User()
         user.username = 'test_username'

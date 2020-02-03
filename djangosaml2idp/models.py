@@ -84,7 +84,9 @@ class ServiceProvider(models.Model):
         return instantiate_processor(processor_cls, self.entity_id)
 
     def metadata_path(self) -> str:
-        """ Write the metadata content to a local file, so it can be used as 'local'-type metadata for pysaml2. """
+        """ Write the metadata content to a local file, so it can be used as 'local'-type metadata for pysaml2.
+            Return the location of that file.
+        """
         path = '/tmp/djangosaml2idp'
         if not os.path.exists(path):
             try:

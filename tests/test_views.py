@@ -537,6 +537,7 @@ class TestLogoutProcessView:
 
 
 class TestMetadata:
+    @pytest.mark.django_db
     def test_metadata_works_correctly(self):
         response = metadata(HttpRequest())
         assert isinstance(response, HttpResponse)
