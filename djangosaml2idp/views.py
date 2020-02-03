@@ -116,7 +116,12 @@ class IdPHandlerViewMixin:
     def build_authn_response(self, user, authn, resp_args, service_provider: ServiceProvider):
         """ pysaml2 server.Server.create_authn_response wrapper
         """
-        name_id_format = resp_args.get('name_id_policy') or NAMEID_FORMAT_UNSPECIFIED
+        policy = resp_args.get('name_id_policy', None)
+        if policy is None:
+            name_id_format = NAMEID_FORMAT_UNSPECIFIED
+        else:
+            name_id_format = policy.format
+
         idp_server = IDP.load()
         idp_name_id_format_list = idp_server.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
 
@@ -268,6 +273,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
     def get(self, request, *args, **kwargs):
         passed_data = request.POST or request.GET
+        passed_data = passed_data.copy().dict()
 
         try:
             # get sp information from the parameters

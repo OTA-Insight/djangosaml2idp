@@ -51,19 +51,19 @@ class NameIdBuilder:
         return '!'.join([idp_entityid, sp_entityid, cls._get_nameid_opaque(user_id, salt=str(user.pk).encode())])
 
     @classmethod
-    def get_nameid_email(cls, user_id, *args, **kwargs) -> str:
+    def get_nameid_email(cls, user_id, **kwargs):
         if '@' not in user_id:
             raise Exception("user_id {} does not contain the '@' symbol, so is not a valid NameID Email address format.".format(user_id))
         return user_id
 
     @classmethod
-    def get_nameid_transient(cls, user_id, *args, **kwargs) -> str:
+    def get_nameid_transient(cls, user_id, **kwargs):
         """ This would return EPPN
         """
         return user_id
 
     @classmethod
-    def get_nameid_unspecified(cls, user_id, *args, **kwargs) -> str:
+    def get_nameid_unspecified(cls, user_id, **kwargs):
         """ returns user_id as is
         """
         return user_id

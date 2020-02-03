@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.6.2] - 2020-02-03
+
+Bugfix release, thanks to contributions from [@mjholtkamp](https://github.com/mjholtkamp) in [#54](https://github.com/OTA-Insight/djangosaml2idp/pull/54),
+[#55](https://github.com/OTA-Insight/djangosaml2idp/pull/55), and
+[#56](https://github.com/OTA-Insight/djangosaml2idp/pull/56)
+
 ## [0.6.1] - 2019-12-13
 
 Many thanks for contributions to [@askvortsov1](https://github.com/askvortsov1) and [@peppelinux](https://github.com/peppelinux) for the contributions in this release
