@@ -22,7 +22,12 @@ class IDP:
         if cls._server_instance is None:
             conf = IdPConfig()
             try:
-                conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
+                from .models import ServiceProvider
+                idp_config_settings = copy.deepcopy(settings.SAML_IDP_CONFIG)
+                idp_config_settings['metadata'] = {
+                    'local': [sp.metadata_path for sp in ServiceProvider.objects.filter(active=True)],
+                }
+                conf.load(idp_config_settings)
                 cls._server_instance = Server(config=conf)
             except Exception as e:
                 raise ImproperlyConfigured(_('Could not instantiate an IDP based on the SAML_IDP_CONFIG settings: {}').format(str(e)))

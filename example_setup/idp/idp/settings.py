@@ -197,6 +197,10 @@ SAML_IDP_CONFIG = {
         },
     },
 
+    'metadata': {
+        'local': [os.path.join(os.path.join(os.path.join(BASE_DIR, 'idp'), 'saml2_config'), 'sp_metadata.xml')],
+    },
+
     # Signing
     'key_file': BASE_DIR + '/certificates/private.key',
     'cert_file': BASE_DIR + '/certificates/public.cert',

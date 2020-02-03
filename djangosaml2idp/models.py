@@ -7,7 +7,7 @@ from django.db import models
 from django.utils.safestring import mark_safe
 from saml2 import xmldsig
 from django.utils.functional import cached_property
-
+import os
 from .idp import IDP
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,17 @@ class ServiceProvider(models.Model):
         from .processors import validate_processor_path, instantiate_processor
         processor_cls = validate_processor_path(self._processor)
         return instantiate_processor(processor_cls, self.entity_id)
+
+    @cached_property
+    def metadata_path(self) -> str:
+        """ Write the metadata content to a local file, so it can be used as 'local'-type metadata for pysaml2. """
+        path = '/tmp/djangosaml2idp'
+        if not os.path.exists(path):
+            os.mkdir(path)
+        filename = f'{path}/{self.id}.xml'
+        with open(filename, 'w') as f:
+            f.write(self.metadata)
+        return filename
 
     @property
     def sign_response(self) -> bool:
