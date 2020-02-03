@@ -88,10 +88,19 @@ class ServiceProvider(models.Model):
         """ Write the metadata content to a local file, so it can be used as 'local'-type metadata for pysaml2. """
         path = '/tmp/djangosaml2idp'
         if not os.path.exists(path):
-            os.mkdir(path)
+            try:
+                os.mkdir(path)
+            except Exception as e:
+                logger.error(f'Could not create temporary folder to store metadata at {path}: {e}')
+                raise
         filename = f'{path}/{self.id}.xml'
-        with open(filename, 'w') as f:
-            f.write(self.metadata)
+        if not os.path.exists(filename):
+            try:
+                with open(filename, 'w') as f:
+                    f.write(self.metadata)
+            except Exception as e:
+                logger.error(f'Could not write metadata to file {filename}: {e}')
+                raise
         return filename
 
     @property

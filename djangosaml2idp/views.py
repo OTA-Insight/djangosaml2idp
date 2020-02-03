@@ -1,6 +1,5 @@
 import base64
 import logging
-from typing import NoReturn
 
 from django.conf import settings
 from django.contrib.auth import logout
@@ -68,7 +67,7 @@ def sso_entry(request, *args, **kwargs):
         return HttpResponseBadRequest(str(e))
 
     logger.debug("SSO requested to IDP with binding {}".format(request.session['Binding']))
-    logger.debug("SAML request [\n{}]".format(repr_saml(request.session['SAMLRequest'], b64=True)))
+    logger.debug("--- SAML request [\n{}] ---".format(repr_saml(request.session['SAMLRequest'], b64=True)))
 
     return HttpResponseRedirect(reverse('djangosaml2idp:saml_login_process'))
 
@@ -93,7 +92,7 @@ class IdPHandlerViewMixin:
             raise ImproperlyConfigured(_("No active Service Provider object matching the entity_id '{}' found").format(sp_entity_id))
         return sp
 
-    def verify_request_signature(self, req_info) -> NoReturn:
+    def verify_request_signature(self, req_info) -> None:
         """ Signature verification for authn request signature_check is at
             saml2.sigver.SecurityContext.correctly_signed_authn_request
         """
@@ -101,7 +100,7 @@ class IdPHandlerViewMixin:
         if not req_info.signature_check(req_info.xmlstr):
             raise ValueError(_("Message signature verification failure"))
 
-    def check_access(self, processor: BaseProcessor, request) -> NoReturn:
+    def check_access(self, processor: BaseProcessor, request) -> None:
         """ Check if user has access to the service of this SP. Raises a PermissionDenied exception if not.
         """
         if not processor.has_access(request):

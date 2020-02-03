@@ -12,7 +12,6 @@ from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
 from django.http import (HttpRequest, HttpResponse, HttpResponseBadRequest,
                          HttpResponseRedirect)
 from django.utils import timezone
-from django.utils.six import binary_type
 from saml2 import saml
 from saml2.client import Saml2Client
 from saml2.config import SPConfig
@@ -141,7 +140,7 @@ def get_saml_login_request(binding=BINDING_HTTP_REDIRECT):
         session_id, request_xml = client.create_authn_request(
             "http://localhost:9000/idp/sso/post",
             binding=binding)
-    return base64.b64encode(binary_type(request_xml, 'UTF-8'))
+    return base64.b64encode(bytes(request_xml, 'UTF-8'))
 
 
 def get_saml_logout_request(id="Request ID", format=saml.NAMEID_FORMAT_UNSPECIFIED, name_id="user1"):

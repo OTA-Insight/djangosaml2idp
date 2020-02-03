@@ -26,7 +26,7 @@ class ServiceProviderAdminForm(forms.ModelForm):
         try:
             value = json.loads(value_as_string)
         except Exception as e:
-            raise ValidationError('The provided string could not be parsed. ({})'.format(e))
+            raise ValidationError('The provided string could not be parsed with json. ({})'.format(e))
         if not isinstance(value, dict):
             raise ValidationError('The provided attribute_mapping should be a string representing a dict.')
         for k, v in value.items():
