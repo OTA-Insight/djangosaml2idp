@@ -305,6 +305,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
     def get(self, request, *args, **kwargs):
         passed_data = request.POST or request.GET
+        passed_data = passed_data.copy().dict()
 
         try:
             # get sp information from the parameters
