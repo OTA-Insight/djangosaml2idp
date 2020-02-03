@@ -184,10 +184,10 @@ class IdPHandlerViewMixin:
         )
         return authn_resp
 
-    def render_login_html_to_string(self, template_name, context=None, request=None, using=None):
+    def render_login_html_to_string(self, context=None, request=None, using=None):
         """ Render the html response for the login action. Can be using a custom html template if set on the view. """
         default_login_template_name = 'djangosaml2idp/login.html'
-        custom_login_template_name = getattr(self, 'login_html_template')
+        custom_login_template_name = getattr(self, 'login_html_template', None)
         if custom_login_template_name:
             try:
                 template = get_template(custom_login_template_name, using=using)
