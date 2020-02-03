@@ -154,6 +154,7 @@ The last step is configuring metadata.
 Download a copy of the IdP's metadata from <YOUR_SERVER_URL>/idp/metadata (assuming that's how you set up your urls.py). Use it to configure your SPs as required by them.
 Obtain a copy of the metadata for each of your SPs, and upload them where you indicated in ``SAML_IDP_CONFIG['metadata]``
 
+
 Further optional configuration options
 ======================================
 
@@ -235,6 +236,8 @@ extra_message
 The simplest override is to subclass the `SamlIDPErrorView` and only using your own error template.
 You can use any Class-Based-View for this; it's not necessary to subclass the builtin error view.
 The example project contains a ready to use example of this; uncomment the `SAML_IDP_ERROR_VIEW_CLASS` setting and it will use a custom view with custom template.
+
+If you want to not use djangosaml2idp's error system in favor of Django's system, set the ``SAML_IDP_HANDLE_ERRORS`` setting to False (default True).
 
 
 Multi Factor Authentication support

@@ -86,8 +86,11 @@ class IdPHandlerViewMixin:
 
     error_view = import_string(getattr(settings, 'SAML_IDP_ERROR_VIEW_CLASS', 'djangosaml2idp.error_views.SamlIDPErrorView'))
 
-    def handle_error(self, request, **kwargs):
+    def handle_error(self, request, exception, **kwargs):
+        if not getattr(settings, 'SAML_IDP_HANDLE_ERRORS', True):
+            raise exception
         # Log the exception and the statuscode
+        kwargs['exception'] = exception
         logger.error(kwargs)
         return self.error_view.as_view()(request, **kwargs)
 
