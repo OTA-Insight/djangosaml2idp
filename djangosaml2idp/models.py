@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import Dict
-
+import datetime
 from django.conf import settings
 from django.db import models
 from django.utils.safestring import mark_safe
@@ -83,7 +83,6 @@ class ServiceProvider(models.Model):
         processor_cls = validate_processor_path(self._processor)
         return instantiate_processor(processor_cls, self.entity_id)
 
-    @cached_property
     def metadata_path(self) -> str:
         """ Write the metadata content to a local file, so it can be used as 'local'-type metadata for pysaml2. """
         path = '/tmp/djangosaml2idp'
@@ -94,7 +93,7 @@ class ServiceProvider(models.Model):
                 logger.error(f'Could not create temporary folder to store metadata at {path}: {e}')
                 raise
         filename = f'{path}/{self.id}.xml'
-        if not os.path.exists(filename):
+        if not os.path.exists(filename) or self.dt_updated > datetime.datetime.fromtimestamp(os.path.getmtime(filename)):
             try:
                 with open(filename, 'w') as f:
                     f.write(self.metadata)
