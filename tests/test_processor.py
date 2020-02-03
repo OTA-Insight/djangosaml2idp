@@ -88,7 +88,7 @@ class TestBaseProcessor:
                 'other_setting': 'otherSetting',
                 'random_method': 'randomMethodTest'
             }))
-        idp = IDP.load().config
+        _ = IDP.load().config
 
         expected_result = {
             'fullName': 'Test Name',

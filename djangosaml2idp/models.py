@@ -78,7 +78,7 @@ class ServiceProvider(models.Model):
     # codebase can change regardless of the objects persisted in the database.
 
     @cached_property
-    def processor(self) -> 'BaseProcessor':
+    def processor(self) -> 'BaseProcessor':  # noqa
         from .processors import validate_processor_path, instantiate_processor
         processor_cls = validate_processor_path(self._processor)
         return instantiate_processor(processor_cls, self.entity_id)

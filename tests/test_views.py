@@ -124,7 +124,6 @@ SP_TESTING_CONFIGS = {
 }
 
 
-
 def get_saml_login_request(binding=BINDING_HTTP_REDIRECT):
     conf = SPConfig()
     conf.load(copy.deepcopy(sp_conf_dict))
@@ -250,8 +249,8 @@ class TestIdPHandlerViewMixin:
         sp = IdPHandlerViewMixin().get_sp('test_sp_with_bad_processor')
 
         with pytest.raises(Exception):
-            processor = sp.processor
-            
+            _ = sp.processor
+
     @pytest.mark.django_db
     def test_set_processor_defaults_to_base_processor(self):
         ServiceProvider.objects.create(entity_id='test_sp_with_no_processor', metadata=sp_metadata_xml, _attribute_mapping='{}')
@@ -304,7 +303,6 @@ class TestIdPHandlerViewMixin:
             mixin.dispatch(HttpRequest())
         except AttributeError:
             sp = mixin.get_sp('test_generic_sp')
-            processor = sp.processor
             user = User()
             authn = mixin.get_authn()
             resp_args = {
@@ -339,7 +337,7 @@ class TestIdPHandlerViewMixin:
         ServiceProvider.objects.create(entity_id='test_generic_sp', metadata=sp_metadata_xml)
 
         mixin = IdPHandlerViewMixin()
-        sp = mixin.get_sp("test_generic_sp")
+        _ = mixin.get_sp("test_generic_sp")
 
         user = User.objects.create()
         user.email = "test@gmail.com",
