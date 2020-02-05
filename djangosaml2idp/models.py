@@ -2,16 +2,18 @@ import datetime
 import json
 import logging
 import os
-import pytz
 from typing import Dict
 
+import pytz
 from django.conf import settings
 from django.db import models
 from django.utils.functional import cached_property
 from django.utils.safestring import mark_safe
+from django.utils.timezone import now
 from saml2 import xmldsig
 
 from .idp import IDP
+from .utils import fetch_metadata, validate_metadata, extract_validuntil_from_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +36,23 @@ class ServiceProvider(models.Model):
     entity_id = models.CharField(verbose_name='Entity ID', max_length=256, unique=True)
     pretty_name = models.CharField(verbose_name='Pretty Name', blank=True, max_length=256, help_text='For display purposes, can be empty')
     description = models.TextField(verbose_name='Description', blank=True)
-    metadata = models.TextField(verbose_name='Metadata XML', blank=True, help_text='XML containing the metadata')
+
+    # Metadata
+    metadata_expiration_dt = models.DateTimeField(verbose_name='Metadata valid until')
+    remote_metadata_url = models.CharField(verbose_name='Remote metadata URL', max_length=512, blank=True, help_text='If set, metadata will be fetched upon saving into the local metadata xml field, and automatically be refreshed after the expiration timestamp.')
+    local_metadata = models.TextField(verbose_name='Local Metadata XML', blank=True, help_text='XML containing the metadata')
+
+    def refresh_metadata(self, force_refresh: bool = False) -> bool:
+        ''' If a remote metadata url is set, fetch new metadata if the locally cached one is expired. Returns True if new metadata was stored.
+            Sets metadata fields on instance, but does not save. If force_refresh = True, the metadata will be refreshed regardless of the currently cached version validity timestamp.
+        '''
+        current_validity_expired = self.metadata_expiration_dt is None or now() > self.metadata_expiration_dt
+        if current_validity_expired or force_refresh:
+            if self.remote_metadata_url:
+                self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
+            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
+            return True
+        return False
 
     # Configuration
     active = models.BooleanField(verbose_name='Active', default=True)
@@ -90,6 +108,10 @@ class ServiceProvider(models.Model):
         """ Write the metadata content to a local file, so it can be used as 'local'-type metadata for pysaml2.
             Return the location of that file.
         """
+        # On access, update the metadata if necessary
+        if self.refresh_metadata():
+            self.save()
+
         path = '/tmp/djangosaml2idp'
         if not os.path.exists(path):
             try:
@@ -98,6 +120,8 @@ class ServiceProvider(models.Model):
                 logger.error(f'Could not create temporary folder to store metadata at {path}: {e}')
                 raise
         filename = f'{path}/{self.id}.xml'
+
+        # Rewrite the file if it did not exist yet, or if the SP config was updated after having written the file previously.
         if not os.path.exists(filename) or self.dt_updated > datetime.datetime.fromtimestamp(os.path.getmtime(filename)).replace(tzinfo=pytz.utc):
             try:
                 with open(filename, 'w') as f:

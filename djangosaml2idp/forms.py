@@ -6,6 +6,7 @@ from django.utils.translation import gettext as _
 
 from .models import ServiceProvider
 from .processors import instantiate_processor, validate_processor_path
+from .utils import fetch_metadata, validate_metadata, extract_validuntil_from_metadata
 
 boolean_form_select_choices = ((None, _('--------')), (True, _('Yes')), (False, _('No')))
 
@@ -42,9 +43,19 @@ class ServiceProviderAdminForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
 
+        if not (cleaned_data.get('remote_metadata_url') or cleaned_data.get('local_metadata')):
+            raise ValidationError('Either a remote metadata URL, or a local metadata xml needs to be provided.')
+
         if '_processor' in cleaned_data:
             processor_path = cleaned_data['_processor']
             entity_id = cleaned_data['entity_id']
 
             processor_cls = validate_processor_path(processor_path)
             instantiate_processor(processor_cls, entity_id)
+
+        # Call the validation methods to catch ValidationErrors here, so they get displayed cleanly in the admin UI
+        if cleaned_data.get('remote_metadata_url'):
+            self.instance.remote_metadata_url = cleaned_data.get('remote_metadata_url')
+            self.instance.local_metadata = cleaned_data.get('local_metadata')
+            self.instance.refresh_metadata(force_refresh=True)
+            cleaned_data['local_metadata'] = self.instance.local_metadata
