@@ -1,13 +1,16 @@
+import datetime
 import json
 import logging
+import os
+import pytz
 from typing import Dict
-import datetime
+
 from django.conf import settings
 from django.db import models
+from django.utils.functional import cached_property
 from django.utils.safestring import mark_safe
 from saml2 import xmldsig
-from django.utils.functional import cached_property
-import os
+
 from .idp import IDP
 
 logger = logging.getLogger(__name__)
@@ -95,7 +98,7 @@ class ServiceProvider(models.Model):
                 logger.error(f'Could not create temporary folder to store metadata at {path}: {e}')
                 raise
         filename = f'{path}/{self.id}.xml'
-        if not os.path.exists(filename) or self.dt_updated > datetime.datetime.fromtimestamp(os.path.getmtime(filename)):
+        if not os.path.exists(filename) or self.dt_updated > datetime.datetime.fromtimestamp(os.path.getmtime(filename)).replace(tzinfo=pytz.utc):
             try:
                 with open(filename, 'w') as f:
                     f.write(self.metadata)
@@ -125,13 +128,13 @@ class ServiceProvider(models.Model):
     @property
     def signing_algorithm(self) -> str:
         if self._signing_algorithm is None:
-            return settings.SAML_AUTHN_SIGN_ALG
+            return getattr(settings, "SAML_AUTHN_SIGN_ALG", xmldsig.SIG_RSA_SHA256)
         return self._signing_algorithm
 
     @property
     def digest_algorithm(self) -> str:
         if self._digest_algorithm is None:
-            return settings.SAML_AUTHN_DIGEST_ALG
+            return getattr(settings, "SAML_AUTHN_DIGEST_ALG", xmldsig.DIGEST_SHA256)
         return self._digest_algorithm
 
     @property
