@@ -43,11 +43,10 @@ class ServiceProvider(models.Model):
     local_metadata = models.TextField(verbose_name='Local Metadata XML', blank=True, help_text='XML containing the metadata')
 
     def refresh_metadata(self, force_refresh: bool = False) -> bool:
-        ''' If a remote metadata url is set, fetch new metadata if the locally cached one is expired. Returns True if new metadata was stored.
-            Sets metadata fields on instance, but does not save. If force_refresh = True, the metadata will be refreshed regardless of the currently cached version validity timestamp.
+        ''' If a remote metadata url is set, fetch new metadata if the locally cached one is expired. Returns True if new metadata was set.
+            Sets metadata fields on instance, but does not save to db. If force_refresh = True, the metadata will be refreshed regardless of the currently cached version validity timestamp.
         '''
-        current_validity_expired = self.metadata_expiration_dt is None or now() > self.metadata_expiration_dt
-        if current_validity_expired or force_refresh:
+        if not self.local_metadata or now() > self.metadata_expiration_dt or force_refresh:
             if self.remote_metadata_url:
                 self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
             self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
@@ -109,7 +108,8 @@ class ServiceProvider(models.Model):
             Return the location of that file.
         """
         # On access, update the metadata if necessary
-        if self.refresh_metadata():
+        refreshed_metadata = self.refresh_metadata()
+        if refreshed_metadata:
             self.save()
 
         path = '/tmp/djangosaml2idp'
@@ -122,10 +122,10 @@ class ServiceProvider(models.Model):
         filename = f'{path}/{self.id}.xml'
 
         # Rewrite the file if it did not exist yet, or if the SP config was updated after having written the file previously.
-        if not os.path.exists(filename) or self.dt_updated > datetime.datetime.fromtimestamp(os.path.getmtime(filename)).replace(tzinfo=pytz.utc):
+        if not os.path.exists(filename) or refreshed_metadata or self.dt_updated > datetime.datetime.fromtimestamp(os.path.getmtime(filename)).replace(tzinfo=pytz.utc):
             try:
                 with open(filename, 'w') as f:
-                    f.write(self.metadata)
+                    f.write(self.local_metadata)
             except Exception as e:
                 logger.error(f'Could not write metadata to file {filename}: {e}')
                 raise
@@ -165,16 +165,19 @@ class ServiceProvider(models.Model):
     def resulting_config(self) -> str:
         """ Actual values of the config / properties with the settings and defaults taken into account.
         """
-        d = {
-            'entity_id': self.entity_id,
-            'attribute_mapping': self.attribute_mapping,
-            'nameid_field': self.nameid_field,
-            'sign_response': self.sign_response,
-            'sign_assertion': self.sign_assertion,
-            'encrypt_saml_responses': self.encrypt_saml_responses,
-            'signing_algorithm': self.signing_algorithm,
-            'digest_algorithm': self.digest_algorithm,
-        }
-        config_as_str = json.dumps(d, indent=4)
+        try:
+            d = {
+                'entity_id': self.entity_id,
+                'attribute_mapping': self.attribute_mapping,
+                'nameid_field': self.nameid_field,
+                'sign_response': self.sign_response,
+                'sign_assertion': self.sign_assertion,
+                'encrypt_saml_responses': self.encrypt_saml_responses,
+                'signing_algorithm': self.signing_algorithm,
+                'digest_algorithm': self.digest_algorithm,
+            }
+            config_as_str = json.dumps(d, indent=4)
+        except Exception as e:
+            config_as_str = f'Could not render config: {e}'
         # Some ugly replacements to have the json decently printed in the admin
         return mark_safe(config_as_str.replace("\n", "<br>").replace("    ", "&nbsp;&nbsp;&nbsp;&nbsp;"))
