@@ -128,13 +128,13 @@ class ServiceProvider(models.Model):
     @property
     def signing_algorithm(self) -> str:
         if self._signing_algorithm is None:
-            return settings.SAML_AUTHN_SIGN_ALG
+            return getattr(settings, "SAML_AUTHN_SIGN_ALG", xmldsig.SIG_RSA_SHA256)
         return self._signing_algorithm
 
     @property
     def digest_algorithm(self) -> str:
         if self._digest_algorithm is None:
-            return settings.SAML_AUTHN_DIGEST_ALG
+            return getattr(settings, "SAML_AUTHN_DIGEST_ALG", xmldsig.DIGEST_SHA256)
         return self._digest_algorithm
 
     @property
