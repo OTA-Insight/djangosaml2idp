@@ -46,7 +46,7 @@ class ServiceProvider(models.Model):
         ''' If a remote metadata url is set, fetch new metadata if the locally cached one is expired. Returns True if new metadata was set.
             Sets metadata fields on instance, but does not save to db. If force_refresh = True, the metadata will be refreshed regardless of the currently cached version validity timestamp.
         '''
-        if not self.local_metadata or now() > self.metadata_expiration_dt or force_refresh:
+        if not self.local_metadata or not self.metadata_expiration_dt or now() > self.metadata_expiration_dt or force_refresh:
             if self.remote_metadata_url:
                 self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
             self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
@@ -79,6 +79,10 @@ class ServiceProvider(models.Model):
         if self.pretty_name:
             return f'{self.pretty_name} ({self.entity_id})'
         return f'{self.entity_id}'
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        IDP.load(force_refresh=True)
 
     @property
     def attribute_mapping(self) -> Dict[str, str]:

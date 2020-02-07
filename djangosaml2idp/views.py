@@ -357,7 +357,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             logger.error(expc_msg)
             return self.handle_error(request, exception=expc_msg, status=400)
 
-        logger.info("{} - local identifier: {} from {}".format(self.__service_name, req_info.message.name_id.text, req_info.message.name_id.sp_name_qualifier))
+        logger.debug("{} - local identifier: {} from {}".format(self.__service_name, req_info.message.name_id.text, req_info.message.name_id.sp_name_qualifier))
         logger.debug("--- {} SAML request [\n{}] ---".format(self.__service_name, repr_saml(req_info.xmlstr, b64=False)))
 
         # TODO

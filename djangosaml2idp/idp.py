@@ -24,11 +24,11 @@ class IDP:
         return idp_config
 
     @classmethod
-    def load(cls) -> Server:
+    def load(cls, force_refresh: bool = False) -> Server:
         """ Instantiate a IDP Server instance based on the config defined in the SAML_IDP_CONFIG settings.
             Throws an ImproperlyConfigured exception if it could not do so for any reason.
         """
-        if cls._server_instance is None:
+        if cls._server_instance is None or force_refresh:
             conf = IdPConfig()
             try:
                 conf.load(cls.construct_metadata())
