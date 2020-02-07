@@ -173,7 +173,7 @@ class IdPHandlerViewMixin:
 
         authn_resp = self.IDP.create_authn_response(
             authn=authn,
-            identity=processor.create_identity(user, sp_config.get('attribute_mapping')),
+            identity=processor.create_identity(user, sp_config['config'].get('attribute_mapping')),
             name_id=name_id,
             userid=user_id,
             sp_entity_id=sp_config['id'],
