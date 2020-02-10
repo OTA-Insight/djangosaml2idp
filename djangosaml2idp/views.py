@@ -7,11 +7,10 @@ from django.contrib.auth import logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
                                     ValidationError)
-from django.http import (HttpResponse, HttpResponseBadRequest,
-                         HttpResponseRedirect)
-from django.template.loader import get_template
+from django.http import HttpResponse, HttpResponseRedirect
 from django.template.exceptions import (TemplateDoesNotExist,
                                         TemplateSyntaxError)
+from django.template.loader import get_template
 from django.urls import reverse
 from django.utils.datastructures import MultiValueDictKeyError
 from django.utils.decorators import method_decorator
@@ -30,6 +29,7 @@ from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from saml2.server import Server
 from six import text_type
 
+from .error_views import error_cbv
 from .processors import BaseProcessor
 from .utils import repr_saml
 
@@ -55,7 +55,7 @@ def store_params_in_session(request):
     try:
         saml_request = passed_data['SAMLRequest']
     except (KeyError, MultiValueDictKeyError) as e:
-        raise ValidationError(_('not a valid SAMLRequest: {}').format(e))
+        raise ValidationError(_('not a valid SAMLRequest: {}').format(repr(e)))
 
     request.session['Binding'] = binding
     request.session['SAMLRequest'] = saml_request
@@ -72,7 +72,7 @@ def sso_entry(request, *args, **kwargs):
     try:
         store_params_in_session(request)
     except ValidationError as e:
-        return HttpResponseBadRequest(str(e))
+        return error_cbv.handle_error(request, e, status_code=400)
 
     logger.debug("SSO requested to IDP with binding {}".format(request.session['Binding']))
     logger.debug("SAML request [\n{}]".format(repr_saml(request.session['SAMLRequest'], b64=True)))
@@ -83,13 +83,6 @@ def sso_entry(request, *args, **kwargs):
 class IdPHandlerViewMixin:
     """ Contains some methods used by multiple views """
 
-    error_view = import_string(getattr(settings, 'SAML_IDP_ERROR_VIEW_CLASS', 'djangosaml2idp.error_views.SamlIDPErrorView'))
-
-    def handle_error(self, request, **kwargs):
-        # Log the exception and the statuscode
-        logger.error(kwargs)
-        return self.error_view.as_view()(request, **kwargs)
-
     def dispatch(self, request, *args, **kwargs):
         """ Construct IDP server with config from settings dict
         """
@@ -98,7 +91,7 @@ class IdPHandlerViewMixin:
             conf.load(copy.deepcopy(settings.SAML_IDP_CONFIG))
             self.IDP = Server(config=conf)
         except Exception as e:
-            return self.handle_error(request, exception=e)
+            return error_cbv.handle_error(request, exception=e)
         return super().dispatch(request, *args, **kwargs)
 
     def get_sp_config(self, sp_entity_id):
@@ -283,11 +276,11 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 # Check if user has access to SP
                 self.check_access(processor, request)
             except PermissionDenied as excp:
-                return self.handle_error(request, exception=excp, status=403)
+                return error_cbv.handle_error(request, exception=excp, status_code=403)
             # Construct SamlResponse message
             authn_resp = self.build_authn_response(request.user, self.get_authn(), resp_args, processor, sp_config)
         except Exception as e:
-            return self.handle_error(request, exception=e, status=500)
+            return error_cbv.handle_error(request, exception=e, status_code=500)
 
         html_response = self.create_html_response(
             request,
@@ -318,13 +311,13 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             sp_config = self.get_sp_config(sp_entity_id)
             processor = self.get_processor(sp_entity_id, sp_config['config'].get('processor', ''))
         except (KeyError, ImproperlyConfigured) as excp:
-            return self.handle_error(request, exception=excp, status=400)
+            return error_cbv.handle_error(request, exception=excp, status_code=400)
 
         try:
             # Check if user has access to SP
             self.check_access(processor, request)
         except PermissionDenied as excp:
-            return self.handle_error(request, exception=excp, status=403)
+            return error_cbv.handle_error(request, exception=excp, status_code=403)
 
         binding_out, destination = self.IDP.pick_binding(
             service="assertion_consumer_service",
@@ -390,7 +383,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except Exception as excp:
             expc_msg = "{} Bad request: {}".format(self.__service_name, excp)
             logger.error(expc_msg)
-            return self.handle_error(request, exception=expc_msg, status=400)
+            return error_cbv.handle_error(request, exception=expc_msg, status_code=400)
 
         logger.info("{} - local identifier: {} from {}".format(self.__service_name, req_info.message.name_id.text, req_info.message.name_id.sp_name_qualifier))
         logger.debug("--- {} SAML request [\n{}] ---".format(self.__service_name, repr_saml(req_info.xmlstr, b64=False)))
@@ -417,7 +410,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             hinfo = self.IDP.apply_binding(binding, resp.__str__(), resp.destination, relay_state, response=True)
         except Exception as excp:
             logger.error("ServiceError: %s", excp)
-            return self.handle_error(request, exception=excp, status=400)
+            return error_cbv.handle_error(request, exception=excp, status=400)
 
         logger.debug("--- {} Response [\n{}] ---".format(self.__service_name, repr_saml(resp.__str__().encode())))
         logger.debug("--- binding: {} destination:{} relay_state:{} ---".format(binding, resp.destination, relay_state))
