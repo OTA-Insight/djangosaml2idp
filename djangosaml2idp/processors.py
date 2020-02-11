@@ -60,8 +60,6 @@ class NameIdBuilder:
 
     @classmethod
     def get_nameid_email(cls, user_id: str, user: settings.AUTH_USER_MODEL = None, **kwargs) -> str:
-        if user is not None:
-            return getattr(user, user.get_email_field_name())
         if '@' not in user_id:
             raise Exception("user_id {} does not contain the '@' symbol, so is not a valid NameID Email address format.".format(user_id))
         return user_id
