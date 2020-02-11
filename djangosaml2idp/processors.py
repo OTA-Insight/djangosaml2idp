@@ -1,7 +1,9 @@
 import hashlib
 import logging
+import uuid
 from typing import Dict
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext as _
@@ -12,7 +14,7 @@ from saml2.saml import (NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_ENCRYPTED,
                         NAMEID_FORMAT_WINDOWSDOMAINQUALIFIEDNAME,
                         NAMEID_FORMAT_X509SUBJECTNAME)
 
-from .models import ServiceProvider
+from .models import ServiceProvider, PersistentId
 
 logger = logging.getLogger(__name__)
 
@@ -44,14 +46,22 @@ class NameIdBuilder:
         return opaque.hexdigest()
 
     @classmethod
-    def get_nameid_persistent(cls, user_id: str, sp_entityid: str = '', idp_entityid: str = '', user=None) -> str:
+    def get_nameid_persistent(cls, user_id: str, sp: ServiceProvider, user: settings.AUTH_USER_MODEL) -> str:
         """ Get PersistentID in TransientID format
             see: http://software.internet2.edu/eduperson/internet2-mace-dir-eduperson-201602.html#eduPersonTargetedID
         """
-        return '!'.join([idp_entityid, sp_entityid, cls._get_nameid_opaque(user_id, salt=str(user.pk).encode())])
+        if PersistentId.objects.filter(sp=sp, user=user).exists():
+            return PersistentId.objects.get(sp=sp, user=user).persistent_id
+        else:
+            rand_id = uuid.uuid4()
+            while PersistentId.objects.filter(sp=sp, persistent_id=str(rand_id)).exists():
+                rand_id = uuid.uuid4()
+            return PersistentId.objects.create(user=user, sp=sp, persistent_id=str(rand_id)).persistent_id
 
     @classmethod
-    def get_nameid_email(cls, user_id: str, **kwargs) -> str:
+    def get_nameid_email(cls, user_id: str, user: settings.AUTH_USER_MODEL = None, **kwargs) -> str:
+        if user is not None:
+            return getattr(user, user.get_email_field_name())
         if '@' not in user_id:
             raise Exception("user_id {} does not contain the '@' symbol, so is not a valid NameID Email address format.".format(user_id))
         return user_id
@@ -111,7 +121,7 @@ class BaseProcessor:
             user_id = str(user_field)
 
         # returns in a real name_id format
-        return NameIdBuilder.get_nameid(user_id, name_id_format, sp_entityid=service_provider.entity_id, idp_entityid=idp_config.entityid, user=user)
+        return NameIdBuilder.get_nameid(user_id, name_id_format, sp=service_provider, user=user)
 
     def create_identity(self, user, sp_attribute_mapping: Dict[str, str]) -> Dict[str, str]:
         """ Generate an identity dictionary of the user based on the
