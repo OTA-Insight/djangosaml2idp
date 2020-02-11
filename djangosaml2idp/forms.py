@@ -53,9 +53,9 @@ class ServiceProviderAdminForm(forms.ModelForm):
             processor_cls = validate_processor_path(processor_path)
             instantiate_processor(processor_cls, entity_id)
 
+        self.instance.local_metadata = cleaned_data.get('local_metadata')
         # Call the validation methods to catch ValidationErrors here, so they get displayed cleanly in the admin UI
         if cleaned_data.get('remote_metadata_url'):
             self.instance.remote_metadata_url = cleaned_data.get('remote_metadata_url')
-            self.instance.local_metadata = cleaned_data.get('local_metadata')
-            self.instance.refresh_metadata(force_refresh=True)
             cleaned_data['local_metadata'] = self.instance.local_metadata
+        self.instance.refresh_metadata(force_refresh=True)
