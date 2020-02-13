@@ -11,3 +11,4 @@ python-dateutil==2.7.5
 pytest-cov
 pylama
 codecov
+pre-commit
