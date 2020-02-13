@@ -1,7 +1,4 @@
-django~=2.2
 pysaml2
-djangosaml2
-
 pytest
 pytest-django
 pytest-pythonpath
@@ -11,3 +8,4 @@ pytest-runner
 pylama
 codecov
 pip-tools
+tox
