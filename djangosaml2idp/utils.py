@@ -3,7 +3,6 @@ import datetime
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import zlib
-from typing import Tuple
 from xml.parsers.expat import ExpatError
 
 import requests

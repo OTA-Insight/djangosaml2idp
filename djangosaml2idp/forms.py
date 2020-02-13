@@ -6,7 +6,6 @@ from django.utils.translation import gettext as _
 
 from .models import ServiceProvider
 from .processors import instantiate_processor, validate_processor_path
-from .utils import fetch_metadata, validate_metadata, extract_validuntil_from_metadata
 
 boolean_form_select_choices = ((None, _('--------')), (True, _('Yes')), (False, _('No')))
 
