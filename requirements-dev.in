@@ -1,5 +1,5 @@
 django~=2.2
-pysaml2>=4.5.0
+pysaml2
 djangosaml2
 
 pytest
