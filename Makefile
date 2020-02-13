@@ -1,7 +1,9 @@
 
 install:
-	@pip install -e .
-	@pip install --upgrade -r requirements-dev.txt
+	@pip install \
+	--force-reinstall \
+	-e . \
+	-r requirements-dev.txt
 
 test:
 	@python setup.py test
