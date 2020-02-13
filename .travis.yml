@@ -1,6 +1,4 @@
 language: python
-dist: buster
-sudo: required
 
 cache:
   - pip
