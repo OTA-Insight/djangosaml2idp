@@ -11,3 +11,4 @@ pytest-runner
 pylama
 codecov
 pip-tools
+pre-commit
