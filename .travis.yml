@@ -3,7 +3,7 @@ language: python
 cache:
   - pip
 
-matrix:
+jobs:
   include:
     - python: 3.6
       env: TOX_ENV=format
