@@ -58,6 +58,29 @@ def logged_in_request(django_user_model):
     return request
 
 
+@pytest.fixture()
+def saml_login_request_factory():
+    def _factory(binding=BINDING_HTTP_REDIRECT):
+        conf = SPConfig()
+        conf.load(copy.deepcopy(sp_conf_dict))
+        client = Saml2Client(conf)
+        if binding == BINDING_HTTP_REDIRECT:
+            session_id, result = client.prepare_for_authenticate(
+                entityid="test_generic_idp",
+                relay_state="",
+                binding=binding,
+            )
+            return parse.parse_qs(parse.urlparse(result['headers'][0][1]).query)['SAMLRequest'][0]
+        elif binding == BINDING_HTTP_POST:
+            session_id, request_xml = client.create_authn_request(
+                "http://localhost:9000/idp/sso/post",
+                binding=binding)
+            return base64.b64encode(binary_type(request_xml, 'UTF-8'))
+        else:
+            raise Exception("Invalid binding: %s", binding)
+    return _factory
+
+
 sp_conf_dict = {
     "entityid": "test_generic_sp",
     "service": {
@@ -88,24 +111,6 @@ sp_conf_dict = {
         "local": ["tests/xml/metadata/idp_metadata.xml"]
     }
 }
-
-
-def get_saml_login_request(binding=BINDING_HTTP_REDIRECT):
-    conf = SPConfig()
-    conf.load(copy.deepcopy(sp_conf_dict))
-    client = Saml2Client(conf)
-    if binding == BINDING_HTTP_REDIRECT:
-        session_id, result = client.prepare_for_authenticate(
-            entityid="test_generic_idp",
-            relay_state="",
-            binding=binding,
-        )
-        return parse.parse_qs(parse.urlparse(result['headers'][0][1]).query)['SAMLRequest'][0]
-    elif binding == BINDING_HTTP_POST:
-        session_id, request_xml = client.create_authn_request(
-            "http://localhost:9000/idp/sso/post",
-            binding=binding)
-    return base64.b64encode(binary_type(request_xml, 'UTF-8'))
 
 
 def get_saml_logout_request(id="Request ID", format=saml.NAMEID_FORMAT_UNSPECIFIED, name_id="user1"):
@@ -381,10 +386,10 @@ class TestLoginProcessView:
         assert response.url == '/accounts/login/?next='
 
     @pytest.mark.django_db
-    def test_goes_through_normally_redirect(self, logged_in_request):
+    def test_goes_through_normally_redirect(self, logged_in_request, saml_login_request_factory):
         # Simulating having already gone through sso_entry
         logged_in_request.session.update({
-            "SAMLRequest": get_saml_login_request(),
+            "SAMLRequest": saml_login_request_factory(),
             "RelayState": "",
             "Binding": BINDING_HTTP_REDIRECT
         })
@@ -393,9 +398,9 @@ class TestLoginProcessView:
         assert isinstance(response, HttpResponse)
 
     @pytest.mark.django_db
-    def test_goes_through_normally_post(self, logged_in_request):
+    def test_goes_through_normally_post(self, logged_in_request, saml_login_request_factory):
         logged_in_request.session.update({
-            "SAMLRequest": get_saml_login_request(),
+            "SAMLRequest": saml_login_request_factory(),
             "RelayState": "",
             "Binding": BINDING_HTTP_POST
         })
