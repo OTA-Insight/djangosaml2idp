@@ -21,3 +21,12 @@ compile:
 sync:
 	@pip-sync requirements-dev.txt
 	@pip install -e .
+
+lint:
+	@pylama djangosaml2idp
+
+# Clean up files from development
+clean:
+	@rm -rf \
+	.pytest_cache \
+	dist
