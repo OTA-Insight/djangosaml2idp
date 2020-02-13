@@ -29,4 +29,5 @@ lint:
 clean:
 	@rm -rf \
 	.pytest_cache \
+	.tox \
 	dist
