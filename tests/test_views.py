@@ -43,12 +43,13 @@ sample_get_request.GET = {
 }
 
 
-def get_logged_in_request():
+@pytest.fixture()
+def logged_in_request(django_user_model):
     request = HttpRequest()
     request.session = SessionStore()
     username = "user1"
     password = "bar"
-    User.objects.create_user(username=username, password=password)
+    django_user_model.objects.create_user(username=username, password=password)
     user = authenticate(username=username, password=password)
     request.method = 'GET'
     request.user = user
@@ -372,31 +373,28 @@ class TestIdPHandlerViewMixin:
 
 class TestLoginProcessView:
     @pytest.mark.django_db
-    def test_requires_authentication(self):
-        request = get_logged_in_request()
-        logout(request)
+    def test_requires_authentication(self, logged_in_request):
+        logout(logged_in_request)
 
-        response = LoginProcessView.as_view()(request)
+        response = LoginProcessView.as_view()(logged_in_request)
         assert isinstance(response, HttpResponseRedirect)
         assert response.url == '/accounts/login/?next='
 
     @pytest.mark.django_db
-    def test_goes_through_normally_redirect(self):
-        request = get_logged_in_request()
+    def test_goes_through_normally_redirect(self, logged_in_request):
         # Simulating having already gone through sso_entry
-        request.session.update({
+        logged_in_request.session.update({
             "SAMLRequest": get_saml_login_request(),
             "RelayState": "",
             "Binding": BINDING_HTTP_REDIRECT
         })
 
-        response = LoginProcessView.as_view()(request)
+        response = LoginProcessView.as_view()(logged_in_request)
         assert isinstance(response, HttpResponse)
 
     @pytest.mark.django_db
-    def test_goes_through_normally_post(self):
-        request = get_logged_in_request()
-        request.session.update({
+    def test_goes_through_normally_post(self, logged_in_request):
+        logged_in_request.session.update({
             "SAMLRequest": get_saml_login_request(),
             "RelayState": "",
             "Binding": BINDING_HTTP_POST
@@ -405,102 +403,92 @@ class TestLoginProcessView:
 
 class TestIdpInitiatedFlow:
     @pytest.mark.django_db
-    def test_goes_through_correctly_get(self):
-        request = get_logged_in_request()
-        request.GET['sp'] = "test_generic_sp"
+    def test_goes_through_correctly_get(self, logged_in_request):
+        logged_in_request.GET['sp'] = "test_generic_sp"
 
-        response = SSOInitView.as_view()(request)
+        response = SSOInitView.as_view()(logged_in_request)
         assert isinstance(response, HttpResponse)
 
     @pytest.mark.django_db
-    def test_goes_through_correctly_post(self):
-        request = get_logged_in_request()
-        request.method = 'POST'
-        request.POST['sp'] = "test_generic_sp"
+    def test_goes_through_correctly_post(self, logged_in_request):
+        logged_in_request.method = 'POST'
+        logged_in_request.POST['sp'] = "test_generic_sp"
 
-        response = SSOInitView.as_view()(request)
+        response = SSOInitView.as_view()(logged_in_request)
         assert isinstance(response, HttpResponse)
 
     @pytest.mark.django_db
-    def test_requires_authentication(self):
-        request = get_logged_in_request()
+    def test_requires_authentication(self, logged_in_request):
 
-        logout(request)
-        response = SSOInitView.as_view()(request)
+        logout(logged_in_request)
+        response = SSOInitView.as_view()(logged_in_request)
         assert isinstance(response, HttpResponseRedirect)
         assert response.url == '/accounts/login/?next='
 
 
 class TestGetMultifactor:
     @pytest.mark.django_db
-    def test_loads_data_when_appropriate_with_post(self):
+    def test_loads_data_when_appropriate_with_post(self, logged_in_request):
         # We only really need to test one aspect. If the system doesn't work, it won't work.
-        request = get_logged_in_request()
-        request.session['saml_data'] = {
+        logged_in_request.session['saml_data'] = {
             "type": "POST",
             "data": "<html></html>",
         }
-        response = get_multifactor(request)
+        response = get_multifactor(logged_in_request)
         assert isinstance(response, HttpResponse)
         assert response.content == '<html></html>'.encode()
 
     @pytest.mark.django_db
-    def test_works_with_replacement(self, settings):
+    def test_works_with_replacement(self, settings, logged_in_request):
         settings.SAML_IDP_MULTIFACTOR_VIEW = "tests.test_views.CustomMultifactorView"
-        request = get_logged_in_request()
-        response = get_multifactor(request)
+        response = get_multifactor(logged_in_request)
         assert isinstance(response, HttpResponse)
         assert response.content == b""
 
 
 class TestMultifactor:
     @pytest.mark.django_db
-    def test_multifactor_is_valid_returns_true_by_default(self):
-        request = get_logged_in_request()
-        assert ProcessMultiFactorView().multifactor_is_valid(request) is True
+    def test_multifactor_is_valid_returns_true_by_default(self, logged_in_request):
+        assert ProcessMultiFactorView().multifactor_is_valid(logged_in_request) is True
 
     @pytest.mark.django_db
-    def test_loads_data_when_appropriate_with_post(self):
-        request = get_logged_in_request()
-        request.session['saml_data'] = {
+    def test_loads_data_when_appropriate_with_post(self, logged_in_request):
+        logged_in_request.session['saml_data'] = {
             "type": "POST",
             "data": "<html></html>",
         }
-        response = ProcessMultiFactorView.as_view()(request)
+        response = ProcessMultiFactorView.as_view()(logged_in_request)
         assert isinstance(response, HttpResponse)
         assert response.content == '<html></html>'.encode()
 
     @pytest.mark.django_db
-    def test_loads_data_when_appropriate_with_redirect(self):
-        request = get_logged_in_request()
-        request.session['saml_data'] = {
+    def test_loads_data_when_appropriate_with_redirect(self, logged_in_request):
+        logged_in_request.session['saml_data'] = {
             "type": "REDIRECT",
             "data": "https://example.com",
         }
-        response = ProcessMultiFactorView.as_view()(request)
+        response = ProcessMultiFactorView.as_view()(logged_in_request)
         assert isinstance(response, HttpResponseRedirect)
         assert response.url == "https://example.com"
 
     @pytest.mark.django_db
-    def test_get_logs_out_if_multifactor_invalid(self):
-        request = get_logged_in_request()
+    def test_get_logs_out_if_multifactor_invalid(self, logged_in_request):
 
         def valid(self, request):
             return False
         a = ProcessMultiFactorView.multifactor_is_valid
         ProcessMultiFactorView.multifactor_is_valid = valid
         with pytest.raises(PermissionDenied):
-            ProcessMultiFactorView.as_view()(request)
+            ProcessMultiFactorView.as_view()(logged_in_request)
         ProcessMultiFactorView.multifactor_is_valid = a
 
 
 class TestLogoutProcessView:
     @pytest.mark.django_db
-    def test_slo_view_works_properly_redirect(self):
-        request = get_logged_in_request()
-        request.GET['SAMLRequest'] = get_saml_logout_request()
+    def test_slo_view_works_properly_redirect(self, logged_in_request):
+        logged_in_request.GET['SAMLRequest'] = get_saml_logout_request()
 
-        response = LogoutProcessView.as_view()(request)
+        response = LogoutProcessView.as_view()(logged_in_request)
 
         assert isinstance(response, HttpResponse)
 
