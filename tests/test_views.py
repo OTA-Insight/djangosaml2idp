@@ -1,5 +1,6 @@
 import base64
 import copy
+from http import HTTPStatus
 from urllib import parse
 
 import pytest
@@ -186,7 +187,7 @@ class TestSSOEntry:
 
         response = sso_entry(sample_saml_get_request)
 
-        assert isinstance(response, HttpResponseBadRequest)
+        assert response.status_code == HTTPStatus.BAD_REQUEST
 
 
 class TestIdPHandlerViewMixin:
