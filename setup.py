@@ -21,6 +21,7 @@ setup(
         'pytz',
         'arrow',
         ],
+    python_requires=">=3.5",
     license='Apache Software License 2.0',
     packages=find_packages(exclude=["tests*", "docs", "example_setup"]),
     url='https://github.com/OTA-Insight/djangosaml2idp/',
