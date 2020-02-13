@@ -59,10 +59,45 @@ def logged_in_request(django_user_model):
 
 
 @pytest.fixture()
-def saml_login_request_factory():
+def sp_config_dict():
+    return {
+        "entityid": "test_generic_sp",
+        "service": {
+            "sp": {
+                    'name_id_format': saml.NAMEID_FORMAT_UNSPECIFIED,
+                    'endpoints': {
+                        # url and binding to the assetion consumer service view
+                        # do not change the binding or service name
+                        'assertion_consumer_service': [
+                            ('http://localhost:8000/saml2/acs/',
+                             BINDING_HTTP_POST),
+                        ],
+                        # url and binding to the single logout service view
+                        # do not change the binding or service name
+                        'single_logout_service': [
+                            ('http://localhost:8000/saml2/ls/',
+                             BINDING_HTTP_REDIRECT),
+                            ('http://localhost:8000/saml2/ls/post',
+                             BINDING_HTTP_POST),
+                        ],
+                    },
+                'idp': {
+                        "test_generic_idp": {}
+                    }
+            }
+        },
+        "metadata": {
+            "local": ["tests/xml/metadata/idp_metadata.xml"]
+        }
+    }
+
+
+@pytest.fixture()
+def saml_login_request_factory(sp_config_dict):
     def _factory(binding=BINDING_HTTP_REDIRECT):
         conf = SPConfig()
-        conf.load(copy.deepcopy(sp_conf_dict))
+        # TODO: idk if deepcopy is necessary now that it is a fixture
+        conf.load(copy.deepcopy(sp_config_dict))
         client = Saml2Client(conf)
         if binding == BINDING_HTTP_REDIRECT:
             session_id, result = client.prepare_for_authenticate(
@@ -79,38 +114,6 @@ def saml_login_request_factory():
         else:
             raise Exception("Invalid binding: %s", binding)
     return _factory
-
-
-sp_conf_dict = {
-    "entityid": "test_generic_sp",
-    "service": {
-        "sp": {
-                'name_id_format': saml.NAMEID_FORMAT_UNSPECIFIED,
-                'endpoints': {
-                    # url and binding to the assetion consumer service view
-                    # do not change the binding or service name
-                    'assertion_consumer_service': [
-                        ('http://localhost:8000/saml2/acs/',
-                         BINDING_HTTP_POST),
-                    ],
-                    # url and binding to the single logout service view
-                    # do not change the binding or service name
-                    'single_logout_service': [
-                        ('http://localhost:8000/saml2/ls/',
-                         BINDING_HTTP_REDIRECT),
-                        ('http://localhost:8000/saml2/ls/post',
-                         BINDING_HTTP_POST),
-                    ],
-                },
-            'idp': {
-                    "test_generic_idp": {}
-                }
-        }
-    },
-    "metadata": {
-        "local": ["tests/xml/metadata/idp_metadata.xml"]
-    }
-}
 
 
 def get_saml_logout_request(id="Request ID", format=saml.NAMEID_FORMAT_UNSPECIFIED, name_id="user1"):
