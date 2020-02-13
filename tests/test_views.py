@@ -29,18 +29,24 @@ User = get_user_model()
 
 FILE_PREFIX = "tests/"
 
-expected_result_file = open(FILE_PREFIX + "xml/min/request/sample_saml_request_minimal.xml")
-expected_result = expected_result_file.readline()
-expected_result_pretty = xml.dom.minidom.parseString(expected_result).toprettyxml()
-expected_result_file.close()
 
-sample_get_request = HttpRequest()
-sample_get_request.method = 'GET'
-sample_get_request.session = {}
-sample_get_request.GET = {
-    'SAMLRequest': encode_saml(expected_result),
-    'RelayState': 'Test Relay State'
-}
+@pytest.fixture()
+def sample_saml_minimal():
+    with open(FILE_PREFIX + "xml/min/request/sample_saml_request_minimal.xml") as f:
+        expected_result = f.readline()
+    return expected_result
+
+
+@pytest.fixture()
+def sample_saml_get_request(sample_saml_minimal):
+    request = HttpRequest()
+    request.method = 'GET'
+    request.session = {}
+    request.GET = {
+        'SAMLRequest': encode_saml(sample_saml_minimal),
+        'RelayState': 'Test Relay State'
+    }
+    return request
 
 
 @pytest.fixture()
@@ -142,27 +148,27 @@ class CustomMultifactorView(ProcessMultiFactorView):
 
 
 class TestStoreParamsInSession:
-    def test_works_correctly_with_get(self):
-        store_params_in_session(sample_get_request)
+    def test_works_correctly_with_get(self, sample_saml_get_request, sample_saml_minimal):
+        store_params_in_session(sample_saml_get_request)
         expected_session = {
             'Binding': BINDING_HTTP_REDIRECT,
-            'SAMLRequest': encode_saml(expected_result),
+            'SAMLRequest': encode_saml(sample_saml_minimal),
             'RelayState': 'Test Relay State'
         }
-        assert all(item in sample_get_request.session.items() for item in expected_session.items())
+        assert all(item in sample_saml_get_request.session.items() for item in expected_session.items())
 
-    def test_works_correctly_with_post(self):
+    def test_works_correctly_with_post(self, sample_saml_minimal):
         request = HttpRequest()
         request.method = 'POST'
         request.session = {}
         request.POST = {
-            'SAMLRequest': encode_saml(expected_result),
+            'SAMLRequest': encode_saml(sample_saml_minimal),
             'RelayState': 'Test Relay State'
         }
         store_params_in_session(request)
         expected_session = {
             'Binding': BINDING_HTTP_POST,
-            'SAMLRequest': encode_saml(expected_result),
+            'SAMLRequest': encode_saml(sample_saml_minimal),
             'RelayState': 'Test Relay State'
         }
         assert all(item in request.session.items() for item in expected_session.items())
@@ -177,18 +183,18 @@ class TestStoreParamsInSession:
 
 
 class TestSSOEntry:
-    def test_sso_entry_redirects(self):
-        response = sso_entry(sample_get_request)
+    def test_sso_entry_redirects(self, sample_saml_get_request):
+        response = sso_entry(sample_saml_get_request)
         assert isinstance(response, HttpResponseRedirect)
 
-    def test_sso_entry_redirects_to_right_path(self):
-        response = sso_entry(sample_get_request)
+    def test_sso_entry_redirects_to_right_path(self, sample_saml_get_request):
+        response = sso_entry(sample_saml_get_request)
         assert response.url == '/login/process/'
 
-    def test_sso_entry_returns_bad_request_if_no_samlrequest(self):
-        del sample_get_request.GET['SAMLRequest']
+    def test_sso_entry_returns_bad_request_if_no_samlrequest(self, sample_saml_get_request):
+        del sample_saml_get_request.GET['SAMLRequest']
 
-        response = sso_entry(sample_get_request)
+        response = sso_entry(sample_saml_get_request)
 
         assert isinstance(response, HttpResponseBadRequest)
 
