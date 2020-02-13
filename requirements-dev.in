@@ -1,10 +1,4 @@
 pysaml2
-pytest
-pytest-django
-pytest-pythonpath
-python-dateutil
-pytest-cov
-pytest-runner
 pylama
 codecov
 pip-tools

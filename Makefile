@@ -3,7 +3,7 @@
 install:
 	@pip install \
 	--force-reinstall \
-	-e . \
+	-e .[testing] \
 	-r requirements-dev.txt
 
 # Run entire test suite
@@ -20,7 +20,7 @@ compile:
 #  and so you have to reinstall the package deps.
 sync:
 	@pip-sync requirements-dev.txt
-	@pip install -e .
+	@pip install -e .[testing]
 
 lint:
 	@pylama djangosaml2idp

@@ -20,7 +20,16 @@ setup(
         'pysaml2>=5.0.0',
         'pytz',
         'arrow',
-        ],
+    ],
+    extras_require={
+        "testing": [
+            "pytest",
+            "pytest-runner",
+            "pytest-django",
+            "pytest-cov",
+            "pytest-pythonpath"
+        ]
+    },
     license='Apache Software License 2.0',
     packages=find_packages(exclude=["tests*", "docs", "example_setup"]),
     url='https://github.com/OTA-Insight/djangosaml2idp/',
