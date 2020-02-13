@@ -23,3 +23,5 @@ tags
 
 .idea/
 .vscode/
+
+venv
