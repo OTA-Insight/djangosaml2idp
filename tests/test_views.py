@@ -310,7 +310,6 @@ class TestIdPHandlerViewMixin:
         html_response = IdPHandlerViewMixin().create_html_response(HttpRequest(), BINDING_HTTP_POST, "SAMLResponse", "https://sp.example.com/SAML2", "")
         assert isinstance(html_response['data'], str)
 
-    @pytest.mark.xfail(reason="ImproperlyConfigured: Could not instantiate")
     def test_create_html_response_with_get(self):
         mixin = IdPHandlerViewMixin()
         html_response = mixin.create_html_response(HttpRequest(), BINDING_HTTP_REDIRECT, "SAMLResponse", "https://sp.example.com/SAML2", "")
