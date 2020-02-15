@@ -1,6 +1,8 @@
 django>2.0,<2.3
 pysaml2>=4.5.0
 djangosaml2
+pytz
+arrow
 
 pytest==4.0.1
 pytest-django==3.4.4

@@ -136,32 +136,32 @@ AUTHENTICATION_BACKENDS = (
     'djangosaml2.backends.Saml2Backend',
 )
 
+APPEND_SLASH = False
 LOGIN_URL = '/saml2/login/'
 LOGOUT_URL = '/logout/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-BASE_URL = 'http://localhost:8000/saml2'
-
 SAML_CONFIG = {
     'debug': DEBUG,
     'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
-    'entityid': '%s/metadata/' % BASE_URL,
+    'entityid': 'http://localhost:8000/saml2/metadata/',
 
     'service': {
         'sp': {
-            'name': '%s/metadata/' % BASE_URL,
+            'name': 'http://localhost:8000/saml2/metadata/',
             'endpoints': {
                 'assertion_consumer_service': [
-                    ('%s/acs/' % BASE_URL, saml2.BINDING_HTTP_POST),
+                    ('http://localhost:8000/saml2/acs/', saml2.BINDING_HTTP_POST),
                 ],
                 'single_logout_service': [
-                    ('%s/ls/' % BASE_URL, saml2.BINDING_HTTP_REDIRECT),
-                    ('%s/ls/post' % BASE_URL, saml2.BINDING_HTTP_POST),
+                    ('http://localhost:8000/saml2/ls/', saml2.BINDING_HTTP_REDIRECT),
+                    ('http://localhost:8000/saml2/ls/post/', saml2.BINDING_HTTP_POST),
                 ],
             },
             'name_id_format': [NAMEID_FORMAT_EMAILADDRESS],
             'authn_requests_signed': True,
+            'want_response_signed': True,
             'want_assertions_signed': True,
             'allow_unsolicited': True,
         },
