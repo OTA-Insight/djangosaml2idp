@@ -1,4 +1,5 @@
 import base64
+import copy
 import logging
 
 from django.conf import settings
@@ -21,6 +22,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
+from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 
@@ -29,6 +31,7 @@ from .idp import IDP
 from .models import ServiceProvider
 from .processors import BaseProcessor
 from .utils import repr_saml
+from saml2.server import Server
 
 logger = logging.getLogger(__name__)
 
@@ -242,7 +245,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             resp_args = idp_server.response_args(req_info.message)
             # Set SP and Processor
             sp_entity_id = resp_args.pop('sp_entity_id')
-            service_provider = self.get_sp(sp_entity_id)
+            service_provider = self.get_sp_config(sp_entity_id)
             # Check if user has access
             try:
                 # Check if user has access to SP
@@ -280,7 +283,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         try:
             # get sp information from the parameters
             sp_entity_id = passed_data['sp']
-            service_provider = self.get_sp(sp_entity_id)
+            service_provider = self.get_sp_config(sp_entity_id)
             processor = service_provider.processor
         except (KeyError, ImproperlyConfigured) as excp:
             return error_cbv.handle_error(request, exception=excp, status_code=400)

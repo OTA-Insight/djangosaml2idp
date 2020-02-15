@@ -20,12 +20,11 @@ from saml2.samlp import Response
 from djangosaml2idp.models import ServiceProvider
 from djangosaml2idp.processors import BaseProcessor
 from djangosaml2idp.utils import encode_saml
-from djangosaml2idp.views import (BINDING_HTTP_POST,  # Server,
-                                  BINDING_HTTP_REDIRECT, IdPHandlerViewMixin,
-                                  LoginProcessView, LogoutProcessView,
-                                  ProcessMultiFactorView, SSOInitView,
-                                  get_multifactor, metadata, sso_entry,
-                                  store_params_in_session)
+from djangosaml2idp.views import (BINDING_HTTP_POST, BINDING_HTTP_REDIRECT,
+                                  IdPHandlerViewMixin, LoginProcessView,
+                                  LogoutProcessView, ProcessMultiFactorView,
+                                  SSOInitView, get_multifactor, metadata,
+                                  sso_entry, store_params_in_session)
 
 logger = logging.getLogger(__name__)
 

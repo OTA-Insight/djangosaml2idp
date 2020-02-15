@@ -34,7 +34,7 @@ class SamlIDPErrorView(TemplateView):
         context.update({
             "exception": exception,
             "exception_type": exception.__class__.__name__ if exception else None,
-            "exception_msg": exception.message if exception else None,
+            "exception_msg": exception.message if exception and hasattr(exception, 'message') else str(exception) if exception else None,
             "extra_message": kwargs.get("extra_message"),
         })
         return context
