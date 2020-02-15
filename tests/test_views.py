@@ -26,6 +26,7 @@ from djangosaml2idp.views import (BINDING_HTTP_POST, BINDING_HTTP_REDIRECT,
                                   SSOInitView, get_multifactor, metadata,
                                   sso_entry, store_params_in_session)
 
+
 logger = logging.getLogger(__name__)
 
 User = get_user_model()

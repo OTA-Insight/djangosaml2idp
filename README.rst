@@ -7,15 +7,15 @@ djangosaml2idp
     :target: https://pypi.python.org/pypi/djangosaml2idp
     :alt: PyPi
 
-.. image:: https://img.shields.io/badge/python-2.7%2C3.7%2B-blue.svg
+.. image:: https://img.shields.io/pypi/pyversions/djangosaml2idp
     :scale: 100%
     :target: https://www.python.org/
-    :alt: Python
+    :alt: PyPI - Python Version
 
-.. image:: https://img.shields.io/badge/Django-1.11%2C%202.0%2B-blue.svg
+.. image:: https://img.shields.io/pypi/djversions/djangosaml2idp
     :scale: 100%
     :target: https://www.djangoproject.com/
-    :alt: Django
+    :alt: PyPI - Django Version
 
 .. image:: https://readthedocs.org/projects/djangosaml2idp/badge/?version=latest
     :scale: 100%
