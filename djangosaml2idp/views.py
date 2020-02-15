@@ -1,4 +1,5 @@
 import base64
+import copy
 import logging
 
 from django.conf import settings
