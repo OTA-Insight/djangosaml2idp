@@ -3,13 +3,11 @@ import datetime
 import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import zlib
-from typing import Tuple
 from xml.parsers.expat import ExpatError
 
+import arrow
 import requests
 from django.core.exceptions import ValidationError
-
-import arrow
 
 
 def repr_saml(saml: str, b64: bool = False):

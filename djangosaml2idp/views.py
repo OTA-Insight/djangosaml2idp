@@ -21,15 +21,16 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
+from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
+from saml2.server import Server
 
 from .error_views import error_cbv
 from .idp import IDP
 from .models import ServiceProvider
 from .processors import BaseProcessor
 from .utils import repr_saml
-from saml2.server import Server
 
 logger = logging.getLogger(__name__)
 

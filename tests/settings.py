@@ -1,6 +1,8 @@
 import os
+
 import saml2
-from saml2.saml import NAMEID_FORMAT_UNSPECIFIED, NAMEID_FORMAT_EMAILADDRESS
+from saml2.saml import NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED
+from saml2.sigver import get_xmlsec_binary  # noqa
 
 PROJECT_ROOT = os.getcwd()
 
@@ -51,8 +53,13 @@ SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA256
 SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA256
 
 SAML_IDP_CONFIG = {
+    'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
+    'entityid': 'test_generic_idp',
+    'description': 'test_generic_idp',
+
     'service': {
         'idp': {
+            'name': 'testing IdP',
             'endpoints': {
                 'single_sign_on_service': [
                     ('%s/sso/post' % BASE_URL, saml2.BINDING_HTTP_POST),
@@ -63,7 +70,5 @@ SAML_IDP_CONFIG = {
         }
     },
 
-    'metadata': {
-        'local': ['tests/xml/metadata/sp_metadata.xml'],
-    }
+    'valid_for': 365 * 24,
 }

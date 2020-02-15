@@ -13,7 +13,8 @@ from django.utils.timezone import now
 from saml2 import xmldsig
 
 from .idp import IDP
-from .utils import fetch_metadata, validate_metadata, extract_validuntil_from_metadata
+from .utils import (extract_validuntil_from_metadata, fetch_metadata,
+                    validate_metadata)
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,8 @@ class ServiceProvider(models.Model):
         return f'{self.entity_id}'
 
     def save(self, *args, **kwargs):
+        if not self.metadata_expiration_dt:
+            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
         super().save(*args, **kwargs)
         IDP.load(force_refresh=True)
 
@@ -131,7 +134,7 @@ class ServiceProvider(models.Model):
         filename = f'{path}/{self.id}.xml'
 
         # Rewrite the file if it did not exist yet, or if the SP config was updated after having written the file previously.
-        if not os.path.exists(filename) or refreshed_metadata or self.dt_updated > datetime.datetime.fromtimestamp(os.path.getmtime(filename)).replace(tzinfo=pytz.utc):
+        if not os.path.exists(filename) or refreshed_metadata or self.dt_updated.replace(tzinfo=pytz.utc) > datetime.datetime.fromtimestamp(os.path.getmtime(filename)).replace(tzinfo=pytz.utc):
             try:
                 with open(filename, 'w') as f:
                     f.write(self.local_metadata)
