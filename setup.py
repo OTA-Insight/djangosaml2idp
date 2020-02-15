@@ -17,7 +17,9 @@ setup(
     ]),
     install_requires=[
         'django>=2.0',
-        'pysaml2>=4.5.0'
+        'pysaml2>=5.0.0',
+        'pytz',
+        'arrow',
         ],
     license='Apache Software License 2.0',
     packages=find_packages(exclude=["tests*", "docs", "example_setup"]),

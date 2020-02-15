@@ -165,16 +165,16 @@ import saml2  # noqa
 from saml2.saml import NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED  # noqa
 from saml2.sigver import get_xmlsec_binary  # noqa
 
+APPEND_SLASH = False
 LOGIN_URL = '/login/'
 LOGOUT_URL = '/logout/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
-BASE_URL = 'http://localhost:9000/idp'
 
 SAML_IDP_CONFIG = {
     'debug': DEBUG,
     'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
-    'entityid': '%s/metadata' % BASE_URL,
+    'entityid': 'http://localhost:9000/idp/metadata/',
     'description': 'Example IdP setup',
 
     'service': {
@@ -182,23 +182,21 @@ SAML_IDP_CONFIG = {
             'name': 'Django localhost IdP',
             'endpoints': {
                 'single_sign_on_service': [
-                    ('%s/sso/post' % BASE_URL, saml2.BINDING_HTTP_POST),
-                    ('%s/sso/redirect' % BASE_URL, saml2.BINDING_HTTP_REDIRECT),
+                    ('http://localhost:9000/idp/sso/post/', saml2.BINDING_HTTP_POST),
+                    ('http://localhost:9000/idp/sso/redirect/', saml2.BINDING_HTTP_REDIRECT),
                 ],
                 "single_logout_service": [
-                    ("%s/slo/post" % BASE_URL, saml2.BINDING_HTTP_POST),
-                    ("%s/slo/redirect" % BASE_URL, saml2.BINDING_HTTP_REDIRECT)
+                    ("http://localhost:9000/idp/slo/post/", saml2.BINDING_HTTP_POST),
+                    ("http://localhost:9000/idp/slo/redirect/", saml2.BINDING_HTTP_REDIRECT)
                 ],
             },
             'name_id_format': [NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED],
             'sign_response': True,
             'sign_assertion': True,
+            'want_authn_requests_signed': True,
         },
     },
 
-    'metadata': {
-        'local': [os.path.join(os.path.join(os.path.join(BASE_DIR, 'idp'), 'saml2_config'), 'sp_metadata.xml')],
-    },
     # Signing
     'key_file': BASE_DIR + '/certificates/private.key',
     'cert_file': BASE_DIR + '/certificates/public.cert',
@@ -213,33 +211,3 @@ SAML_IDP_CONFIG = {
 
 SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA256
 SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA256
-
-SP_METADATA_URL = 'http://localhost:8000/saml2/metadata/'
-
-# SAML_IDP_AGREEMENT_MSG = 'You are about to share the following data with this sp:'
-
-SAML_IDP_SPCONFIG = {
-    '{}'.format(SP_METADATA_URL): {
-        'processor': 'djangosaml2idp.processors.BaseProcessor',
-        'attribute_mapping': {
-            # DJANGO: SAML
-            # only these attributes from this IDP
-            'email': 'email',
-            'first_name': 'first_name',
-            'last_name': 'last_name',
-            'username': 'username',
-            'is_staff': 'is_staff',
-            'is_superuser':  'is_superuser',
-            # 'user_permissions': 'user_permissions',
-            # 'groups': 'groups',
-        },
-        # 'user_agreement_attr_exclude': ['sp_specific_secret_attr'],
-        # Because we specify display name, that will be shown instead of entity id.
-        # 'display_name': 'SP Number 1',
-        # 'display_description': 'This SP does something that\'s probably important',
-        # 'display_agreement_message': SAML_IDP_AGREEMENT_MSG,
-        # 'user_agreement_valid_for': 24 * 3650,  # User agreements will be valid for 10 years for this SP only
-        'signing_algorithm': saml2.xmldsig.SIG_RSA_SHA1,
-        'digest_algorithm': saml2.xmldsig.DIGEST_SHA1,
-    }
-}
