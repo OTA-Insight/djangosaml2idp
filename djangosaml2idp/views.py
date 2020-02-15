@@ -35,10 +35,6 @@ from saml2.server import Server
 
 logger = logging.getLogger(__name__)
 
-def test(blabla):
-    return ''
-
-
 def store_params_in_session(request):
     """ Gathers the SAML parameters from the HTTP request and store them in the session
     """
