@@ -48,7 +48,12 @@ class ServiceProvider(models.Model):
         '''
         if not self.local_metadata or not self.metadata_expiration_dt or now() > self.metadata_expiration_dt or force_refresh:
             if self.remote_metadata_url:
-                self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
+                try:
+                    self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
+                except Exception:
+                    logger.error(f'Metadata for SP {self.entity_id} could not be pulled from remote url {self.remote_metadata_url}.')
+            elif now() > self.metadata_expiration_dt:
+                logger.error(f'Metadata for SP {self.entity_id} has expired, no remote metadata found to refresh.')
             self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
             return True
         return False
