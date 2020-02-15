@@ -30,8 +30,9 @@ class IDP:
         """
         if cls._server_instance is None or force_refresh:
             conf = IdPConfig()
+            md = cls.construct_metadata()
             try:
-                conf.load(cls.construct_metadata())
+                conf.load(md)
                 cls._server_instance = Server(config=conf)
             except Exception as e:
                 raise ImproperlyConfigured(_('Could not instantiate an IDP based on the SAML_IDP_CONFIG settings and configured ServiceProviders: {}').format(str(e)))

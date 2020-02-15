@@ -35,6 +35,7 @@ class TestBaseProcessor:
 
         assert BaseProcessor('entity-id').get_user_id(user, NAMEID_FORMAT_UNSPECIFIED, service_provider, idp) == 'test_username'
 
+    @pytest.mark.django_db
     def test_extract_user_id_configure_by_settings(self, settings):
         """Should use `settings.SAML_IDP_DJANGO_USERNAME_FIELD` to determine the user id field"""
 
@@ -48,6 +49,7 @@ class TestBaseProcessor:
 
         assert BaseProcessor('entity-id').get_user_id(user, NAMEID_FORMAT_UNSPECIFIED, service_provider, idp) == 'test_first_name'
 
+    @pytest.mark.django_db
     def test_extract_user_id_configure_on_service_provider(self):
         user = User()
         user.USERNAME_FIELD = 'email'
@@ -58,6 +60,7 @@ class TestBaseProcessor:
 
         assert BaseProcessor('entity-id').get_user_id(user, NAMEID_FORMAT_UNSPECIFIED, service_provider, idp) == 'test_email'
 
+    @pytest.mark.django_db
     def test_extract_user_id_from_sp_config_if_method(self):
 
         def random_method(self):
@@ -72,6 +75,7 @@ class TestBaseProcessor:
 
         assert BaseProcessor('entity-id').get_user_id(user, NAMEID_FORMAT_UNSPECIFIED, service_provider, idp) == 'test method result'
 
+    @pytest.mark.django_db
     def test_identity_dict_creation(self):
 
         def random_method(self):

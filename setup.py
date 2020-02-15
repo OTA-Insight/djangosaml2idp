@@ -28,8 +28,8 @@ setup(
             "pytest-django",
             "pytest-cov",
             "pytest-pythonpath"
-        ]
-    },
+    ]
+    python_requires=">=3.6",
     license='Apache Software License 2.0',
     packages=find_packages(exclude=["tests*", "docs", "example_setup"]),
     url='https://github.com/OTA-Insight/djangosaml2idp/',
@@ -48,9 +48,9 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
+        "Programming Language :: Python :: 3.8",
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Internet :: WWW/HTTP :: WSGI",
         "Topic :: Security",

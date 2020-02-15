@@ -1,1 +1,11 @@
-<ns0:EntityDescriptor xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ns1="urn:oasis:names:tc:SAML:metadata:algsupport" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" entityID="test_generic_idp" validUntil="2028-08-05T00:00:00Z"><ns0:IDPSSODescriptor WantAuthnRequestsSigned="false" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol"><ns0:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</ns0:NameIDFormat><ns0:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified</ns0:NameIDFormat><ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://localhost:9000/idp/sso/post" /><ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="http://localhost:9000/idp/sso/redirect" /></ns0:IDPSSODescriptor></ns0:EntityDescriptor>
+<ns0:EntityDescriptor 
+	xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata" 
+	xmlns:ns1="urn:oasis:names:tc:SAML:metadata:algsupport" 
+	xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" entityID="test_generic_idp" validUntil="2028-08-05T00:00:00Z">
+	<ns0:IDPSSODescriptor WantAuthnRequestsSigned="false" protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+		<ns0:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</ns0:NameIDFormat>
+		<ns0:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified</ns0:NameIDFormat>
+		<ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://localhost:9000/idp/sso/post" />
+		<ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="http://localhost:9000/idp/sso/redirect" />
+	</ns0:IDPSSODescriptor>
+</ns0:EntityDescriptor>
