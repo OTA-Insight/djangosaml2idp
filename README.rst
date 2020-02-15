@@ -7,15 +7,15 @@ djangosaml2idp
     :target: https://pypi.python.org/pypi/djangosaml2idp
     :alt: PyPi
 
-.. image:: https://img.shields.io/badge/python-2.7%2C3.7%2B-blue.svg
+.. image:: https://img.shields.io/pypi/pyversions/djangosaml2idp
     :scale: 100%
     :target: https://www.python.org/
-    :alt: Python
+    :alt: PyPI - Python Version
 
-.. image:: https://img.shields.io/badge/Django-1.11%2C%202.0%2B-blue.svg
+.. image:: https://img.shields.io/pypi/djversions/djangosaml2idp
     :scale: 100%
     :target: https://www.djangoproject.com/
-    :alt: Django
+    :alt: PyPI - Django Version
 
 .. image:: https://readthedocs.org/projects/djangosaml2idp/badge/?version=latest
     :scale: 100%
@@ -173,9 +173,13 @@ Customizing error handling
 ==========================
 
 djangosaml2idp renders a very basic error page if it encounters an error, indicating an error occured, which error, and possibly an extra message.
-The HTTP status code is also set if possible depending on which error occured.
+The HTTP status code is dependant on which error occured. It also logs the exception with error severity.
 You can customize this by using the ``SAML_IDP_ERROR_VIEW_CLASS`` setting. Set this to a dotted import path to your custom (class based) view in order to use that one.
+You'll likely want this to use your own template and styling to display and error message.
 If you subclass the provided `djangosaml2idp.error_views.SamlIDPErrorView`, you have the following variables available for use in the template:
+
+exception
+  the exception instance that occurred
 
 exception_type
   the class of the exception that occurred
