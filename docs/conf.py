@@ -24,8 +24,7 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
-import djangosaml2idp
-from djangosaml2idp import __version__
+from djangosaml2idp import __version__  # noqa
 
 # -- General configuration ------------------------------------------------
 

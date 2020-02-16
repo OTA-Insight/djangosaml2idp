@@ -3,11 +3,8 @@ from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
-from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from .testing_utilities import mocked_requests_get
 from djangosaml2idp.forms import ServiceProviderAdminForm
-from djangosaml2idp.models import ServiceProvider
 from djangosaml2idp.utils import extract_validuntil_from_metadata
 
 User = get_user_model()
