@@ -169,7 +169,7 @@ class TestNameIdBuilder:
     def test_get_nameid_email_invalid(self):
         user = User(username='Test Name', email='test@email.com')
 
-        with pytest.raises(Exception, message=f"user_id {user.username} does not contain the '@' symbol, so is not a valid NameID Email address format."):
+        with pytest.raises(Exception, match=f"user_id {user.username} does not contain the '@' symbol, so is not a valid NameID Email address format."):
             NameIdBuilder.get_nameid_email(user.username)
 
     def test_request_unmapped_nameid(self):
