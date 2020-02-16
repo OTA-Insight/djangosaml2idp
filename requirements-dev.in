@@ -3,3 +3,4 @@ pylama
 codecov
 pip-tools
 tox
+pre-commit

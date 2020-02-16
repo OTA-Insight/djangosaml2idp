@@ -5,6 +5,7 @@ install:
 	--force-reinstall \
 	-e .[testing] \
 	-r requirements-dev.txt
+	@pre-commit install
 
 # Run entire test suite
 test:
