@@ -12,23 +12,18 @@ from djangosaml2idp.utils import (encode_saml,
 
 from .testing_utilities import mocked_requests_get
 
-FILE_PREFIX = "tests/"
-
-with open(FILE_PREFIX + "xml/metadata/sp_metadata.xml") as sp_metadata_xml_file:
-    sp_metadata_xml = ''.join(sp_metadata_xml_file.readlines())
-
-with open(FILE_PREFIX + "xml/min/request/sample_saml_request_minimal.xml") as expected_result_file:
-    expected_result = expected_result_file.readline()
-    expected_result_pretty = xml.dom.minidom.parseString(expected_result).toprettyxml()
-
 
 class TestSAMLEncodeAndDecode:
-    ''' repr_saml and encode_saml are inverse functions. By testing them against each other, we test both. '''
-    def test_with_minimal_saml_request_b64(self):
-        assert repr_saml(encode_saml(expected_result), b64=True) == expected_result_pretty
+    @staticmethod
+    def prettify(xml_str: str) -> str:
+        return xml.dom.minidom.parseString(xml_str).toprettyxml()
 
-    def test_with_internal_saml_response_zlib(self):
-        assert repr_saml(encode_saml(expected_result, use_zlib=True)) == expected_result_pretty
+    ''' repr_saml and encode_saml are inverse functions. By testing them against each other, we test both. '''
+    def test_with_minimal_saml_request_b64(self, saml_request_minimal):
+        assert repr_saml(encode_saml(saml_request_minimal), b64=True) == self.prettify(saml_request_minimal)
+
+    def test_with_internal_saml_response_zlib(self, saml_request_minimal):
+        assert repr_saml(encode_saml(saml_request_minimal, use_zlib=True)) == self.prettify(saml_request_minimal)
 
 
 class TestMetadataFetching:
@@ -57,7 +52,7 @@ class TestMetadataValidation:
         with pytest.raises(ValidationError):
             extract_validuntil_from_metadata('')
 
-    def test_extract_validuntil_from_metadata_valid(self):
+    def test_extract_validuntil_from_metadata_valid(self, sp_metadata_xml):
         valid_until_dt_extracted = extract_validuntil_from_metadata(sp_metadata_xml)
         assert valid_until_dt_extracted == arrow.get("2021-02-14T17:43:34Z")
 
