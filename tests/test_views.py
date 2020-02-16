@@ -37,9 +37,8 @@ expected_result = expected_result_file.readline()
 expected_result_pretty = xml.dom.minidom.parseString(expected_result).toprettyxml()
 expected_result_file.close()
 
-sp_metadata_xml_file = open(FILE_PREFIX + "xml/metadata/sp_metadata.xml")
-sp_metadata_xml = ''.join(sp_metadata_xml_file.readlines())
-sp_metadata_xml_file.close()
+with open(FILE_PREFIX + "xml/metadata/sp_metadata.xml") as sp_metadata_xml_file:
+    sp_metadata_xml = ''.join(sp_metadata_xml_file.readlines())
 
 sample_get_request = HttpRequest()
 sample_get_request.method = 'GET'

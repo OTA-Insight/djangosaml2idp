@@ -6,6 +6,7 @@ from typing import Dict
 
 import pytz
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.functional import cached_property
 from django.utils.safestring import mark_safe
@@ -17,6 +18,8 @@ from .utils import (extract_validuntil_from_metadata, fetch_metadata,
                     validate_metadata)
 
 logger = logging.getLogger(__name__)
+
+User = get_user_model()
 
 default_attribute_mapping = {
     # DJANGO: SAML
@@ -53,7 +56,7 @@ class ServiceProvider(models.Model):
                     self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
                 except Exception:
                     logger.error(f'Metadata for SP {self.entity_id} could not be pulled from remote url {self.remote_metadata_url}.')
-            elif now() > self.metadata_expiration_dt:
+            elif self.metadata_expiration_dt and now() > self.metadata_expiration_dt:
                 logger.error(f'Metadata for SP {self.entity_id} has expired, no remote metadata found to refresh.')
             self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
             return True
@@ -104,7 +107,7 @@ class ServiceProvider(models.Model):
             return self._nameid_field
         if hasattr(settings, 'SAML_IDP_DJANGO_USERNAME_FIELD'):
             return settings.SAML_IDP_DJANGO_USERNAME_FIELD
-        return getattr(settings.AUTH_USER_MODEL, 'USERNAME_FIELD', 'username')
+        return getattr(User, 'USERNAME_FIELD', 'username')
 
     # Do checks on validity of processor string both on setting and getting, as the
     # codebase can change regardless of the objects persisted in the database.

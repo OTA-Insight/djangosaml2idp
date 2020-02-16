@@ -2,11 +2,11 @@ import base64
 import logging
 
 from django.conf import settings
-from django.contrib.auth import logout
+from django.contrib.auth import get_user_model, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import (ImproperlyConfigured, ObjectDoesNotExist,
                                     PermissionDenied, ValidationError)
-from django.http import HttpResponse, HttpResponseRedirect, HttpRequest
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.template.exceptions import (TemplateDoesNotExist,
                                         TemplateSyntaxError)
 from django.template.loader import get_template
@@ -22,16 +22,17 @@ from django.views.decorators.http import require_http_methods
 from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.ident import NameID
-from .utils import verify_request_signature
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 
 from .error_views import error_cbv
 from .idp import IDP
 from .models import ServiceProvider
 from .processors import BaseProcessor
-from .utils import repr_saml
+from .utils import repr_saml, verify_request_signature
 
 logger = logging.getLogger(__name__)
+
+User = get_user_model()
 
 
 def store_params_in_session(request: HttpRequest) -> None:
@@ -98,7 +99,7 @@ def get_authn(req_info=None):
     return broker.get_authn_by_accr(req_authn_context)
 
 
-def build_authn_response(user: settings.AUTH_USER_MODEL, authn, resp_args, service_provider: ServiceProvider) -> list:
+def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider) -> list:
     """ pysaml2 server.Server.create_authn_response wrapper
     """
     policy = resp_args.get('name_id_policy', None)

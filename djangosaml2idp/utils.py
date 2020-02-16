@@ -1,6 +1,7 @@
 import base64
 import datetime
 import xml.dom.minidom
+from saml2.response import StatusResponse
 import xml.etree.ElementTree as ET
 import zlib
 from xml.parsers.expat import ExpatError
@@ -30,11 +31,10 @@ def encode_saml(saml_envelope: str, use_zlib: bool = False) -> bytes:
     return base64.b64encode(before_base64)
 
 
-def verify_request_signature(req_info) -> None:
+def verify_request_signature(req_info: StatusResponse) -> None:
     """ Signature verification for authn request signature_check is at
         saml2.sigver.SecurityContext.correctly_signed_authn_request
     """
-    # TODO: Add unit tests for this
     if not req_info.signature_check(req_info.xmlstr):
         raise ValueError(_("Message signature verification failure"))
 
