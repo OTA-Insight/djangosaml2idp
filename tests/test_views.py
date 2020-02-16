@@ -140,11 +140,14 @@ def sp_testing_configs() -> dict:
     }
 
 
-def get_saml_logout_request(id="Request ID", format=saml.NAMEID_FORMAT_UNSPECIFIED, name_id="user1"):
-    xml_template = """<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="{}" Version="2.0" IssueInstant="{}" Destination="{}"><saml:Issuer>{}</saml:Issuer><saml:NameID SPNameQualifier="{}metadata.php" Format="{}">{}</saml:NameID></samlp:LogoutRequest>""".format(
-        id, timezone.now().strftime("%Y-%m-%dT%H:%M:%SZ"), "http://localhost:9000/idp/slo/redirect", "test_generic_sp", "test_generic_sp", format, name_id
-    )
-    return encode_saml(xml_template, use_zlib=True)
+@pytest.fixture()
+def saml_logout_request_factory():
+    def _factory(id="Request ID", format=saml.NAMEID_FORMAT_UNSPECIFIED, name_id="user1"):
+        xml_template = """<samlp:LogoutRequest xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="{}" Version="2.0" IssueInstant="{}" Destination="{}"><saml:Issuer>{}</saml:Issuer><saml:NameID SPNameQualifier="{}metadata.php" Format="{}">{}</saml:NameID></samlp:LogoutRequest>""".format(
+            id, timezone.now().strftime("%Y-%m-%dT%H:%M:%SZ"), "http://localhost:9000/idp/slo/redirect", "test_generic_sp", "test_generic_sp", format, name_id
+        )
+        return encode_saml(xml_template, use_zlib=True)
+    return _factory
 
 
 class CustomProcessor(BaseProcessor):
@@ -509,10 +512,10 @@ class TestMultifactor:
 
 class TestLogoutProcessView:
     @pytest.mark.django_db
-    def test_slo_view_works_properly_redirect(self, sp_metadata_xml, logged_in_request):
+    def test_slo_view_works_properly_redirect(self, sp_metadata_xml, logged_in_request, saml_logout_request_factory):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
-        logged_in_request.GET['SAMLRequest'] = get_saml_logout_request()
+        logged_in_request.GET['SAMLRequest'] = saml_logout_request_factory()
 
         response = LogoutProcessView.as_view()(logged_in_request)
 
