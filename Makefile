@@ -30,4 +30,5 @@ clean:
 	@rm -rf \
 	.pytest_cache \
 	.tox \
+	.mypy_cache \
 	dist
