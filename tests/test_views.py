@@ -30,23 +30,17 @@ logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
-FILE_PREFIX = "tests/"
 
-expected_result_file = open(FILE_PREFIX + "xml/min/request/sample_saml_request_minimal.xml")
-expected_result = expected_result_file.readline()
-expected_result_pretty = xml.dom.minidom.parseString(expected_result).toprettyxml()
-expected_result_file.close()
-
-with open(FILE_PREFIX + "xml/metadata/sp_metadata.xml") as sp_metadata_xml_file:
-    sp_metadata_xml = ''.join(sp_metadata_xml_file.readlines())
-
-sample_get_request = HttpRequest()
-sample_get_request.method = 'GET'
-sample_get_request.session = {}
-sample_get_request.GET = {
-    'SAMLRequest': encode_saml(expected_result),
-    'RelayState': 'Test Relay State'
-}
+@pytest.fixture()
+def sample_get_request(saml_request_minimal) -> HttpRequest:
+    request = HttpRequest()
+    request.method = 'GET'
+    request.session = {}
+    request.GET = {
+        'SAMLRequest': encode_saml(saml_request_minimal),
+        'RelayState': 'Test Relay State'
+    }
+    return request
 
 
 def get_logged_in_request():
@@ -162,27 +156,27 @@ class CustomMultifactorView(ProcessMultiFactorView):
 
 
 class TestStoreParamsInSession:
-    def test_works_correctly_with_get(self):
+    def test_works_correctly_with_get(self, saml_request_minimal, sample_get_request):
         store_params_in_session(sample_get_request)
         expected_session = {
             'Binding': BINDING_HTTP_REDIRECT,
-            'SAMLRequest': encode_saml(expected_result),
+            'SAMLRequest': encode_saml(saml_request_minimal),
             'RelayState': 'Test Relay State'
         }
         assert all(item in sample_get_request.session.items() for item in expected_session.items())
 
-    def test_works_correctly_with_post(self):
+    def test_works_correctly_with_post(self, saml_request_minimal):
         request = HttpRequest()
         request.method = 'POST'
         request.session = {}
         request.POST = {
-            'SAMLRequest': encode_saml(expected_result),
+            'SAMLRequest': encode_saml(saml_request_minimal),
             'RelayState': 'Test Relay State'
         }
         store_params_in_session(request)
         expected_session = {
             'Binding': BINDING_HTTP_POST,
-            'SAMLRequest': encode_saml(expected_result),
+            'SAMLRequest': encode_saml(saml_request_minimal),
             'RelayState': 'Test Relay State'
         }
         assert all(item in request.session.items() for item in expected_session.items())
@@ -197,15 +191,15 @@ class TestStoreParamsInSession:
 
 
 class TestSSOEntry:
-    def test_sso_entry_redirects(self):
+    def test_sso_entry_redirects(self, sample_get_request):
         response = sso_entry(sample_get_request)
         assert isinstance(response, HttpResponseRedirect)
 
-    def test_sso_entry_redirects_to_right_path(self):
+    def test_sso_entry_redirects_to_right_path(self, sample_get_request):
         response = sso_entry(sample_get_request)
         assert response.url == '/login/process/'
 
-    def test_sso_entry_returns_bad_request_if_no_samlrequest(self):
+    def test_sso_entry_returns_bad_request_if_no_samlrequest(self, saml_request_minimal, sample_get_request):
         del sample_get_request.GET['SAMLRequest']
 
         response = sso_entry(sample_get_request)
@@ -219,7 +213,7 @@ class TestIdPHandlerViewMixin:
             get_sp_config('this_sp_does_not_exist')
 
     @pytest.mark.django_db
-    def test_set_sp_works_if_sp_defined(self, settings):
+    def test_set_sp_works_if_sp_defined(self, settings, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         sp = get_sp_config('test_generic_sp')
@@ -228,7 +222,7 @@ class TestIdPHandlerViewMixin:
         assert sp.attribute_mapping == SP_TESTING_CONFIGS['test_generic_sp']['attribute_mapping']
 
     @pytest.mark.django_db
-    def test_set_processor_errors_if_processor_cannot_be_loaded(self):
+    def test_set_processor_errors_if_processor_cannot_be_loaded(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_sp_with_bad_processor', local_metadata=sp_metadata_xml, _processor='this.does.not.exist')
         sp = get_sp_config('test_sp_with_bad_processor')
 
@@ -236,7 +230,7 @@ class TestIdPHandlerViewMixin:
             _ = sp.processor
 
     @pytest.mark.django_db
-    def test_set_processor_defaults_to_base_processor(self):
+    def test_set_processor_defaults_to_base_processor(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_sp_with_no_processor', local_metadata=sp_metadata_xml, _attribute_mapping='{}')
 
         sp = get_sp_config('test_sp_with_no_processor')
@@ -244,7 +238,7 @@ class TestIdPHandlerViewMixin:
         assert isinstance(sp.processor, BaseProcessor)
 
     @pytest.mark.django_db
-    def test_get_processor_loads_custom_processor(self):
+    def test_get_processor_loads_custom_processor(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_sp_with_custom_processor', local_metadata=sp_metadata_xml, _processor='tests.test_views.CustomProcessor')
 
         sp = get_sp_config('test_sp_with_custom_processor')
@@ -260,7 +254,7 @@ class TestIdPHandlerViewMixin:
         }
 
     @pytest.mark.django_db
-    def test_check_access_works(self):
+    def test_check_access_works(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         sp = get_sp_config('test_generic_sp')
@@ -268,7 +262,7 @@ class TestIdPHandlerViewMixin:
         check_access(processor, HttpRequest())
 
     @pytest.mark.django_db
-    def test_check_access_fails_when_it_should(self):
+    def test_check_access_fails_when_it_should(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_sp_with_custom_processor_that_doesnt_allow_access', local_metadata=sp_metadata_xml, _processor='tests.test_views.CustomProcessorNoAccess')
 
         sp = get_sp_config('test_sp_with_custom_processor_that_doesnt_allow_access')
@@ -277,7 +271,7 @@ class TestIdPHandlerViewMixin:
             check_access(processor, HttpRequest())
 
     @pytest.mark.django_db
-    def test_build_authn_response(self):
+    def test_build_authn_response(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         sp = get_sp_config('test_generic_sp')
@@ -290,7 +284,7 @@ class TestIdPHandlerViewMixin:
         assert isinstance(build_authn_response(user, authn, resp_args, sp), Response)
 
     @pytest.mark.django_db
-    def test_build_authn_response_unsupported_nameidformat(self):
+    def test_build_authn_response_unsupported_nameidformat(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         sp = get_sp_config('test_generic_sp')
@@ -327,7 +321,7 @@ class TestIdPHandlerViewMixin:
         assert isinstance(response, HttpResponse)
 
     @pytest.mark.django_db
-    def compile_data_for_render_response(self):
+    def compile_data_for_render_response(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         mixin = IdPHandlerViewMixin()
@@ -362,8 +356,8 @@ class TestIdPHandlerViewMixin:
         assert isinstance(response, HttpResponseRedirect)
 
     @pytest.mark.django_db
-    def test_render_response_constructs_request_session_properly(self):
-        (mixin, request, html_response) = self.compile_data_for_render_response()
+    def test_render_response_constructs_request_session_properly(self, sp_metadata_xml):
+        (mixin, request, html_response) = self.compile_data_for_render_response(sp_metadata_xml)
 
         expected_session = {
             "saml_data": html_response
@@ -374,8 +368,8 @@ class TestIdPHandlerViewMixin:
         assert all(item in request.session.items() for item in expected_session.items())
 
     @pytest.mark.django_db
-    def test_redirects_multifactor_if_relevant(self):
-        (mixin, request, html_response) = self.compile_data_for_render_response()
+    def test_redirects_multifactor_if_relevant(self, sp_metadata_xml):
+        (mixin, request, html_response) = self.compile_data_for_render_response(sp_metadata_xml)
 
         def multifactor(self, user):
             return True
@@ -399,7 +393,7 @@ class TestLoginProcessView:
         assert response.url == '/accounts/login/?next='
 
     @pytest.mark.django_db
-    def test_goes_through_normally_redirect(self):
+    def test_goes_through_normally_redirect(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         request = get_logged_in_request()
@@ -414,7 +408,7 @@ class TestLoginProcessView:
         assert isinstance(response, HttpResponse)
 
     @pytest.mark.django_db
-    def test_goes_through_normally_post(self):
+    def test_goes_through_normally_post(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         request = get_logged_in_request()
@@ -521,7 +515,7 @@ class TestMultifactor:
 
 class TestLogoutProcessView:
     @pytest.mark.django_db
-    def test_slo_view_works_properly_redirect(self):
+    def test_slo_view_works_properly_redirect(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         request = get_logged_in_request()
