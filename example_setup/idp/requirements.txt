@@ -1,3 +1,2 @@
 django<3.0
-djangosaml2idp==0.7.0
 pysaml2==5.0.0

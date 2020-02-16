@@ -2,7 +2,8 @@ import hashlib
 import logging
 from typing import Dict
 
-from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.utils.module_loading import import_string
 from django.utils.translation import gettext as _
 from saml2.saml import (NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_ENCRYPTED,
@@ -15,6 +16,8 @@ from saml2.saml import (NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_ENCRYPTED,
 from .models import ServiceProvider
 
 logger = logging.getLogger(__name__)
+
+User = get_user_model()
 
 
 class NameIdBuilder:
@@ -44,7 +47,7 @@ class NameIdBuilder:
         return opaque.hexdigest()
 
     @classmethod
-    def get_nameid_persistent(cls, user_id: str, sp_entityid: str = '', idp_entityid: str = '', user=None) -> str:
+    def get_nameid_persistent(cls, user_id: str, user: User, sp_entityid: str = '', idp_entityid: str = '') -> str:
         """ Get PersistentID in TransientID format
             see: http://software.internet2.edu/eduperson/internet2-mace-dir-eduperson-201602.html#eduPersonTargetedID
         """
@@ -53,14 +56,14 @@ class NameIdBuilder:
     @classmethod
     def get_nameid_email(cls, user_id: str, **kwargs) -> str:
         if '@' not in user_id:
-            raise Exception("user_id {} does not contain the '@' symbol, so is not a valid NameID Email address format.".format(user_id))
+            raise Exception(f"user_id {user_id} does not contain the '@' symbol, so is not a valid NameID Email address format.")
         return user_id
 
     @classmethod
     def get_nameid_transient(cls, user_id: str, **kwargs) -> str:
         """ This would return EPPN
         """
-        return user_id
+        raise NotImplementedError('Not implemented yet')
 
     @classmethod
     def get_nameid_unspecified(cls, user_id: str, **kwargs) -> str:
@@ -72,9 +75,9 @@ class NameIdBuilder:
     def get_nameid(cls, user_id: str, nameid_format: str, **kwargs) -> str:
         method = cls.format_mappings.get(nameid_format)
         if not method:
-            raise NotImplementedError('{} was not been mapped in NameIdBuilder.format_mappings'.format(nameid_format))
+            raise NotImplementedError(f'{nameid_format} has not been mapped in NameIdBuilder.format_mappings')
         if not hasattr(cls, method):
-            raise NotImplementedError('{} was not been implemented NameIdBuilder methods'.format(nameid_format))
+            raise NotImplementedError(f'{nameid_format} has not been implemented NameIdBuilder methods')
         name_id = getattr(cls, method)(user_id, **kwargs)
         return name_id
 
@@ -141,7 +144,7 @@ def instantiate_processor(processor_cls, entity_id: str) -> BaseProcessor:
     except Exception as e:
         msg = _("Failed to instantiate processor: {} - {}").format(processor_cls, e)
         logger.error(msg, exc_info=True)
-        raise
+        raise ImproperlyConfigured(msg) from e
     if not isinstance(processor_instance, BaseProcessor):
         raise ValidationError('{} should be a subclass of djangosaml2idp.processors.BaseProcessor'.format(processor_cls))
     return processor_instance
