@@ -18,9 +18,10 @@ class IDP:
         """ Get the config including the metadata for all the configured service providers. """
         from .models import ServiceProvider
         idp_config = copy.deepcopy(settings.SAML_IDP_CONFIG)
-        idp_config['metadata'] = {
-            'local': [sp.metadata_path() for sp in ServiceProvider.objects.filter(active=True)],
-        }
+        if idp_config:
+            idp_config['metadata'] = {
+                'local': [sp.metadata_path() for sp in ServiceProvider.objects.filter(active=True)],
+            }
         return idp_config
 
     @classmethod
