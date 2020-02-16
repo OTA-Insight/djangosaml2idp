@@ -1,23 +1,42 @@
 language: python
-sudo: required
-dist: buster
-python:
-  - "3.5"
-  - "3.6"
-  - "3.7"
-  - "3.8"
-env:
-  - DJANGO_VERSION=2.0
-  - DJANGO_VERSION=2.1
-  - DJANGO_VERSION=2.2
+os: linux
+
+cache:
+  - pip
+
+jobs:
+  include:
+    - python: 3.6
+      env: TOX_ENV=format
+    - python: 3.6
+      env: TOX_ENV=py36-django2
+    - python: 3.6
+      env: TOX_ENV=py36-django21
+    - python: 3.6
+      env: TOX_ENV=py36-django22
+    - python: 3.6
+      env: TOX_ENV=py36-django3
+    - python: 3.7
+      env: TOX_ENV=py37-django2
+    - python: 3.7
+      env: TOX_ENV=py37-django21
+    - python: 3.7
+      env: TOX_ENV=py37-django22
+    - python: 3.7
+      env: TOX_ENV=py37-django3
+    - python: 3.8
+      env: TOX_ENV=py38-django2
+    - python: 3.8
+      env: TOX_ENV=py38-django21
+    - python: 3.8
+      env: TOX_ENV=py38-django22
+    - python: 3.8
+      env: TOX_ENV=py38-django3
+
 install:
   - sudo apt-get update
   - sudo apt-get install xmlsec1
-  - pip install -q Django==$DJANGO_VERSION
-  - pip install -q -r requirements-dev.txt
-  - python setup.py install
+  - pip install tox
+
 script:
-  - pylama -o pytest.ini
-  - py.test --cov=djangosaml2idp
-after_success:
-  codecov
+    - tox -e $TOX_ENV

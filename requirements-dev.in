@@ -1,0 +1,5 @@
+pysaml2
+pylama
+codecov
+pip-tools
+tox
