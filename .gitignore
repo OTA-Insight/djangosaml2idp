@@ -24,3 +24,4 @@ tags
 .idea/
 .vscode/
 venv
+.mypy_cache
