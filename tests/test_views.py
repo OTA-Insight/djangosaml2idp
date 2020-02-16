@@ -1,6 +1,5 @@
 import base64
 import copy
-import datetime
 import logging
 import xml
 from urllib import parse
@@ -15,6 +14,7 @@ from django.utils import timezone
 from saml2 import saml
 from saml2.client import Saml2Client
 from saml2.config import SPConfig
+from saml2.saml import NAMEID_FORMAT_X509SUBJECTNAME
 from saml2.samlp import Response
 
 from djangosaml2idp.models import ServiceProvider
@@ -294,6 +294,22 @@ class TestIdPHandlerViewMixin:
             "destination": "https://sp.example.com/SAML2",
         }
         assert isinstance(mixin.build_authn_response(user, authn, resp_args, sp), Response)
+
+    @pytest.mark.django_db
+    def test_build_authn_response_unsupported_nameidformat(self):
+        ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
+
+        mixin = IdPHandlerViewMixin()
+        sp = mixin.get_sp_config('test_generic_sp')
+        authn = mixin.get_authn()
+        resp_args = {
+            "in_response_to": "SP_Initiated_Login",
+            "destination": "https://sp.example.com/SAML2",
+            "name_id_policy": NAMEID_FORMAT_X509SUBJECTNAME,
+        }
+
+        with pytest.raises(ImproperlyConfigured):
+            mixin.build_authn_response(User(), authn, resp_args, sp)
 
     @pytest.mark.django_db
     def test_create_html_response_with_post(self):
