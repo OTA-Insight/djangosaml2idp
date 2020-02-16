@@ -4,7 +4,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import zlib
 from xml.parsers.expat import ExpatError
-
+from django.utils.translation import gettext as _
 import arrow
 import requests
 from django.core.exceptions import ValidationError
@@ -28,6 +28,15 @@ def encode_saml(saml_envelope: str, use_zlib: bool = False) -> bytes:
     # Not sure where 2:-4 came from, but that's how pysaml2 does it, and it works
     before_base64 = zlib.compress(saml_envelope.encode())[2:-4] if use_zlib else saml_envelope.encode()
     return base64.b64encode(before_base64)
+
+
+def verify_request_signature(req_info) -> None:
+    """ Signature verification for authn request signature_check is at
+        saml2.sigver.SecurityContext.correctly_signed_authn_request
+    """
+    # TODO: Add unit tests for this
+    if not req_info.signature_check(req_info.xmlstr):
+        raise ValueError(_("Message signature verification failure"))
 
 
 def fetch_metadata(remote_metadata_url: str) -> str:
