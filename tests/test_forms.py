@@ -9,11 +9,6 @@ from djangosaml2idp.utils import extract_validuntil_from_metadata
 
 User = get_user_model()
 
-FILE_PREFIX = "tests/"
-
-with open(FILE_PREFIX + "xml/metadata/sp_metadata.xml") as sp_metadata_xml_file:
-    sp_metadata_xml = ''.join(sp_metadata_xml_file.readlines())
-
 
 class TestAdminForm:
 
@@ -25,7 +20,7 @@ class TestAdminForm:
         assert 'Either a remote metadata URL, or a local metadata xml needs to be provided.' in form.errors['__all__']
 
     @pytest.mark.django_db
-    def test_valid(self):
+    def test_valid(self, sp_metadata_xml):
         form = ServiceProviderAdminForm({
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
@@ -43,7 +38,7 @@ class TestAdminForm:
 
     @pytest.mark.django_db
     @mock.patch('requests.get', side_effect=mocked_requests_get)
-    def test_valid_remote_metadata_url(self, mock_get):
+    def test_valid_remote_metadata_url(self, mock_get, sp_metadata_xml):
         form = ServiceProviderAdminForm({
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
@@ -61,7 +56,7 @@ class TestAdminForm:
         assert form.is_valid() is True
 
     @pytest.mark.django_db
-    def test_metadata_invalid_not_json_parseable(self):
+    def test_metadata_invalid_not_json_parseable(self, sp_metadata_xml):
         form = ServiceProviderAdminForm({
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
@@ -74,7 +69,7 @@ class TestAdminForm:
         assert 'The provided string could not be parsed with json.' in form.errors['_attribute_mapping'][0]
 
     @pytest.mark.django_db
-    def test_metadata_invalid_nodict(self):
+    def test_metadata_invalid_nodict(self, sp_metadata_xml):
         form = ServiceProviderAdminForm({
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
@@ -87,7 +82,7 @@ class TestAdminForm:
         assert 'The provided attribute_mapping should be a string representing a dict.' in form.errors['_attribute_mapping'][0]
 
     @pytest.mark.django_db
-    def test_metadata_invalid_dict_wroncontent(self):
+    def test_metadata_invalid_dict_wroncontent(self, sp_metadata_xml):
         form = ServiceProviderAdminForm({
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
