@@ -50,6 +50,10 @@ class ServiceProvider(models.Model):
         ''' If a remote metadata url is set, fetch new metadata if the locally cached one is expired. Returns True if new metadata was set.
             Sets metadata fields on instance, but does not save to db. If force_refresh = True, the metadata will be refreshed regardless of the currently cached version validity timestamp.
         '''
+
+        # TODO: this logic appears to be incorrect.
+        #  In the case local_metadata is Falsy and remote metadata is not set you error on extract
+        #  as it has nothing to extract on.
         if not self.local_metadata or not self.metadata_expiration_dt or now() > self.metadata_expiration_dt or force_refresh:
             if self.remote_metadata_url:
                 try:
