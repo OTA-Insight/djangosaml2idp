@@ -145,14 +145,17 @@ class IdPHandlerViewMixin:
         """ Render the html response for the login action. Can be using a custom html template if set on the view. """
         default_login_template_name = 'djangosaml2idp/login.html'
         custom_login_template_name = getattr(self, 'login_html_template', None)
+
         if custom_login_template_name:
             template = self._fetch_custom_template(custom_login_template_name, default_login_template_name, using)
-        else:
-            template = get_template(default_login_template_name, using=using)
+            return template.render(context, request)
+
+        template = get_template(default_login_template_name, using=using)
         return template.render(context, request)
 
     @staticmethod
     def _fetch_custom_template(custom_name: str, default_name: str, using: Optional[str] = None) -> Template:
+        """ Grabs the custom login template. Falls back to default if issues arise. """
         try:
             template = get_template(custom_name, using=using)
         except (TemplateDoesNotExist, TemplateSyntaxError) as e:
