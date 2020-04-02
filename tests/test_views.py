@@ -264,6 +264,39 @@ class TestIdPHandlerViewMixin:
         second_call = mocker.call('djangosaml2idp/login.html', using=None)
         mock_get_template.assert_has_calls((first_call, second_call))
 
+    def test_fetch_custom_template_returns_custom_if_found(self, mock_get_template):
+        custom_name = "hello"
+        default_name = "default"
+
+        mixin = IdPHandlerViewMixin()
+
+        _ = mixin._fetch_custom_template(custom_name, default_name)
+
+        mock_get_template.assert_called_once_with(custom_name, using=None)
+
+    def test_fetch_cutom_template_returns_default_if_not_found(self):
+        custom_name = "hello"
+        default_name = "djangosaml2idp/login.html"
+
+        mixin = IdPHandlerViewMixin()
+
+        template = mixin._fetch_custom_template(custom_name, default_name)
+
+        assert default_name in template.origin.name
+
+    def test_fetch_custom_template_returns_default_if_syntax_error(self, mock_get_template, mocker):
+        mock_get_template.side_effect = [TemplateSyntaxError("hello"), mocker.Mock()]
+        custom_name = "hello"
+        default_name = "djangosaml2idp/login.html"
+
+        mixin = IdPHandlerViewMixin()
+
+        _ = mixin._fetch_custom_template(custom_name, default_name)
+
+        first_call = mocker.call(custom_name, using=None)
+        second_call = mocker.call('djangosaml2idp/login.html', using=None)
+        mock_get_template.assert_has_calls((first_call, second_call))
+
     @pytest.mark.django_db
     def test_set_sp_errors_if_sp_not_defined(self):
         with pytest.raises(ImproperlyConfigured):

@@ -1,5 +1,6 @@
 import base64
 import logging
+from typing import Optional
 
 from django.conf import settings
 from django.contrib.auth import get_user_model, logout
@@ -7,6 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import (ImproperlyConfigured, ObjectDoesNotExist,
                                     PermissionDenied, ValidationError)
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.template.backends.django import Template
 from django.template.exceptions import (TemplateDoesNotExist,
                                         TemplateSyntaxError)
 from django.template.loader import get_template
@@ -144,14 +146,21 @@ class IdPHandlerViewMixin:
         default_login_template_name = 'djangosaml2idp/login.html'
         custom_login_template_name = getattr(self, 'login_html_template', None)
         if custom_login_template_name:
-            try:
-                template = get_template(custom_login_template_name, using=using)
-            except (TemplateDoesNotExist, TemplateSyntaxError) as e:
-                logger.error('Specified template {} cannot be used due to: {}. Falling back to default login template {}'.format(custom_login_template_name, str(e), default_login_template_name))
-                template = get_template(default_login_template_name, using=using)
+            template = self._fetch_custom_template(custom_login_template_name, default_login_template_name, using)
         else:
             template = get_template(default_login_template_name, using=using)
         return template.render(context, request)
+
+    @staticmethod
+    def _fetch_custom_template(custom_name: str, default_name: str, using: Optional[str] = None) -> Template:
+        try:
+            template = get_template(custom_name, using=using)
+        except (TemplateDoesNotExist, TemplateSyntaxError) as e:
+            logger.error(
+                'Specified template {} cannot be used due to: {}. Falling back to default login template {}'.format(
+                    custom_name, str(e), default_name))
+            template = get_template(default_name, using=using)
+        return template
 
     def create_html_response(self, request: HttpRequest, binding, authn_resp, destination, relay_state):
         """ Login form for SSO
