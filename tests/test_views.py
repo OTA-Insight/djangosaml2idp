@@ -239,30 +239,17 @@ class TestIdPHandlerViewMixin:
 
         mock_get_template.assert_called_once_with('djangosaml2idp/login.html', using=None)
 
-    def test_render_login_html_to_string_renders_custom_login_template(self, mock_get_template):
-        class MyView(IdPHandlerViewMixin):
-            login_html_template = "hello"
-
-        view = MyView()
-
-        _ = view.render_login_html_to_string()
-
-        mock_get_template.assert_called_once_with(view.login_html_template, using=None)
-
-    @pytest.mark.parametrize("exception", (TemplateDoesNotExist, TemplateSyntaxError))
-    def test_render_login_html_to_string_renders_default_login_template_on_exception(self, exception, mock_get_template, mocker):
-        mock_get_template.side_effect = [exception("msg"), mocker.Mock()]
+    def test_render_login_html_to_string_renders_result_of_fetch_custom_template(self, mock_get_template, mocker):
+        fetch_custom_mock = mocker.patch("djangosaml2idp.views.IdPHandlerViewMixin._fetch_custom_template")
 
         class MyView(IdPHandlerViewMixin):
             login_html_template = "hello"
 
         view = MyView()
 
-        _ = view.render_login_html_to_string()
+        result = view.render_login_html_to_string()
 
-        first_call = mocker.call(view.login_html_template, using=None)
-        second_call = mocker.call('djangosaml2idp/login.html', using=None)
-        mock_get_template.assert_has_calls((first_call, second_call))
+        assert result == fetch_custom_mock.return_value.render.return_value
 
     def test_fetch_custom_template_returns_custom_if_found(self, mock_get_template):
         custom_name = "hello"
