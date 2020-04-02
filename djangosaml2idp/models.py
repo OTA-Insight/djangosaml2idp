@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
-default_attribute_mapping = {
+DEFAULT_ATTRIBUTE_MAPPING = {
     # DJANGO: SAML
     'email': 'email',
     'first_name': 'first_name',
@@ -75,7 +75,7 @@ class ServiceProvider(models.Model):
     # Configuration
     active = models.BooleanField(verbose_name='Active', default=True)
     _processor = models.CharField(verbose_name='Processor', max_length=256, help_text='Import string for the (access) Processor to use.', default='djangosaml2idp.processors.BaseProcessor')
-    _attribute_mapping = models.TextField(verbose_name='Attribute mapping', default=json.dumps(default_attribute_mapping), help_text='dict with the mapping from django attributes to saml attributes in the identity.')
+    _attribute_mapping = models.TextField(verbose_name='Attribute mapping', default=json.dumps(DEFAULT_ATTRIBUTE_MAPPING), help_text='dict with the mapping from django attributes to saml attributes in the identity.')
 
     _nameid_field = models.CharField(verbose_name='NameID Field', blank=True, max_length=64, help_text='Attribute on the user to use as identifier during the NameID construction. Can be a callable. If not set, this will default to settings.SAML_IDP_DJANGO_USERNAME_FIELD; if that is not set, it will use the `USERNAME_FIELD` attribute on the active user model.')
 
@@ -108,7 +108,7 @@ class ServiceProvider(models.Model):
     @property
     def attribute_mapping(self) -> Dict[str, str]:
         if not self._attribute_mapping:
-            return default_attribute_mapping
+            return DEFAULT_ATTRIBUTE_MAPPING
         return json.loads(self._attribute_mapping)
 
     @property
