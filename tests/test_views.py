@@ -7,6 +7,7 @@ from django.contrib.sessions.backends.db import SessionStore
 from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
                                     ValidationError)
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
+from django.template.exceptions import TemplateDoesNotExist, TemplateSyntaxError
 from django.utils import timezone
 from saml2 import saml
 from saml2.client import Saml2Client
@@ -215,7 +216,54 @@ class TestSSOEntry:
         assert response.status_code == 400
 
 
+@pytest.fixture()
+def mock_get_template(mocker):
+    return mocker.patch("djangosaml2idp.views.get_template")
+
+
 class TestIdPHandlerViewMixin:
+
+    def test_render_login_hto_to_string_returns_result_of_render(self, mock_get_template):
+
+        mixin = IdPHandlerViewMixin()
+        rendered = mixin.render_login_html_to_string()
+
+        assert rendered == mock_get_template.return_value.render.return_value
+        mock_get_template.return_value.render.assert_called_once_with(None, None)
+
+    def test_render_login_html_to_string_renders_default_if_custom_not_found(self, mock_get_template):
+
+        mixin = IdPHandlerViewMixin()
+
+        _ = mixin.render_login_html_to_string()
+
+        mock_get_template.assert_called_once_with('djangosaml2idp/login.html', using=None)
+
+    def test_render_login_html_to_string_renders_custom_login_template(self, mock_get_template):
+        class MyView(IdPHandlerViewMixin):
+            login_html_template = "hello"
+
+        view = MyView()
+
+        _ = view.render_login_html_to_string()
+
+        mock_get_template.assert_called_once_with(view.login_html_template, using=None)
+
+    @pytest.mark.parametrize("exception", (TemplateDoesNotExist, TemplateSyntaxError))
+    def test_render_login_html_to_string_renders_default_login_template_on_exception(self, exception, mock_get_template, mocker):
+        mock_get_template.side_effect = [exception("msg"), mocker.Mock()]
+
+        class MyView(IdPHandlerViewMixin):
+            login_html_template = "hello"
+
+        view = MyView()
+
+        _ = view.render_login_html_to_string()
+
+        first_call = mocker.call(view.login_html_template, using=None)
+        second_call = mocker.call('djangosaml2idp/login.html', using=None)
+        mock_get_template.assert_has_calls((first_call, second_call))
+
     @pytest.mark.django_db
     def test_set_sp_errors_if_sp_not_defined(self):
         with pytest.raises(ImproperlyConfigured):
