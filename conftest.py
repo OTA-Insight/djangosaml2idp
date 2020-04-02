@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 
-XML_ROOT = Path("tests/xml")
+XML_ROOT = Path(__file__).parent / "tests" / "xml"
 
 
 @pytest.fixture()
