@@ -27,7 +27,7 @@ default_attribute_mapping = {
     'first_name': 'first_name',
     'last_name': 'last_name',
     'is_staff': 'is_staff',
-    'is_superuser':  'is_superuser',
+    'is_superuser': 'is_superuser',
 }
 
 
