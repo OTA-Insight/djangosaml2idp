@@ -52,7 +52,7 @@ class NameIdBuilder:
         """ Get PersistentID in TransientID format
             see: http://software.internet2.edu/eduperson/internet2-mace-dir-eduperson-201602.html#eduPersonTargetedID
         """
-        return PersistentId.objects.get_or_create(sp=sp, user=user)[0].persistent_id
+        return str(PersistentId.objects.get_or_create(sp=sp, user=user)[0].persistent_id)
 
     @classmethod
     def get_nameid_email(cls, user_id: str, user: settings.AUTH_USER_MODEL = None, **kwargs) -> str:
