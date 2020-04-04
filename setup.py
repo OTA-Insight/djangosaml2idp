@@ -27,7 +27,9 @@ setup(
             "pytest-runner",
             "pytest-django",
             "pytest-cov",
-            "pytest-pythonpath"
+            "pytest-pythonpath",
+            "pytest-mock",
+            "requests-mock"
         ]
     },
     python_requires=">=3.6",

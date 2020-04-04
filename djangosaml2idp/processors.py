@@ -1,6 +1,6 @@
 import hashlib
 import logging
-from typing import Dict
+from typing import Dict, Type
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured, ValidationError
@@ -102,7 +102,7 @@ class BaseProcessor:
         """
         return False
 
-    def get_user_id(self, user, name_id_format: str, service_provider: ServiceProvider, idp_config) -> bool:
+    def get_user_id(self, user, name_id_format: str, service_provider: ServiceProvider, idp_config) -> str:
         """ Get identifier for a user.
         """
         user_field_str = service_provider.nameid_field
@@ -128,7 +128,7 @@ class BaseProcessor:
         return results
 
 
-def validate_processor_path(processor_class_path: str) -> BaseProcessor:
+def validate_processor_path(processor_class_path: str) -> Type[BaseProcessor]:
     try:
         processor_cls = import_string(processor_class_path)
     except ImportError as e:
@@ -138,7 +138,7 @@ def validate_processor_path(processor_class_path: str) -> BaseProcessor:
     return processor_cls
 
 
-def instantiate_processor(processor_cls, entity_id: str) -> BaseProcessor:
+def instantiate_processor(processor_cls: Type[BaseProcessor], entity_id: str) -> BaseProcessor:
     try:
         processor_instance = processor_cls(entity_id)
     except Exception as e:
