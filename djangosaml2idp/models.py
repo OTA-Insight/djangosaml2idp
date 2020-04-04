@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import uuid
 import os
 from typing import Dict, Type
 
@@ -211,7 +212,7 @@ class ServiceProvider(models.Model):
 class PersistentId(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     sp = models.ForeignKey(ServiceProvider, on_delete=models.CASCADE)
-    persistent_id = models.CharField("User Persistent Id for this SP", max_length=256)
+    persistent_id = models.UUIDField("User Persistent Id for this SP", default=uuid.uuid4)
     created = models.DateTimeField(default=now)
 
     class Meta:
