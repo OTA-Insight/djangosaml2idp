@@ -19,7 +19,7 @@ class IDP:
         from .models import ServiceProvider
         idp_config = copy.deepcopy(settings.SAML_IDP_CONFIG)
         if idp_config:
-            idp_config['metadata'] = {
+            idp_config['metadata'] = {  # type: ignore
                 'local': [sp.metadata_path() for sp in ServiceProvider.objects.filter(active=True)],
             }
         return idp_config

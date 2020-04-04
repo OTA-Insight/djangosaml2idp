@@ -47,11 +47,11 @@ class NameIdBuilder:
         return opaque.hexdigest()
 
     @classmethod
-    def get_nameid_persistent(cls, user_id: str, user: User, sp_entityid: str = '', idp_entityid: str = '') -> str:
+    def get_nameid_persistent(cls, user_id: str, user: User, sp_entityid: str = '', idp_entityid: str = '') -> str:  # type: ignore
         """ Get PersistentID in TransientID format
             see: http://software.internet2.edu/eduperson/internet2-mace-dir-eduperson-201602.html#eduPersonTargetedID
         """
-        return '!'.join([idp_entityid, sp_entityid, cls._get_nameid_opaque(user_id, salt=str(user.pk).encode())])
+        return '!'.join([idp_entityid, sp_entityid, cls._get_nameid_opaque(user_id, salt=str(user.pk).encode())])  # type: ignore
 
     @classmethod
     def get_nameid_email(cls, user_id: str, **kwargs) -> str:
@@ -138,13 +138,13 @@ def validate_processor_path(processor_class_path: str) -> Type[BaseProcessor]:
     return processor_cls
 
 
-def instantiate_processor(processor_cls: Type[BaseProcessor], entity_id: str) -> BaseProcessor:
+def instantiate_processor(processor_cls: Type[BaseProcessor], entity_id: str) -> Type[BaseProcessor]:
     try:
-        processor_instance = processor_cls(entity_id)
+        processor_instance = processor_cls(entity_id)  # type: ignore
     except Exception as e:
         msg = _("Failed to instantiate processor: {} - {}").format(processor_cls, e)
         logger.error(msg, exc_info=True)
         raise ImproperlyConfigured(msg) from e
     if not isinstance(processor_instance, BaseProcessor):
         raise ValidationError('{} should be a subclass of djangosaml2idp.processors.BaseProcessor'.format(processor_cls))
-    return processor_instance
+    return processor_instance  # type: ignore

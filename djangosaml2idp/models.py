@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 import os
-from typing import Dict
+from typing import Dict, Type
 
 import pytz
 from django.conf import settings
@@ -123,7 +123,7 @@ class ServiceProvider(models.Model):
     # codebase can change regardless of the objects persisted in the database.
 
     @cached_property
-    def processor(self) -> 'BaseProcessor':  # noqa
+    def processor(self) -> Type['BaseProcessor']:  # type: ignore
         from .processors import validate_processor_path, instantiate_processor
         processor_cls = validate_processor_path(self._processor)
         return instantiate_processor(processor_cls, self.entity_id)
@@ -147,7 +147,7 @@ class ServiceProvider(models.Model):
         filename = f'{path}/{self.id}.xml'
 
         # Rewrite the file if it did not exist yet, or if the SP config was updated after having written the file previously.
-        if not os.path.exists(filename) or refreshed_metadata or self.dt_updated.replace(tzinfo=pytz.utc) > datetime.datetime.fromtimestamp(os.path.getmtime(filename)).replace(tzinfo=pytz.utc):
+        if not os.path.exists(filename) or refreshed_metadata or (self.dt_updated and self.dt_updated.replace(tzinfo=pytz.utc) > datetime.datetime.fromtimestamp(os.path.getmtime(filename)).replace(tzinfo=pytz.utc)):
             try:
                 with open(filename, 'w') as f:
                     f.write(self.local_metadata)

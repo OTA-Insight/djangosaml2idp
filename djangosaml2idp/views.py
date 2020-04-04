@@ -1,6 +1,6 @@
 import base64
 import logging
-from typing import Optional
+from typing import Dict, List, Optional, Union
 
 from django.conf import settings
 from django.contrib.auth import get_user_model, logout
@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import (ImproperlyConfigured, ObjectDoesNotExist,
                                     PermissionDenied, ValidationError)
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
-from django.template.backends.django import Template
+from django.template.engine.base import Template
 from django.template.exceptions import (TemplateDoesNotExist,
                                         TemplateSyntaxError)
 from django.template.loader import get_template
@@ -101,7 +101,7 @@ def get_authn(req_info=None):
     return broker.get_authn_by_accr(req_authn_context)
 
 
-def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider) -> list:
+def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider) -> list:  # type: ignore
     """ pysaml2 server.Server.create_authn_response wrapper
     """
     policy = resp_args.get('name_id_policy', None)
@@ -116,7 +116,7 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
     if name_id_format not in idp_name_id_format_list:
         raise ImproperlyConfigured(_('SP requested a name_id_format that is not supported in the IDP: {}').format(name_id_format))
 
-    processor: BaseProcessor = service_provider.processor
+    processor: BaseProcessor = service_provider.processor  # type: ignore
     user_id = processor.get_user_id(user, name_id_format, service_provider, idp_server.config)
     name_id = NameID(format=name_id_format, sp_name_qualifier=service_provider.entity_id, text=user_id)
 
@@ -277,14 +277,14 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         return self.get(request, *args, **kwargs)
 
     def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
-        passed_data = request.POST or request.GET
-        passed_data = passed_data.copy().dict()
+        request_data = request.POST or request.GET
+        passed_data: Dict[str, Union[str, List[str]]] = request_data.copy().dict()
 
         try:
             # get sp information from the parameters
-            sp_entity_id = passed_data['sp']
+            sp_entity_id = str(passed_data['sp'])
             service_provider = get_sp_config(sp_entity_id)
-            processor = service_provider.processor
+            processor: BaseProcessor = service_provider.processor  # type: ignore
         except (KeyError, ImproperlyConfigured) as excp:
             return error_cbv.handle_error(request, exception=excp, status_code=400)
 
