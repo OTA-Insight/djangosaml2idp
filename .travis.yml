@@ -11,25 +11,13 @@ jobs:
     - python: 3.6
       env: TOX_ENV=typing
     - python: 3.6
-      env: TOX_ENV=py36-django2
-    - python: 3.6
-      env: TOX_ENV=py36-django21
-    - python: 3.6
       env: TOX_ENV=py36-django22
     - python: 3.6
       env: TOX_ENV=py36-django3
     - python: 3.7
-      env: TOX_ENV=py37-django2
-    - python: 3.7
-      env: TOX_ENV=py37-django21
-    - python: 3.7
       env: TOX_ENV=py37-django22
     - python: 3.7
       env: TOX_ENV=py37-django3
-    - python: 3.8
-      env: TOX_ENV=py38-django2
-    - python: 3.8
-      env: TOX_ENV=py38-django21
     - python: 3.8
       env: TOX_ENV=py38-django22
     - python: 3.8
