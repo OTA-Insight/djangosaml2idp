@@ -48,7 +48,7 @@ class NameIdBuilder:
         return opaque.hexdigest()
 
     @classmethod
-    def get_nameid_persistent(cls, user_id: str, user: User, sp_entityid: str = '', idp_entityid: str = '') -> str:  # type: ignore
+    def get_nameid_persistent(cls, user_id: str, sp: ServiceProvider, user: settings.AUTH_USER_MODEL, *args, **kwargs) -> str:
         """ Get PersistentID in TransientID format
             see: http://software.internet2.edu/eduperson/internet2-mace-dir-eduperson-201602.html#eduPersonTargetedID
         """
