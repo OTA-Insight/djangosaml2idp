@@ -99,7 +99,7 @@ class ServiceProvider(models.Model):
             except Exception as e:
                 logger.error(f'Metadata expiration dt for SP {self.entity_id} could not be extracted from local metadata.', extra={'exception': str(e)})
                 return False
-        
+
         raise Exception('Uncaught case of refresh_metadata')
 
     # Configuration
