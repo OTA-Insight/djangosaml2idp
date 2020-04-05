@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 import os
-from typing import Dict, Type
+from typing import Dict
 
 import pytz
 from django.conf import settings
