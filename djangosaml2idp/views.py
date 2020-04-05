@@ -8,7 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import (ImproperlyConfigured, ObjectDoesNotExist,
                                     PermissionDenied, ValidationError)
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
-from django.template.engine import Template
+from django.template.backends.django import Template
 from django.template.exceptions import (TemplateDoesNotExist,
                                         TemplateSyntaxError)
 from django.template.loader import get_template
