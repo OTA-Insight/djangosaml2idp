@@ -43,19 +43,5 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name='serviceprovider',
             index=models.Index(fields=['entity_id'], name='djangosaml2_entity__5fb9e3_idx'),
-        ),
-        migrations.CreateModel(
-            name='PersistentId',
-            fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('persistent_id', models.CharField(max_length=256, verbose_name='User Persistent Id for this SP')),
-                ('created', models.DateTimeField(default=django.utils.timezone.now)),
-                ('sp', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='djangosaml2idp.ServiceProvider')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-            ],
-            options={
-                'verbose_name': 'Persistent Id',
-                'unique_together': {('sp', 'persistent_id'), ('sp', 'user')},
-            },
-        ),
+        )
     ]
