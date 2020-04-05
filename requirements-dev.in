@@ -4,3 +4,5 @@ codecov
 pip-tools
 tox
 pre-commit
+pytest-cov
+pytest-django
