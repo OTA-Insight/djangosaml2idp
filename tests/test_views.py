@@ -7,7 +7,7 @@ from django.contrib.sessions.backends.db import SessionStore
 from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
                                     ValidationError)
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
-from django.template.exceptions import TemplateDoesNotExist, TemplateSyntaxError
+from django.template.exceptions import TemplateSyntaxError
 from django.utils import timezone
 from saml2 import saml
 from saml2.client import Saml2Client
@@ -20,9 +20,11 @@ from djangosaml2idp.processors import BaseProcessor
 from djangosaml2idp.utils import encode_saml
 from djangosaml2idp.views import (BINDING_HTTP_POST, BINDING_HTTP_REDIRECT,
                                   IdPHandlerViewMixin, LoginProcessView,
-                                  LogoutProcessView, ProcessMultiFactorView, get_sp_config,
-                                  SSOInitView, get_multifactor, metadata, get_authn, check_access, build_authn_response,
-                                  sso_entry, store_params_in_session)
+                                  LogoutProcessView, ProcessMultiFactorView,
+                                  SSOInitView, build_authn_response,
+                                  check_access, get_authn, get_multifactor,
+                                  get_sp_config, metadata, sso_entry,
+                                  store_params_in_session)
 
 User = get_user_model()
 
