@@ -216,5 +216,8 @@ class PersistentId(models.Model):
     created = models.DateTimeField(default=now)
 
     class Meta:
-        unique_together = [["sp", "persistent_id"], ["sp", "user"]]
+        constraints = [
+            models.UniqueConstraint(fields=["sp", "persistent_id"], name="unique_ids_per_sp"),
+            models.UniqueConstraint(fields=["sp", "user"], name="unique_users_per_sp"),
+        ]
         verbose_name = 'Persistent Id'
