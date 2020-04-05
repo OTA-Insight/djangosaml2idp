@@ -1,6 +1,7 @@
 import json
 from datetime import timedelta
 
+import arrow
 import pytest
 from django.utils import timezone
 from saml2 import xmldsig
@@ -9,8 +10,11 @@ import requests_mock
 from djangosaml2idp.idp import IDP
 from djangosaml2idp.models import DEFAULT_ATTRIBUTE_MAPPING, ServiceProvider
 
-VALID_XML = """<ns0:EntityDescriptor xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ns1="urn:oasis:names:tc:SAML:metadata:algsupport" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" entityID="test_generic_sp" validUntil="2021-02-14T17:43:34Z"></ns0:EntityDescriptor>"""
-EXPIRED_XML = """<ns0:EntityDescriptor xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ns1="urn:oasis:names:tc:SAML:metadata:algsupport" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" entityID="test_generic_sp" validUntil="2020-02-14T17:43:34Z"></ns0:EntityDescriptor>"""
+future_dt = arrow.get().shift(days=30)
+expired_dt = arrow.get().shift(days=-30)
+
+VALID_XML = f"""<ns0:EntityDescriptor xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ns1="urn:oasis:names:tc:SAML:metadata:algsupport" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" entityID="test_generic_sp" validUntil="{future_dt.isoformat()}"></ns0:EntityDescriptor>"""
+EXPIRED_XML = f"""<ns0:EntityDescriptor xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ns1="urn:oasis:names:tc:SAML:metadata:algsupport" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" entityID="test_generic_sp" validUntil="{expired_dt.isoformat()}"></ns0:EntityDescriptor>"""
 
 
 class TestServiceProvider:
