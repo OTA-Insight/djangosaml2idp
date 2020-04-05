@@ -1,3 +1,5 @@
 django<3.0
 djangosaml2==0.17.2
 pysaml2==5.0.0
+arrow
+pytz
