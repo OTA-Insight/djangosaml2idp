@@ -1,2 +1,4 @@
 django<3.0
 pysaml2==5.0.0
+arrow
+pytz

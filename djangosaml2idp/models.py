@@ -50,31 +50,63 @@ class ServiceProvider(models.Model):
     remote_metadata_url = models.CharField(verbose_name='Remote metadata URL', max_length=512, blank=True, help_text='If set, metadata will be fetched upon saving into the local metadata xml field, and automatically be refreshed after the expiration timestamp.')
     local_metadata = models.TextField(verbose_name='Local Metadata XML', blank=True, help_text='XML containing the metadata')
 
+    def _should_refresh(self) -> bool:
+        ''' Returns whether or not a refresh operation is necessary.
+        '''
+        # - Data was not fetched ever before, so local_metadata is empty
+        if not self.local_metadata:
+            return True
+        # - The expiration timestamp is not set, or it is expired
+        if not self.metadata_expiration_dt or now() > self.metadata_expiration_dt:
+            return True
+
+        return False
+
+    def _refresh_from_remote(self) -> bool:
+        try:
+            self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
+            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
+            # Return True if it is now valid, False (+ log an error) otherwise
+            if now() > self.metadata_expiration_dt:
+                logger.error(f'Remote metadata for SP {self.entity_id} was refreshed, but contains an expired validity datetime.')
+                return False
+            return True
+        except Exception as e:
+            logger.error(f'Metadata for SP {self.entity_id} could not be pulled from remote url {self.remote_metadata_url}.', extra={'exception': str(e)})
+            return False
+
+    def _refresh_from_local(self) -> bool:
+        try:
+            # Try to extract a valid expiration datetime from the local metadata
+            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
+            # Return True if it is now valid, False (+ log an error) otherwise
+            if now() > self.metadata_expiration_dt:
+                logger.error(f'Local metadata for SP {self.entity_id} contains an expired validity datetime or none at all, no remote metadata found to refresh.')
+                return False
+            return True
+        except Exception as e:
+            # Could not extract a valid expiry timestamp, return False (+ log an error)
+            logger.error(f'Metadata expiration dt for SP {self.entity_id} could not be extracted from local metadata.', extra={'exception': str(e)})
+            return False
+
     def refresh_metadata(self, force_refresh: bool = False) -> bool:
         ''' If a remote metadata url is set, fetch new metadata if the locally cached one is expired. Returns True if new metadata was set.
             Sets metadata fields on instance, but does not save to db. If force_refresh = True, the metadata will be refreshed regardless of the currently cached version validity timestamp.
         '''
+        if not self._should_refresh() and not force_refresh:
+            return False
 
-        # TODO: this logic appears to be incorrect.
-        #  In the case local_metadata is Falsy and remote metadata is not set you error on extract
-        #  as it has nothing to extract on.
-        if not self.local_metadata or not self.metadata_expiration_dt or now() > self.metadata_expiration_dt or force_refresh:
-            if self.remote_metadata_url:
-                try:
-                    self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
-                    # TODO: moving this line here passed the test.
-                    self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
-                except Exception:
-                    # TODO: should we return False?
-                    logger.error(f'Metadata for SP {self.entity_id} could not be pulled from remote url {self.remote_metadata_url}.')
-            elif self.metadata_expiration_dt and now() > self.metadata_expiration_dt:
-                # TODO: should we also return False here?
-                logger.error(f'Metadata for SP {self.entity_id} has expired, no remote metadata found to refresh.')
+        if not self.remote_metadata_url and not self.local_metadata:
+            logger.error(f'Local metadata for SP {self.entity_id} is not present, and no remote metadata found to refresh.')
+            return False
 
-            # TODO: commented this out to pass test
-            # self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
-            return True
-        return False
+        if self.remote_metadata_url:
+            return self._refresh_from_remote()
+
+        if (not self.metadata_expiration_dt) or (now() > self.metadata_expiration_dt):
+            return self._refresh_from_local()
+
+        raise Exception('Uncaught case of refresh_metadata')
 
     # Configuration
     active = models.BooleanField(verbose_name='Active', default=True)
