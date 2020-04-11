@@ -71,7 +71,7 @@ class ServiceProvider(models.Model):
 
     def _refresh_from_local(self) -> bool:
         try:
-            # Try to extract a valid expiration datetime from the local metadata 
+            # Try to extract a valid expiration datetime from the local metadata
             self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
             # Return True if it is now valid, False (+ log an error) otherwise
             if now() > self.metadata_expiration_dt:
