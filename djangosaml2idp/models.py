@@ -56,6 +56,8 @@ class ServiceProvider(models.Model):
         if not self.metadata_expiration_dt or now() > self.metadata_expiration_dt:
             return True
 
+        return False
+
     def _refresh_from_remote(self) -> bool:
         try:
             self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
