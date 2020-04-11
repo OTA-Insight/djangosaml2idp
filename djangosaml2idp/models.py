@@ -2,7 +2,7 @@ import datetime
 import json
 import logging
 import os
-from typing import Dict, Type
+from typing import Dict
 
 import pytz
 from django.conf import settings
@@ -16,6 +16,10 @@ from saml2 import xmldsig
 from .idp import IDP
 from .utils import (extract_validuntil_from_metadata, fetch_metadata,
                     validate_metadata)
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .processors import BaseProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +127,7 @@ class ServiceProvider(models.Model):
     # codebase can change regardless of the objects persisted in the database.
 
     @cached_property
-    def processor(self) -> Type['BaseProcessor']:  # type: ignore
+    def processor(self) -> "BaseProcessor":  # type: ignore
         from .processors import validate_processor_path, instantiate_processor
         processor_cls = validate_processor_path(self._processor)
         return instantiate_processor(processor_cls, self.entity_id)

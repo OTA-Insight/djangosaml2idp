@@ -138,7 +138,7 @@ def validate_processor_path(processor_class_path: str) -> Type[BaseProcessor]:
     return processor_cls
 
 
-def instantiate_processor(processor_cls: Type[BaseProcessor], entity_id: str) -> Type[BaseProcessor]:
+def instantiate_processor(processor_cls: Type[BaseProcessor], entity_id: str) -> BaseProcessor:
     try:
         processor_instance = processor_cls(entity_id)  # type: ignore
     except Exception as e:

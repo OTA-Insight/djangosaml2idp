@@ -40,11 +40,11 @@ def verify_request_signature(req_info: StatusResponse) -> None:
 
 
 def fetch_metadata(remote_metadata_url: str) -> str:
-    ''' Fetch remote metadata. Raise a ValidationError if it could not succesfully fetch something from the url '''
+    ''' Fetch remote metadata. Raise a ValidationError if it could not successfully fetch something from the url '''
     try:
         content = requests.get(remote_metadata_url, timeout=(3, 10))
         if content.status_code != 200:
-            raise Exception(f'Non-succesful request, received status code {content.status_code}')
+            raise Exception(f'Non-successful request, received status code {content.status_code}')
     except Exception as e:
         raise ValidationError(f'Could not fetch metadata from {remote_metadata_url}: {e}')
     return content.text
@@ -61,7 +61,7 @@ def validate_metadata(metadata: str) -> str:
 
 
 def extract_validuntil_from_metadata(metadata: str) -> datetime.datetime:
-    ''' Extract the ValidUntil timestamp from the given metadata. Returns that timestamp if succesful, raise a ValidationError otherwise.
+    ''' Extract the ValidUntil timestamp from the given metadata. Returns that timestamp if successfully, raise a ValidationError otherwise.
     '''
     try:
         metadata_expiration_dt = arrow.get(ET.fromstring(metadata).attrib['validUntil']).datetime
