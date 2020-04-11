@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import uuid
 import os
 from typing import Dict
 
@@ -242,3 +243,17 @@ class ServiceProvider(models.Model):
             config_as_str = f'Could not render config: {e}'
         # Some ugly replacements to have the json decently printed in the admin
         return mark_safe(config_as_str.replace("\n", "<br>").replace("    ", "&nbsp;&nbsp;&nbsp;&nbsp;"))
+
+
+class PersistentId(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    sp = models.ForeignKey(ServiceProvider, on_delete=models.CASCADE)
+    persistent_id = models.UUIDField("User Persistent Id for this SP", default=uuid.uuid4)
+    created = models.DateTimeField(default=now)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["sp", "persistent_id"], name="unique_ids_per_sp"),
+            models.UniqueConstraint(fields=["sp", "user"], name="unique_users_per_sp"),
+        ]
+        verbose_name = 'Persistent Id'

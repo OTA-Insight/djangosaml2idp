@@ -2,6 +2,7 @@ import hashlib
 import logging
 from typing import Dict, Type
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.utils.module_loading import import_string
@@ -13,7 +14,7 @@ from saml2.saml import (NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_ENCRYPTED,
                         NAMEID_FORMAT_WINDOWSDOMAINQUALIFIEDNAME,
                         NAMEID_FORMAT_X509SUBJECTNAME)
 
-from .models import ServiceProvider
+from .models import ServiceProvider, PersistentId
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +48,14 @@ class NameIdBuilder:
         return opaque.hexdigest()
 
     @classmethod
-    def get_nameid_persistent(cls, user_id: str, user: User, sp_entityid: str = '', idp_entityid: str = '') -> str:  # type: ignore
+    def get_nameid_persistent(cls, user_id: str, sp: ServiceProvider, user: settings.AUTH_USER_MODEL, *args, **kwargs) -> str:
         """ Get PersistentID in TransientID format
             see: http://software.internet2.edu/eduperson/internet2-mace-dir-eduperson-201602.html#eduPersonTargetedID
         """
-        return '!'.join([idp_entityid, sp_entityid, cls._get_nameid_opaque(user_id, salt=str(user.pk).encode())])  # type: ignore
+        return str(PersistentId.objects.get_or_create(sp=sp, user=user)[0].persistent_id)
 
     @classmethod
-    def get_nameid_email(cls, user_id: str, **kwargs) -> str:
+    def get_nameid_email(cls, user_id: str, user: settings.AUTH_USER_MODEL = None, **kwargs) -> str:
         if '@' not in user_id:
             raise Exception(f"user_id {user_id} does not contain the '@' symbol, so is not a valid NameID Email address format.")
         return user_id
@@ -114,7 +115,7 @@ class BaseProcessor:
             user_id = str(user_field)
 
         # returns in a real name_id format
-        return NameIdBuilder.get_nameid(user_id, name_id_format, sp_entityid=service_provider.entity_id, idp_entityid=idp_config.entityid, user=user)
+        return NameIdBuilder.get_nameid(user_id, name_id_format, sp=service_provider, user=user)
 
     def create_identity(self, user, sp_attribute_mapping: Dict[str, str]) -> Dict[str, str]:
         """ Generate an identity dictionary of the user based on the

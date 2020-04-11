@@ -1,4 +1,5 @@
 import json
+from uuid import UUID
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -141,14 +142,21 @@ class TestNameIdBuilder:
 
         assert NameIdBuilder._get_nameid_opaque(user.username) == 'b19cfa3a0f7cef07dc1dd1604cee0a49c57d0e1a4f1baa864ba1c7c2229b147f'
 
-    def test_get_nameid_persistent(self):
-        user = User(username='Test Name', email='test@email.com')
+    @pytest.mark.django_db
+    def test_get_nameid_persistent(self, sp_metadata_xml):
+        user = User.objects.create(username='Test Name', email='test@email.com')
+        sp1 = ServiceProvider.objects.create(entity_id='sp_entity_id_1', local_metadata=sp_metadata_xml)
+        sp2 = ServiceProvider.objects.create(entity_id='sp_entity_id_2', local_metadata=sp_metadata_xml)
 
-        fully_qualified = NameIdBuilder.get_nameid_persistent(user.username, user=user, sp_entityid='sp_entity_id', idp_entityid='idp_entity_id')
-        assert fully_qualified == 'idp_entity_id!sp_entity_id!86bb5037f0bf1a9cc7918296437fd560915c182316f23a3f4db480018eb1c71f'
+        nameid_1 = NameIdBuilder.get_nameid_persistent(user.username, user=user, sp=sp1)
+        nameid_2 = NameIdBuilder.get_nameid_persistent(user.username, user=user, sp=sp2)
+        assert nameid_1 != nameid_2
 
-        no_sp_idp_ids = NameIdBuilder.get_nameid_persistent(user.username, user=user)
-        assert no_sp_idp_ids == '!!86bb5037f0bf1a9cc7918296437fd560915c182316f23a3f4db480018eb1c71f'
+        try:
+            UUID(nameid_1, version=4)
+            UUID(nameid_2, version=4)
+        except ValueError:
+            assert False
 
     def test_get_nameid_unspecified(self):
         user = User(username='Test Name', email='test@email.com')
