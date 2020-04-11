@@ -24,17 +24,17 @@ jobs:
       uses: actions/setup-python@v1
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+    - name: Install dependencies and testing utilities
       run: |
         sudo apt-get update && sudo apt-get install xmlsec1
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip django-stubs mypy tox
         pip install -r requirements-dev.txt
-    - name: Install Tox and any other packages
-      run: pip install tox
     - name: Pylama linting
+      if: ${{ matrix.django-version }} == "3.0"
       run: pylama djangosaml2idp
     - name: MyPy check type annotations
       run: mypy djangosaml2idp
+      if: ${{ matrix.django-version }} == "3.0"
       continue-on-error: true
     - name: Tests
       run: tox -e py${{ matrix.python-version }}-django${{ matrix.django-version }}
