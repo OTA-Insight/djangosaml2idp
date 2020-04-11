@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .forms import ServiceProviderAdminForm
-from .models import ServiceProvider
+from .models import PersistentId, ServiceProvider
 
 
 @admin.register(ServiceProvider)
@@ -25,3 +25,12 @@ class ServiceProviderAdmin(admin.ModelAdmin):
             'fields': ('dt_created', 'dt_updated', 'resulting_config')
         })
     )
+
+
+@admin.register(PersistentId)
+class PersistentIdAdmin(admin.ModelAdmin):
+    list_filter = ['sp', ]
+    list_display = ['user', 'sp', 'persistent_id']
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related('user', 'sp')

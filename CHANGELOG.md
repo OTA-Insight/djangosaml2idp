@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.7.0] - 2020-04-xx
+
+*In development, *
+
+Many thanks for major contributions (especially on the testing front where the project was lacking) from [Amertz08](https://github.com/Amertz08) and [askvortsov1](https://github.com/askvortsov1)
+
+### Added
+- Major and breaking change: Service Providers are now backed by the database instead of being configured via the settings: [#51](https://github.com/OTA-Insight/djangosaml2idp/pull/51)
+- Test coverage has been improved significantly. CI was added to run tests, linting and report code coverage which will improve stability of development.
+- Django 3.0 is added to the tests matrix. We currently are doing Python 3.6, 3.7, 3.8 and Django 2.2, 3.0.
+
+### Removed
+- Python 3.5
+- Django 2.0 and 2.1 as they are no longer officially supported Django versions.
+
+
 ## [0.6.3] - 2020-02-10
 
 Bugfix release, thanks to contributions from [pix666](https://github.com/pix666) in [#61](https://github.com/OTA-Insight/djangosaml2idp/pull/61/files)
