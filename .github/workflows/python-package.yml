@@ -31,5 +31,10 @@ jobs:
         pip install -r requirements-dev.txt
     - name: Install Tox and any other packages
       run: pip install tox
-    - name: Run Tox
+    - name: Pylama linting
+      run: pylama djangosaml2idp
+    - name: MyPy check type annotations
+      run: mypy djangosaml2idp
+      continue-on-error: true
+    - name: Tests
       run: tox -e py${{ matrix.python-version }}-django${{ matrix.django-version }}
