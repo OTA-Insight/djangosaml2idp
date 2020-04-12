@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('dt_created', models.DateTimeField(auto_now_add=True, verbose_name='Created at')),
                 ('dt_updated', models.DateTimeField(auto_now=True, null=True, verbose_name='Updated at')),
-                ('entity_id', models.CharField(max_length=256, unique=True, verbose_name='Entity ID')),
+                ('entity_id', models.CharField(max_length=255, unique=True, verbose_name='Entity ID')),
                 ('pretty_name', models.CharField(blank=True, help_text='For display purposes, can be empty', max_length=256, verbose_name='Pretty Name')),
                 ('description', models.TextField(blank=True, verbose_name='Description')),
                 ('metadata_expiration_dt', models.DateTimeField(verbose_name='Metadata valid until')),
