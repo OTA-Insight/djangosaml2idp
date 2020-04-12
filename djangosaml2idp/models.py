@@ -42,8 +42,8 @@ class ServiceProvider(models.Model):
     dt_updated = models.DateTimeField(verbose_name='Updated at', auto_now=True, null=True, blank=True)
 
     # Identification
-    entity_id = models.CharField(verbose_name='Entity ID', max_length=256, unique=True)
-    pretty_name = models.CharField(verbose_name='Pretty Name', blank=True, max_length=256, help_text='For display purposes, can be empty')
+    entity_id = models.CharField(verbose_name='Entity ID', max_length=255, unique=True)
+    pretty_name = models.CharField(verbose_name='Pretty Name', blank=True, max_length=255, help_text='For display purposes, can be empty')
     description = models.TextField(verbose_name='Description', blank=True)
 
     # Metadata
