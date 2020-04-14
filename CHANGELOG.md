@@ -1,8 +1,6 @@
 # Changelog
 
-## [0.7.0] - 2020-04-xx
-
-*In development, *
+## [0.7.1] - 2020-04-12
 
 Many thanks for major contributions (especially on the testing front where the project was lacking) from [Amertz08](https://github.com/Amertz08) and [askvortsov1](https://github.com/askvortsov1)
 
