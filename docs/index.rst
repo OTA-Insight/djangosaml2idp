@@ -33,11 +33,14 @@ djangosaml2idp
     :target: https://www.apache.org/licenses/LICENSE-2.0
     :alt: Apache 2.0 License
 
+.. image:: https://codecov.io/gh/ota-insight/djangosaml2idp/branch/master/graph/badge.svg
+    :scale: 100%
+    :target: https://codecov.io/gh/ota-insight/djangosaml2idp
+    :alt: Code coverage
+
 
 djangosaml2idp implements the Identity Provider side of the SAML2 protocol for Django.
 It builds on top of `PySAML2 <https://github.com/IdentityPython/pysaml2>`_, and is production-ready.
-
-Package version 0.3.3 was the last Python 2 / Django 1.8-1.11 compatible release. Versions starting from 0.4.0 are for Python 3 and Django 2.x.
 
 Any contributions, feature requests, proposals, ideas ... are welcome! See the `CONTRIBUTING document <https://github.com/OTA-Insight/djangosaml2idp/blob/master/CONTRIBUTING.md>`_ for some info.
 

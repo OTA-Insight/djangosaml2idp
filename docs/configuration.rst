@@ -20,9 +20,10 @@ Now include ``djangosaml2idp`` in your project by adding it in the url config::
         ...
     ]
 
+Run the migrations for the app.
+
 In your Django settings, configure your IdP. Configuration follows the `PySAML2 configuration <https://github.com/IdentityPython/pysaml2/blob/master/docs/howto/config.rst>`_. The IdP from the example project looks like this::
 
-    ...
     import saml2
     from saml2.saml import NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED
     from saml2.sigver import get_xmlsec_binary
@@ -41,19 +42,21 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
                 'name': 'Django localhost IdP',
                 'endpoints': {
                     'single_sign_on_service': [
-                        ('%s/sso/post' % BASE_URL, saml2.BINDING_HTTP_POST),
-                        ('%s/sso/redirect' % BASE_URL, saml2.BINDING_HTTP_REDIRECT),
+                        ('http://localhost:9000/idp/sso/post/', saml2.BINDING_HTTP_POST),
+                        ('http://localhost:9000/idp/sso/redirect/', saml2.BINDING_HTTP_REDIRECT),
+                    ],
+                    "single_logout_service": [
+                        ("http://localhost:9000/idp/slo/post/", saml2.BINDING_HTTP_POST),
+                        ("http://localhost:9000/idp/slo/redirect/", saml2.BINDING_HTTP_REDIRECT)
                     ],
                 },
                 'name_id_format': [NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED],
                 'sign_response': True,
                 'sign_assertion': True,
+                'want_authn_requests_signed': True,
             },
         },
 
-        'metadata': {
-            'local': [os.path.join(os.path.join(os.path.join(BASE_DIR, 'idp'), 'saml2_config'), 'sp_metadata.xml')],
-        },
         # Signing
         'key_file': BASE_DIR + '/certificates/private.key',
         'cert_file': BASE_DIR + '/certificates/public.cert',
@@ -68,36 +71,12 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
 
 Notice the configuration requires a private key and public certificate to be available on the filesystem in order to sign and encrypt messages.
 
+Next the Service Providers and their configuration need to be added, this is done via the Django admin interface. Add an entry for each SP which speaks to thie IdP.
+Add a copy of the local metadata xml, or set a remote metadata url. Add an attribute mapping for user attributes to SAML fields or leave the default mapping which will be prefilled.
 
-You also have to define a mapping for each SP you talk to. An example SP config::
-
-    ...
-    SAML_IDP_SPCONFIG = {
-        'http://localhost:8000/saml2/metadata/': {
-            'processor': 'djangosaml2idp.processors.BaseProcessor',
-            'nameid_field': 'staffID'
-            'sign_response': False,
-            'sign_assertion': False,
-            'attribute_mapping': {
-                # DJANGO: SAML
-                'email': 'email',
-                'first_name': 'first_name',
-                'last_name': 'last_name',
-                'is_staff': 'is_staff',
-                'is_superuser':  'is_superuser',
-            }
-        }
-    }
-
-Please note that the only required field for each SP is the Entity ID. ``attribute_mapping`` will default to ``{'username': 'username'}``.
-If you would like to not send any attributes to the SP, set ``attribute_mapping`` to an empty dict (``{}``).
-
-If you want to override ``sign_assertion`` and/or ``sign_response`` for individual SPs, you can do so in ``SAML_IDP_SPCONFIG``, as seen above. If unset, these will default to the values set in ``SAML_IDP_CONFIG``.
-
-
-The last step is configuring metadata.
-Download a copy of the IdP's metadata from <YOUR_SERVER_URL>/idp/metadata (assuming that's how you set up your urls.py). Use it to configure your SPs as required by them.
-Obtain a copy of the metadata for each of your SPs, and upload them where you indicated in ``SAML_IDP_CONFIG['metadata]``
+Several attributes can be overriden per SP. If they aren't overridden explicitly, they will use the 'global' settings which can be configured for your Django installation.
+If those aren't set, some defaults will be used, as indicated in the admin when you configre a SP.
+The resulting configuration of a SP, with merged settings of its own and the instance settings and defaults, is shown in the admin as a summary.
 
 Further optional configuration options
 ======================================
@@ -112,4 +91,8 @@ Use this metadata xml to configure your SP. Place the metadata xml from that SP 
 
 Without custom setting, users will be identified by the ``USERNAME_FIELD`` property on the user Model you use. By Django defaults this will be the username.
 You can customize which field is used for the identifier by adding ``SAML_IDP_DJANGO_USERNAME_FIELD`` to your settings with as value the attribute to use on your user instance.
-You can also override this per SP by setting ``nameid_field`` in the SP config, as seen in the sample ``SAML_IDP_SPCONFIG`` above.
+
+Other settings you can set as defaults to be used if not overriden by an SP are `SAML_AUTHN_SIGN_ALG`, `SAML_AUTHN_DIGEST_ALG`, and `SAML_ENCRYPT_AUTHN_RESPONSE`. They can be set if desired in the django settings, in which case they will be used for all ServiceProviders configuration on this instance if they don't override it. E.g.:
+
+    SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA256
+    SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA256
