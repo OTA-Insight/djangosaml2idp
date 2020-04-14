@@ -51,11 +51,25 @@ class ServiceProvider(models.Model):
     remote_metadata_url = models.CharField(verbose_name='Remote metadata URL', max_length=512, blank=True, help_text='If set, metadata will be fetched upon saving into the local metadata xml field, and automatically be refreshed after the expiration timestamp.')
     local_metadata = models.TextField(verbose_name='Local Metadata XML', blank=True, help_text='XML containing the metadata')
 
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        instance._loaded_db_values = dict(zip(field_names, values))
+        return instance
+
+    def field_value_changed(self, field_name: str) -> bool:
+        ''' Returns whether the current value of a field is changed vs what was loaded from the db. '''
+        current_value = getattr(self, field_name)
+        return current_value != getattr(self, '_loaded_db_values', {}).get(field_name, current_value)
+
     def _should_refresh(self) -> bool:
         ''' Returns whether or not a refresh operation is necessary.
         '''
-        # - Data was not fetched ever before, so local_metadata is empty
-        if not self.local_metadata:
+        # - Data was not fetched ever before, so local_metadata is empty, or local_metadata has been changed from what it was in the db before
+        if not self.local_metadata or self.field_value_changed('local_metadata'):
+            return True
+        # - The remote url has been updated
+        if self.field_value_changed('remote_metadata_url'):
             return True
         # - The expiration timestamp is not set, or it is expired
         if not self.metadata_expiration_dt or now() > self.metadata_expiration_dt:
@@ -104,7 +118,7 @@ class ServiceProvider(models.Model):
         if self.remote_metadata_url:
             return self._refresh_from_remote()
 
-        if (not self.metadata_expiration_dt) or (now() > self.metadata_expiration_dt):
+        if force_refresh or (not self.metadata_expiration_dt) or (now() > self.metadata_expiration_dt) or self.field_value_changed('local_metadata'):
             return self._refresh_from_local()
 
         raise Exception('Uncaught case of refresh_metadata')

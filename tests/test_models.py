@@ -1,5 +1,6 @@
 import json
 from datetime import timedelta
+from unittest import mock
 
 import arrow
 import pytest
@@ -9,6 +10,8 @@ from saml2 import xmldsig
 import requests_mock
 from djangosaml2idp.idp import IDP
 from djangosaml2idp.models import DEFAULT_ATTRIBUTE_MAPPING, ServiceProvider
+
+from .testing_utilities import mocked_requests_get
 
 future_dt = arrow.get().shift(days=30)
 expired_dt = arrow.get().shift(days=-30)
@@ -89,6 +92,27 @@ class TestServiceProvider:
             metadata_expiration_dt=timezone.now() + timedelta(hours=1),
         )
         assert instance.refresh_metadata() is False
+
+    @pytest.mark.django_db
+    def test_should_refresh_on_changed_local_metadata(self, sp_metadata_xml):
+        ServiceProvider.objects.create(entity_id='entity-id', local_metadata=sp_metadata_xml)
+        instance = ServiceProvider.objects.get(entity_id='entity-id')
+        # By default, no refresh necessary upon loading
+        assert instance._should_refresh() is False
+        # After modifying the local_metadata, refresh is necessary
+        instance.local_metadata = EXPIRED_XML
+        assert instance._should_refresh() is True
+
+    @pytest.mark.django_db
+    @mock.patch('requests.get', side_effect=mocked_requests_get)
+    def test_should_refresh_on_changed_remote_metadata_url(self, mock_get, sp_metadata_xml):
+        ServiceProvider.objects.create(entity_id='entity-id', remote_metadata_url='https://ok', local_metadata=sp_metadata_xml)
+        instance = ServiceProvider.objects.get(entity_id='entity-id')
+        # By default, no refresh necessary upon loading
+        assert instance._should_refresh() is False
+        # After modifying the remote_metadata_url, refresh is necessary
+        instance.remote_metadata_url = 'https://new-ok'
+        assert instance._should_refresh() is True
 
     @pytest.mark.parametrize(
         "instance",
