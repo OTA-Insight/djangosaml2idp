@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
                 ('dt_created', models.DateTimeField(auto_now_add=True, verbose_name='Created at')),
                 ('dt_updated', models.DateTimeField(auto_now=True, null=True, verbose_name='Updated at')),
                 ('entity_id', models.CharField(max_length=255, unique=True, verbose_name='Entity ID')),
-                ('pretty_name', models.CharField(blank=True, help_text='For display purposes, can be empty', max_length=256, verbose_name='Pretty Name')),
+                ('pretty_name', models.CharField(blank=True, help_text='For display purposes, can be empty', max_length=255, verbose_name='Pretty Name')),
                 ('description', models.TextField(blank=True, verbose_name='Description')),
                 ('metadata_expiration_dt', models.DateTimeField(verbose_name='Metadata valid until')),
                 ('remote_metadata_url', models.CharField(blank=True, help_text='If set, metadata will be fetched upon saving into the local metadata xml field, and automatically be refreshed after the expiration timestamp.', max_length=512, verbose_name='Remote metadata URL')),

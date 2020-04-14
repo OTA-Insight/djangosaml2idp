@@ -20,7 +20,7 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - ./idp:/app
-    working_dir: /app
+      - ..:/app
+    working_dir: /app/example_setup/idp
     ports:
       - "9000:9000"

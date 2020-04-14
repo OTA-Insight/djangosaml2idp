@@ -6,6 +6,7 @@ from django.utils.translation import gettext as _
 
 from .models import ServiceProvider
 from .processors import instantiate_processor, validate_processor_path
+from .utils import validate_metadata
 
 boolean_form_select_choices = ((None, _('--------')), (True, _('Yes')), (False, _('No')))
 
@@ -37,6 +38,11 @@ class ServiceProviderAdminForm(forms.ModelForm):
     def clean__processor(self):
         value = self.cleaned_data['_processor']
         validate_processor_path(value)
+        return value
+
+    def clean_local_metadata(self):
+        value = self.cleaned_data['local_metadata']
+        validate_metadata(value)
         return value
 
     def clean(self):

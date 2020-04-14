@@ -1,4 +1,4 @@
-FROM python:3.6.6-alpine3.7
+FROM python:3.8-alpine
 
 RUN apk add --update \
     build-base libffi-dev openssl-dev \

@@ -1,8 +1,6 @@
 # Changelog
 
-## [0.7.0] - 2020-04-xx
-
-*In development, *
+## [0.7.2] - 2020-04-14
 
 Many thanks for major contributions (especially on the testing front where the project was lacking) from [Amertz08](https://github.com/Amertz08) and [askvortsov1](https://github.com/askvortsov1)
 
@@ -12,7 +10,7 @@ Many thanks for major contributions (especially on the testing front where the p
 - Django 3.0 is added to the tests matrix. We currently are doing Python 3.6, 3.7, 3.8 and Django 2.2, 3.0.
 
 ### Removed
-- Python 3.5
+- Dropped Python 3.5.
 - Django 2.0 and 2.1 as they are no longer officially supported Django versions.
 
 
