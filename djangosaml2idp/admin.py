@@ -31,6 +31,4 @@ class ServiceProviderAdmin(admin.ModelAdmin):
 class PersistentIdAdmin(admin.ModelAdmin):
     list_filter = ['sp', ]
     list_display = ['user', 'sp', 'persistent_id']
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).select_related('user', 'sp')
+    select_related = ['user', 'sp']
