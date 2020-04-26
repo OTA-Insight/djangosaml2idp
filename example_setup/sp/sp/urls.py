@@ -12,6 +12,8 @@ app_name = 'example_sp'
 class SSOLoginView(View):
     def get(self, request, *args, **kwargs):
         return djangosaml2_login(request, post_binding_form_template='djangosaml2/example_post_binding_form.html')
+        # The one below is the same template but without the |safe filters. Try using this one. 
+        # return djangosaml2_login(request, post_binding_form_template='sp/non_safe_post_binding_form.html')
 
 
 urlpatterns = [
