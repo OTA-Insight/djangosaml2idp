@@ -153,6 +153,7 @@ SAML_CONFIG = {
             'endpoints': {
                 'assertion_consumer_service': [
                     ('http://localhost:8000/saml2/acs/', saml2.BINDING_HTTP_POST),
+                    ('http://localhost:8000/saml2/acs/', saml2.BINDING_HTTP_REDIRECT),
                 ],
                 'single_logout_service': [
                     ('http://localhost:8000/saml2/ls/', saml2.BINDING_HTTP_REDIRECT),
