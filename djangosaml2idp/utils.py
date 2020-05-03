@@ -1,14 +1,16 @@
 import base64
 import datetime
 import xml.dom.minidom
-from saml2.response import StatusResponse
 import xml.etree.ElementTree as ET
 import zlib
 from xml.parsers.expat import ExpatError
-from django.utils.translation import gettext as _
+
 import arrow
+import isodate
 import requests
 from django.core.exceptions import ValidationError
+from django.utils.translation import gettext as _
+from saml2.response import StatusResponse
 
 
 def repr_saml(saml: str, b64: bool = False):
@@ -61,11 +63,28 @@ def validate_metadata(metadata: str) -> str:
 
 
 def extract_validuntil_from_metadata(metadata: str) -> datetime.datetime:
-    ''' Extract the ValidUntil timestamp from the given metadata. Returns that timestamp if successfully, raise a ValidationError otherwise.
+    ''' Extract the expiration timestamp from the given metadata. Returns a timestamp if successfully, raise a ValidationError otherwise.
+        The expiration timestamp can be extracted using either the ValidUntil or the CacheDuration property.
     '''
-    try:
-        metadata_expiration_dt = arrow.get(ET.fromstring(metadata).attrib['validUntil']).datetime
-    except Exception as e:
-        raise ValidationError(f'Could not extra ValidUntil timestamp from metadata: {e}')
 
-    return metadata_expiration_dt
+    metadata_el = ET.fromstring(metadata)
+
+    metadata_expiration_dt = None
+    if 'validUntil' in metadata_el.attrib:
+        try:
+            metadata_expiration_dt = arrow.get(metadata_el.attrib['validUntil']).datetime
+        except Exception as e:
+            raise ValidationError(f'Error extracting ValidUntil timestamp from metadata: {e}')
+
+    cache_expiration_dt = None
+    if 'cacheDuration' in metadata_el.attrib:
+        try:
+            time_delta = isodate.parse_duration(metadata_el.attrib['cacheDuration'])
+            cache_expiration_dt = (arrow.get() + time_delta).datetime
+        except Exception as e:
+            raise ValidationError(f'Error extracting cacheDuration from metadata: {e}')
+
+    if metadata_expiration_dt is None and cache_expiration_dt is None:
+        raise ValidationError('Neither "validUntil" or "cacheDuration" are present in the metdata')
+
+    return metadata_expiration_dt, cache_expiration_dt

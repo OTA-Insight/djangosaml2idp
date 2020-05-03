@@ -6,3 +6,4 @@ tox
 pre-commit
 pytest-cov
 pytest-django
+isodate

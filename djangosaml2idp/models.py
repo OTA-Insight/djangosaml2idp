@@ -47,7 +47,8 @@ class ServiceProvider(models.Model):
     description = models.TextField(verbose_name='Description', blank=True)
 
     # Metadata
-    metadata_expiration_dt = models.DateTimeField(verbose_name='Metadata valid until')
+    metadata_expiration_dt = models.DateTimeField(verbose_name='Metadata valid until', blank=True, null=True)
+    cache_expiration_dt = models.DateTimeField(verbose_name='Cache metadata until', blank=True, null=True)
     remote_metadata_url = models.CharField(verbose_name='Remote metadata URL', max_length=512, blank=True, help_text='If set, metadata will be fetched upon saving into the local metadata xml field, and automatically be refreshed after the expiration timestamp.')
     local_metadata = models.TextField(verbose_name='Local Metadata XML', blank=True, help_text='XML containing the metadata')
 
@@ -71,6 +72,9 @@ class ServiceProvider(models.Model):
         # - The remote url has been updated
         if self.field_value_changed('remote_metadata_url'):
             return True
+        # - The cache duration is set, and it has been expired
+        if self.cache_expiration_dt and now() > self.cache_expiration_dt:
+            return True
         # - The expiration timestamp is not set, or it is expired
         if not self.metadata_expiration_dt or now() > self.metadata_expiration_dt:
             return True
@@ -80,7 +84,10 @@ class ServiceProvider(models.Model):
     def _refresh_from_remote(self) -> bool:
         try:
             self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
-            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
+            # Try to extract a valid expiration datetime from the (now fetched and validated) local metadata
+            metadata_expiration_dt, cache_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
+            self.metadata_expiration_dt = metadata_expiration_dt.replace(tzinfo=None) if metadata_expiration_dt else None
+            self.cache_expiration_dt = cache_expiration_dt.replace(tzinfo=None) if cache_expiration_dt else None
             # Return True if it is now valid, False (+ log an error) otherwise
             if now() > self.metadata_expiration_dt:
                 logger.error(f'Remote metadata for SP {self.entity_id} was refreshed, but contains an expired validity datetime.')
@@ -93,7 +100,9 @@ class ServiceProvider(models.Model):
     def _refresh_from_local(self) -> bool:
         try:
             # Try to extract a valid expiration datetime from the local metadata
-            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
+            metadata_expiration_dt, cache_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
+            self.metadata_expiration_dt = metadata_expiration_dt.replace(tzinfo=None) if metadata_expiration_dt else None
+            self.cache_expiration_dt = cache_expiration_dt.replace(tzinfo=None) if cache_expiration_dt else None
             # Return True if it is now valid, False (+ log an error) otherwise
             if now() > self.metadata_expiration_dt:
                 logger.error(f'Local metadata for SP {self.entity_id} contains an expired validity datetime or none at all, no remote metadata found to refresh.')
