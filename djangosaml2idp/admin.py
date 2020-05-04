@@ -8,7 +8,7 @@ from .models import PersistentId, ServiceProvider
 class ServiceProviderAdmin(admin.ModelAdmin):
     list_filter = ['active', '_sign_response', '_sign_assertion', '_signing_algorithm', '_digest_algorithm', '_encrypt_saml_responses']
     list_display = ['__str__', 'active', 'description']
-    readonly_fields = ('dt_created', 'dt_updated', 'resulting_config', 'metadata_expiration_dt', 'cache_expiration_dt')
+    readonly_fields = ('entity_id', 'dt_created', 'dt_updated', 'resulting_config', 'metadata_expiration_dt', 'cache_expiration_dt')
     form = ServiceProviderAdminForm
 
     fieldsets = (

@@ -40,16 +40,19 @@ class ServiceProviderAdminForm(forms.ModelForm):
         validate_processor_path(value)
         return value
 
-    def clean_local_metadata(self):
-        value = self.cleaned_data['local_metadata']
-        validate_metadata(value)
-        return value
-
     def clean(self):
         cleaned_data = super().clean()
 
         if not (cleaned_data.get('remote_metadata_url') or cleaned_data.get('local_metadata')):
             raise ValidationError('Either a remote metadata URL, or a local metadata xml needs to be provided.')
+
+        # Call the validation methods to catch ValidationErrors here, so they get displayed cleanly in the admin UI
+        self.instance.local_metadata = cleaned_data.get('local_metadata')
+        self.instance.remote_metadata_url = cleaned_data.get('remote_metadata_url')
+        _ , updated_fields = self.instance.load_metadata(force_refresh=True)
+        
+        for key in updated_fields:
+            cleaned_data[key] = updated_fields[key]
 
         if '_processor' in cleaned_data:
             processor_path = cleaned_data['_processor']
@@ -57,10 +60,3 @@ class ServiceProviderAdminForm(forms.ModelForm):
 
             processor_cls = validate_processor_path(processor_path)
             instantiate_processor(processor_cls, entity_id)
-
-        self.instance.local_metadata = cleaned_data.get('local_metadata')
-        # Call the validation methods to catch ValidationErrors here, so they get displayed cleanly in the admin UI
-        if cleaned_data.get('remote_metadata_url'):
-            self.instance.remote_metadata_url = cleaned_data.get('remote_metadata_url')
-            cleaned_data['local_metadata'] = self.instance.local_metadata
-        self.instance.refresh_metadata(force_refresh=True)

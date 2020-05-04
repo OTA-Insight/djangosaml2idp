@@ -63,28 +63,29 @@ def validate_metadata(metadata: str) -> str:
 
 
 def extract_validuntil_from_metadata(metadata: str) -> datetime.datetime:
-    ''' Extract the expiration timestamp from the given metadata. Returns a timestamp if successfully, raise a ValidationError otherwise.
-        The expiration timestamp can be extracted using either the ValidUntil or the CacheDuration property.
-    '''
+    ''' Extract the expiration timestamp from the given metadata. Returns a timestamp if successfully, raise a ValidationError otherwise. '''
 
     metadata_el = ET.fromstring(metadata)
 
     metadata_expiration_dt = None
     if 'validUntil' in metadata_el.attrib:
         try:
-            metadata_expiration_dt = arrow.get(metadata_el.attrib['validUntil']).datetime
+            metadata_expiration_dt = arrow.get(metadata_el.attrib['validUntil']).datetime.replace(tzinfo=pytz.utc)
         except Exception as e:
             raise ValidationError(f'Error extracting ValidUntil timestamp from metadata: {e}')
+    return metadata_expiration_dt
+
+
+def extract_cacheduration_from_metadata(metadata: str) -> datetime.datetime:
+    ''' Extract the cache duration expiration timestamp from the given metadata. Returns a timestamp if successfully, raise a ValidationError otherwise. '''
+
+    metadata_el = ET.fromstring(metadata)
 
     cache_expiration_dt = None
     if 'cacheDuration' in metadata_el.attrib:
         try:
             time_delta = isodate.parse_duration(metadata_el.attrib['cacheDuration'])
-            cache_expiration_dt = (arrow.get() + time_delta).datetime
+            cache_expiration_dt = (arrow.get() + time_delta).datetime.replace(tzinfo=pytz.utc)
         except Exception as e:
             raise ValidationError(f'Error extracting cacheDuration from metadata: {e}')
-
-    if metadata_expiration_dt is None and cache_expiration_dt is None:
-        raise ValidationError('Neither "validUntil" or "cacheDuration" are present in the metdata')
-
-    return metadata_expiration_dt, cache_expiration_dt
+    return cache_expiration_dt
