@@ -106,7 +106,7 @@ class ServiceProvider(models.Model):
             if self.metadata_expiration_dt and now() > self.metadata_expiration_dt:
                 logger.error(f'Remote metadata for SP {self.entity_id} was refreshed, but contains an expired validity datetime.')
                 return False, updated_fields
-            
+
             return True, updated_fields
         except Exception as e:
             logger.error(f'Metadata for SP {self.entity_id} could not be pulled from remote url {self.remote_metadata_url}.', extra={'exception': str(e)})

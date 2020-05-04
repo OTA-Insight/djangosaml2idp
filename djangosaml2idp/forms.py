@@ -6,7 +6,6 @@ from django.utils.translation import gettext as _
 
 from .models import ServiceProvider
 from .processors import instantiate_processor, validate_processor_path
-from .utils import validate_metadata
 
 boolean_form_select_choices = ((None, _('--------')), (True, _('Yes')), (False, _('No')))
 
@@ -49,8 +48,8 @@ class ServiceProviderAdminForm(forms.ModelForm):
         # Call the validation methods to catch ValidationErrors here, so they get displayed cleanly in the admin UI
         self.instance.local_metadata = cleaned_data.get('local_metadata')
         self.instance.remote_metadata_url = cleaned_data.get('remote_metadata_url')
-        _ , updated_fields = self.instance.load_metadata(force_refresh=True)
-        
+        _, updated_fields = self.instance.load_metadata(force_refresh=True)
+
         for key in updated_fields:
             cleaned_data[key] = updated_fields[key]
 
