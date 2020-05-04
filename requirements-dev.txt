@@ -20,6 +20,7 @@ filelock==3.0.12          # via tox, virtualenv
 identify==1.4.14          # via pre-commit
 idna==2.9                 # via requests
 importlib-metadata==1.6.0  # via pluggy, pre-commit, pytest, tox, virtualenv
+isodate==0.6.0
 mccabe==0.6.1             # via pylama
 more-itertools==8.2.0     # via pytest
 nodeenv==1.3.5            # via pre-commit
@@ -43,7 +44,7 @@ python-dateutil==2.8.1    # via pysaml2
 pytz==2019.3              # via pysaml2
 pyyaml==5.3.1             # via pre-commit
 requests==2.23.0          # via codecov, pysaml2
-six==1.14.0               # via cryptography, packaging, pip-tools, pyopenssl, pysaml2, python-dateutil, tox, virtualenv
+six==1.14.0               # via cryptography, isodate, packaging, pip-tools, pyopenssl, pysaml2, python-dateutil, tox, virtualenv
 snowballstemmer==2.0.0    # via pydocstyle
 toml==0.10.0              # via pre-commit, tox
 tox==3.14.6

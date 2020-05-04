@@ -20,6 +20,7 @@ setup(
         'pysaml2>=5.0.0',
         'pytz',
         'arrow',
+        'isodate',
     ],
     extras_require={
         "testing": [

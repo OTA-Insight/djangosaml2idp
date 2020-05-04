@@ -1,9 +1,10 @@
 import datetime
 import json
 import logging
-import uuid
 import os
-from typing import Dict
+import uuid
+import xml.etree.ElementTree as ET
+from typing import TYPE_CHECKING, Dict, Tuple
 
 import pytz
 from django.conf import settings
@@ -15,10 +16,10 @@ from django.utils.timezone import now
 from saml2 import xmldsig
 
 from .idp import IDP
-from .utils import (extract_validuntil_from_metadata, fetch_metadata,
+from .utils import (extract_cacheduration_from_metadata,
+                    extract_validuntil_from_metadata, fetch_metadata,
                     validate_metadata)
 
-from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .processors import BaseProcessor
 
@@ -38,16 +39,17 @@ DEFAULT_ATTRIBUTE_MAPPING = {
 
 class ServiceProvider(models.Model):
     # Bookkeeping
-    dt_created = models.DateTimeField(verbose_name='Created at', auto_now_add=True)
-    dt_updated = models.DateTimeField(verbose_name='Updated at', auto_now=True, null=True, blank=True)
+    dt_created = models.DateTimeField(verbose_name='Created at', auto_now_add=True, help_text='UTC')
+    dt_updated = models.DateTimeField(verbose_name='Updated at', auto_now=True, null=True, blank=True, help_text='UTC')
 
     # Identification
-    entity_id = models.CharField(verbose_name='Entity ID', max_length=255, unique=True)
+    entity_id = models.CharField(verbose_name='Entity ID', max_length=255, blank=True, unique=True, help_text='Automatically extracted from the metadata')
     pretty_name = models.CharField(verbose_name='Pretty Name', blank=True, max_length=255, help_text='For display purposes, can be empty')
     description = models.TextField(verbose_name='Description', blank=True)
 
     # Metadata
-    metadata_expiration_dt = models.DateTimeField(verbose_name='Metadata valid until')
+    metadata_expiration_dt = models.DateTimeField(verbose_name='Metadata valid until', blank=True, null=True, help_text='UTC')
+    cache_expiration_dt = models.DateTimeField(verbose_name='Cache metadata until', blank=True, null=True, help_text='UTC')
     remote_metadata_url = models.CharField(verbose_name='Remote metadata URL', max_length=512, blank=True, help_text='If set, metadata will be fetched upon saving into the local metadata xml field, and automatically be refreshed after the expiration timestamp.')
     local_metadata = models.TextField(verbose_name='Local Metadata XML', blank=True, help_text='XML containing the metadata')
 
@@ -63,65 +65,98 @@ class ServiceProvider(models.Model):
         return current_value != getattr(self, '_loaded_db_values', {}).get(field_name, current_value)
 
     def _should_refresh(self) -> bool:
-        ''' Returns whether or not a refresh operation is necessary.
-        '''
+        ''' Returns whether or not a refresh operation is necessary. '''
         # - Data was not fetched ever before, so local_metadata is empty, or local_metadata has been changed from what it was in the db before
         if not self.local_metadata or self.field_value_changed('local_metadata'):
             return True
         # - The remote url has been updated
         if self.field_value_changed('remote_metadata_url'):
             return True
+        # - The cache duration is set ...
+        if self.cache_expiration_dt:
+            # and it has been expired
+            if now() > self.cache_expiration_dt:
+                return True
+            # it hasn't been expired yet
+            return False
         # - The expiration timestamp is not set, or it is expired
         if not self.metadata_expiration_dt or now() > self.metadata_expiration_dt:
             return True
-
+        # Everything is still valid, no refresh necessary
         return False
 
-    def _refresh_from_remote(self) -> bool:
+    def _load_from_remote(self) -> Tuple[bool, dict]:
+        updated_fields = {}
         try:
             self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
-            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
+            # Try to extract the entityID
+            self.entity_id = ET.fromstring(self.local_metadata).attrib['entityID']
+            # Try to extract a valid expiration datetime
+            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
+            self.cache_expiration_dt = extract_cacheduration_from_metadata(self.local_metadata)
+
+            updated_fields = {
+                'entity_id': self.entity_id,
+                'metadata_expiration_dt': self.metadata_expiration_dt,
+                'cache_expiration_dt': self.cache_expiration_dt,
+                'local_metadata': self.local_metadata,
+            }
+
             # Return True if it is now valid, False (+ log an error) otherwise
-            if now() > self.metadata_expiration_dt:
+            if self.metadata_expiration_dt and now() > self.metadata_expiration_dt:
                 logger.error(f'Remote metadata for SP {self.entity_id} was refreshed, but contains an expired validity datetime.')
-                return False
-            return True
+                return False, updated_fields
+
+            return True, updated_fields
         except Exception as e:
             logger.error(f'Metadata for SP {self.entity_id} could not be pulled from remote url {self.remote_metadata_url}.', extra={'exception': str(e)})
-            return False
+            return False, {}
 
-    def _refresh_from_local(self) -> bool:
+    def _load_from_local(self) -> bool:
         try:
+            self.local_metadata = validate_metadata(self.local_metadata)
+            # Try to extract the entityID
+            self.entity_id = ET.fromstring(self.local_metadata).attrib['entityID']
             # Try to extract a valid expiration datetime from the local metadata
-            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
+            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
+            self.cache_expiration_dt = extract_cacheduration_from_metadata(self.local_metadata)
+
+            updated_fields = {
+                'entity_id': self.entity_id,
+                'metadata_expiration_dt': self.metadata_expiration_dt,
+                'cache_expiration_dt': self.cache_expiration_dt,
+                'local_metadata': self.local_metadata,
+            }
+
             # Return True if it is now valid, False (+ log an error) otherwise
             if now() > self.metadata_expiration_dt:
                 logger.error(f'Local metadata for SP {self.entity_id} contains an expired validity datetime or none at all, no remote metadata found to refresh.')
-                return False
-            return True
+                return False, updated_fields
+
+            return True, updated_fields
         except Exception as e:
             # Could not extract a valid expiry timestamp, return False (+ log an error)
             logger.error(f'Metadata expiration dt for SP {self.entity_id} could not be extracted from local metadata.', extra={'exception': str(e)})
-            return False
+            return False, updated_fields
 
-    def refresh_metadata(self, force_refresh: bool = False) -> bool:
+    def load_metadata(self, force_refresh: bool = False) -> Tuple[bool, dict]:
         ''' If a remote metadata url is set, fetch new metadata if the locally cached one is expired. Returns True if new metadata was set.
             Sets metadata fields on instance, but does not save to db. If force_refresh = True, the metadata will be refreshed regardless of the currently cached version validity timestamp.
         '''
-        if not self._should_refresh() and not force_refresh:
-            return False
+        if not (self._should_refresh() or force_refresh):
+            return False, {}
 
-        if not self.remote_metadata_url and not self.local_metadata:
+        if not (self.remote_metadata_url or self.local_metadata):
             logger.error(f'Local metadata for SP {self.entity_id} is not present, and no remote metadata found to refresh.')
-            return False
+            return False, {}
 
         if self.remote_metadata_url:
-            return self._refresh_from_remote()
+            return self._load_from_remote()
 
         if force_refresh or (not self.metadata_expiration_dt) or (now() > self.metadata_expiration_dt) or self.field_value_changed('local_metadata'):
-            return self._refresh_from_local()
+            return self._load_from_local()
 
-        raise Exception('Uncaught case of refresh_metadata')
+        raise Exception('Uncaught case of load_metadata')
 
     # Configuration
     active = models.BooleanField(verbose_name='Active', default=True)
@@ -184,7 +219,7 @@ class ServiceProvider(models.Model):
             Return the location of that file.
         """
         # On access, update the metadata if necessary
-        refreshed_metadata = self.refresh_metadata()
+        refreshed_metadata, _ = self.load_metadata()
         if refreshed_metadata:
             self.save()
 

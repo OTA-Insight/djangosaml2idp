@@ -91,7 +91,7 @@ class TestServiceProvider:
             local_metadata=timezone.now(),
             metadata_expiration_dt=timezone.now() + timedelta(hours=1),
         )
-        assert instance.refresh_metadata() is False
+        assert instance.load_metadata()[0] is False
 
     @pytest.mark.django_db
     def test_should_refresh_on_changed_local_metadata(self, sp_metadata_xml):
@@ -135,9 +135,9 @@ class TestServiceProvider:
         if instance.remote_metadata_url:
             with requests_mock.mock() as m:
                 m.get(instance.remote_metadata_url, text=VALID_XML)
-                refreshed = instance.refresh_metadata()
+                refreshed, _ = instance.load_metadata()
         else:
-            refreshed = instance.refresh_metadata()
+            refreshed, _ = instance.load_metadata()
 
         assert refreshed
 
@@ -178,13 +178,13 @@ class TestServiceProvider:
             if instance.remote_metadata_url == "http://expired_remote":
                 with requests_mock.mock() as m:
                     m.get(instance.remote_metadata_url, text=EXPIRED_XML)
-                    refreshed = instance.refresh_metadata()
+                    refreshed, _ = instance.load_metadata()
             if instance.remote_metadata_url == "http://not_found":
                 with requests_mock.mock() as m:
                     m.get(instance.remote_metadata_url, text='Notfound')
-                    refreshed = instance.refresh_metadata()
+                    refreshed, _ = instance.load_metadata()
         else:
-            refreshed = instance.refresh_metadata()
+            refreshed, _ = instance.load_metadata()
 
         assert not refreshed
 
@@ -197,19 +197,19 @@ class TestServiceProvider:
 
         with requests_mock.mock() as m:
             m.get(sp.remote_metadata_url, text=VALID_XML)
-            refreshed = sp.refresh_metadata(True)
+            refreshed, _ = sp.load_metadata(True)
 
         assert refreshed
         assert sp.local_metadata == VALID_XML
 
-    def test_refresh_metadata_updates_metadata_expiration_dt_from_remote(self):
+    def test_load_metadata_updates_metadata_expiration_dt_from_remote(self):
         sp = ServiceProvider(
             metadata_expiration_dt=timezone.now(),
             remote_metadata_url="http://someremote",
         )
         with requests_mock.mock() as m:
             m.get(sp.remote_metadata_url, text=VALID_XML)
-            refreshed = sp.refresh_metadata()
+            refreshed, _ = sp.load_metadata()
 
         assert refreshed
         assert sp.local_metadata == VALID_XML
