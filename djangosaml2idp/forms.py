@@ -6,7 +6,6 @@ from django.utils.translation import gettext as _
 
 from .models import ServiceProvider
 from .processors import instantiate_processor, validate_processor_path
-from .utils import validate_metadata
 
 boolean_form_select_choices = ((None, _('--------')), (True, _('Yes')), (False, _('No')))
 
@@ -15,7 +14,8 @@ class ServiceProviderAdminForm(forms.ModelForm):
 
     class Meta:
         model = ServiceProvider
-        fields = '__all__'
+        # Keep in sync with readonly_fields on admin class.
+        exclude = ('dt_created', 'dt_updated', 'resulting_config', 'metadata_expiration_dt')
         widgets = {
             '_encrypt_saml_responses': forms.Select(choices=boolean_form_select_choices),
             '_sign_response': forms.Select(choices=boolean_form_select_choices),
@@ -40,11 +40,6 @@ class ServiceProviderAdminForm(forms.ModelForm):
         validate_processor_path(value)
         return value
 
-    def clean_local_metadata(self):
-        value = self.cleaned_data['local_metadata']
-        validate_metadata(value)
-        return value
-
     def clean(self):
         cleaned_data = super().clean()
 
@@ -58,9 +53,13 @@ class ServiceProviderAdminForm(forms.ModelForm):
             processor_cls = validate_processor_path(processor_path)
             instantiate_processor(processor_cls, entity_id)
 
-        self.instance.local_metadata = cleaned_data.get('local_metadata')
         # Call the validation methods to catch ValidationErrors here, so they get displayed cleanly in the admin UI
         if cleaned_data.get('remote_metadata_url'):
             self.instance.remote_metadata_url = cleaned_data.get('remote_metadata_url')
-            cleaned_data['local_metadata'] = self.instance.local_metadata
-        self.instance.refresh_metadata(force_refresh=True)
+            self.instance._refresh_from_remote()
+        else:
+            self.instance.local_metadata = cleaned_data.get('local_metadata')
+            self.instance._refresh_from_local()
+
+        # Replace the form value with the refreshed metadata.
+        cleaned_data['local_metadata'] = self.instance.local_metadata
