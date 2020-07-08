@@ -81,7 +81,7 @@ class ServiceProvider(models.Model):
     def _refresh_from_remote(self) -> bool:
         try:
             self.local_metadata = validate_metadata(fetch_metadata(self.remote_metadata_url))
-            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
+            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
             # Return True if it is now valid, False (+ log an error) otherwise
             if now() > self.metadata_expiration_dt:
                 raise ValidationError(f'Remote metadata for SP {self.entity_id} was refreshed, but contains an expired validity datetime.')
@@ -92,7 +92,7 @@ class ServiceProvider(models.Model):
     def _refresh_from_local(self) -> bool:
         try:
             # Try to extract a valid expiration datetime from the local metadata
-            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
+            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
             # Return True if it is now valid, False (+ log an error) otherwise
             if now() > self.metadata_expiration_dt:
                 raise ValidationError(f'Local metadata for SP {self.entity_id} contains an expired validity datetime or none at all, no remote metadata found to refresh.')
@@ -157,7 +157,7 @@ class ServiceProvider(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.metadata_expiration_dt:
-            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata).replace(tzinfo=None)
+            self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
         super().save(*args, **kwargs)
         IDP.load(force_refresh=True)
 
