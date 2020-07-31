@@ -4,6 +4,7 @@ from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from djangosaml2idp.forms import ServiceProviderAdminForm
 
 User = get_user_model()
@@ -19,7 +20,9 @@ class TestAdminForm:
         assert 'Either a remote metadata URL, or a local metadata xml needs to be provided.' in form.errors['__all__']
 
     @pytest.mark.django_db
-    def test_valid_local_metadata(self, sp_metadata_xml):
+    @pytest.mark.parametrize('use_tz, tzinfo', [(True, timezone.utc), (False, None)])
+    def test_valid_local_metadata(self, settings, sp_metadata_xml, use_tz, tzinfo):
+        settings.USE_TZ = use_tz
         form = ServiceProviderAdminForm({
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
@@ -36,7 +39,7 @@ class TestAdminForm:
         instance = form.save()
         assert instance.remote_metadata_url == ''
         assert instance.local_metadata == sp_metadata_xml
-        assert instance.metadata_expiration_dt == datetime.datetime(2021, 2, 14, 17, 43, 34)
+        assert instance.metadata_expiration_dt == datetime.datetime(2021, 2, 14, 17, 43, 34, tzinfo=tzinfo)
 
     @pytest.mark.django_db
     def test_invalid_local_metadata(self):
@@ -57,7 +60,9 @@ class TestAdminForm:
 
     @pytest.mark.django_db
     @mock.patch('requests.get')
-    def test_valid_remote_metadata_url(self, mock_get, sp_metadata_xml):
+    @pytest.mark.parametrize('use_tz, tzinfo', [(True, timezone.utc), (False, None)])
+    def test_valid_remote_metadata_url(self, mock_get, settings, sp_metadata_xml, use_tz, tzinfo):
+        settings.USE_TZ = use_tz
         mock_get.return_value = mock.Mock(status_code=200, text=sp_metadata_xml)
         form = ServiceProviderAdminForm({
             'entity_id': 'entity-id',
@@ -75,7 +80,7 @@ class TestAdminForm:
         instance = form.save()
         assert instance.remote_metadata_url == 'https://ok'
         assert instance.local_metadata == sp_metadata_xml
-        assert instance.metadata_expiration_dt == datetime.datetime(2021, 2, 14, 17, 43, 34)
+        assert instance.metadata_expiration_dt == datetime.datetime(2021, 2, 14, 17, 43, 34, tzinfo=tzinfo)
 
     @pytest.mark.django_db
     @mock.patch('requests.get')
