@@ -1,11 +1,10 @@
+import datetime
 import json
 from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
-from .testing_utilities import mocked_requests_get
 from djangosaml2idp.forms import ServiceProviderAdminForm
-from djangosaml2idp.utils import extract_validuntil_from_metadata
 
 User = get_user_model()
 
@@ -20,12 +19,11 @@ class TestAdminForm:
         assert 'Either a remote metadata URL, or a local metadata xml needs to be provided.' in form.errors['__all__']
 
     @pytest.mark.django_db
-    def test_valid(self, sp_metadata_xml):
+    def test_valid_local_metadata(self, sp_metadata_xml):
         form = ServiceProviderAdminForm({
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
             'local_metadata': sp_metadata_xml,
-            'metadata_expiration_dt': extract_validuntil_from_metadata(sp_metadata_xml),
             '_attribute_mapping': json.dumps({
                 'name': 'fullName',
                 'email': 'emailAddress',
@@ -35,16 +33,36 @@ class TestAdminForm:
         })
 
         assert form.is_valid() is True
+        instance = form.save()
+        assert instance.remote_metadata_url == ''
+        assert instance.local_metadata == sp_metadata_xml
+        assert instance.metadata_expiration_dt == datetime.datetime(2021, 2, 14, 17, 43, 34)
 
     @pytest.mark.django_db
-    @mock.patch('requests.get', side_effect=mocked_requests_get)
-    def test_valid_remote_metadata_url(self, mock_get, sp_metadata_xml):
+    def test_invalid_local_metadata(self):
         form = ServiceProviderAdminForm({
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
-            'local_metadata': sp_metadata_xml,
+            'local_metadata': 'BOGUS DATA',
+            '_attribute_mapping': json.dumps({
+                'name': 'fullName',
+                'email': 'emailAddress',
+                'other_setting': 'otherSetting',
+                'random_method': 'randomMethodTest'
+            }),
+        })
+
+        assert form.is_valid() is False
+        assert 'Metadata expiration dt for SP  could not be extracted from local metadata.' in form.errors['__all__']
+
+    @pytest.mark.django_db
+    @mock.patch('requests.get')
+    def test_valid_remote_metadata_url(self, mock_get, sp_metadata_xml):
+        mock_get.return_value = mock.Mock(status_code=200, text=sp_metadata_xml)
+        form = ServiceProviderAdminForm({
+            'entity_id': 'entity-id',
+            '_processor': 'djangosaml2idp.processors.BaseProcessor',
             'remote_metadata_url': 'https://ok',
-            'metadata_expiration_dt': extract_validuntil_from_metadata(sp_metadata_xml),
             '_attribute_mapping': json.dumps({
                 'name': 'fullName',
                 'email': 'emailAddress',
@@ -54,6 +72,29 @@ class TestAdminForm:
         })
 
         assert form.is_valid() is True
+        instance = form.save()
+        assert instance.remote_metadata_url == 'https://ok'
+        assert instance.local_metadata == sp_metadata_xml
+        assert instance.metadata_expiration_dt == datetime.datetime(2021, 2, 14, 17, 43, 34)
+
+    @pytest.mark.django_db
+    @mock.patch('requests.get')
+    def test_invalid_remote_metadata_url(self, mock_get):
+        mock_get.return_value = mock.Mock(status_code=200, text='BOGUS DATA')
+        form = ServiceProviderAdminForm({
+            'entity_id': 'entity-id',
+            '_processor': 'djangosaml2idp.processors.BaseProcessor',
+            'remote_metadata_url': 'https://ok',
+            '_attribute_mapping': json.dumps({
+                'name': 'fullName',
+                'email': 'emailAddress',
+                'other_setting': 'otherSetting',
+                'random_method': 'randomMethodTest'
+            }),
+        })
+
+        assert form.is_valid() is False
+        assert 'Metadata for SP  could not be pulled from remote url https://ok.' in form.errors['__all__']
 
     @pytest.mark.django_db
     def test_metadata_invalid_not_json_parseable(self, sp_metadata_xml):
@@ -61,7 +102,6 @@ class TestAdminForm:
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
             'local_metadata': sp_metadata_xml,
-            'metadata_expiration_dt': extract_validuntil_from_metadata(sp_metadata_xml),
             '_attribute_mapping': 'invalid_json_content',
         })
 
@@ -74,7 +114,6 @@ class TestAdminForm:
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
             'local_metadata': sp_metadata_xml,
-            'metadata_expiration_dt': extract_validuntil_from_metadata(sp_metadata_xml),
             '_attribute_mapping': json.dumps(''),
         })
 
@@ -87,7 +126,6 @@ class TestAdminForm:
             'entity_id': 'entity-id',
             '_processor': 'djangosaml2idp.processors.BaseProcessor',
             'local_metadata': sp_metadata_xml,
-            'metadata_expiration_dt': extract_validuntil_from_metadata(sp_metadata_xml),
             '_attribute_mapping': json.dumps({
                 1: 2,
             }),
