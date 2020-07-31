@@ -1,9 +1,10 @@
+import datetime
 import xml
 from unittest import mock
 
-import arrow
 import pytest
 from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from djangosaml2idp.utils import (encode_saml,
                                   extract_validuntil_from_metadata,
@@ -52,9 +53,11 @@ class TestMetadataValidation:
         with pytest.raises(ValidationError):
             extract_validuntil_from_metadata('')
 
-    def test_extract_validuntil_from_metadata_valid(self, sp_metadata_xml):
+    @pytest.mark.parametrize('use_tz, tzinfo', [(True, timezone.utc), (False, None)])
+    def test_extract_validuntil_from_metadata_valid(self, settings, sp_metadata_xml, use_tz, tzinfo):
+        settings.USE_TZ = use_tz
         valid_until_dt_extracted = extract_validuntil_from_metadata(sp_metadata_xml)
-        assert valid_until_dt_extracted == arrow.get("2021-02-14T17:43:34Z")
+        assert valid_until_dt_extracted == datetime.datetime(2021, 2, 14, 17, 43, 34, tzinfo=tzinfo)
 
 
 class TestUtils:

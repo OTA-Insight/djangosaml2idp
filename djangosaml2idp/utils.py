@@ -5,6 +5,7 @@ from saml2.response import StatusResponse
 import xml.etree.ElementTree as ET
 import zlib
 from xml.parsers.expat import ExpatError
+from django.conf import settings
 from django.utils.translation import gettext as _
 import arrow
 import requests
@@ -68,4 +69,6 @@ def extract_validuntil_from_metadata(metadata: str) -> datetime.datetime:
     except Exception as e:
         raise ValidationError(f'Could not extra ValidUntil timestamp from metadata: {e}')
 
+    if not settings.USE_TZ:
+        return metadata_expiration_dt.replace(tzinfo=None)
     return metadata_expiration_dt
