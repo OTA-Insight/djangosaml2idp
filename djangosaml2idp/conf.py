@@ -44,7 +44,7 @@ def get_config(config_loader_path: Optional[Union[Callable, str]] = None, reques
     """
     static_config = copy.deepcopy(settings.SAML_IDP_CONFIG)
     config_loader_path = config_loader_path or getattr(settings, 'SAML_IDP_CONFIG_LOADER', None)
-    
+
     if config_loader_path is None:
         return static_config
     else:
@@ -53,4 +53,3 @@ def get_config(config_loader_path: Optional[Union[Callable, str]] = None, reques
         else:
             config_loader = get_config_loader(config_loader_path)
         return config_loader(static_config, request)
-

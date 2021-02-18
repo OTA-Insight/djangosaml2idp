@@ -218,6 +218,7 @@ class IdPHandlerViewMixin:
         else:
             return HttpResponseRedirect(html_response['data'])
 
+
 class IdPConfigViewMixin:
     """ Mixin for some of the SAML views with re-usable methods.
     """
@@ -428,6 +429,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMi
                 relay_state=relay_state)
         return self.render_response(request, html_response, None)
 
+
 @method_decorator(never_cache, name="dispatch")
 class MetadataView(IdPHandlerViewMixin, IdPConfigViewMixin, View):
     def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
@@ -436,7 +438,7 @@ class MetadataView(IdPHandlerViewMixin, IdPConfigViewMixin, View):
         """
         idp = self.get_idp_server(request)
         metadata = idp.get_metadata()
-        return HttpResponse(content=metadata.encode("utf-8"),content_type="text/xml; charset=utf8",)
+        return HttpResponse(content=metadata.encode("utf-8"), content_type="text/xml; charset=utf8",)
 
 
 @never_cache
