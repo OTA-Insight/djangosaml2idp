@@ -2,50 +2,39 @@ import copy
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.module_loading import import_string
 from django.utils.translation import gettext as _
 from saml2.config import IdPConfig
 from saml2.metadata import entity_descriptor
 from saml2.server import Server
 
 
-class IDP:
+class IDP(Server):
     """ Access point for the IDP Server instance
     """
-    _server_instance: Server = None
+    
+    def __init__(self, conf: dict):
+        idp_conf = IdPConfig()
+        try:
+            md = self.construct_metadata(conf)
+            idp_conf.load(md)
+        except Exception as e:
+            raise ImproperlyConfigured(_('Could not instantiate an IDP based on the SAML_IDP_CONFIG settings and configured ServiceProviders: {}').format(str(e)))
+        super().__init__(config=idp_conf)
 
-    @classmethod
-    def construct_metadata(cls) -> dict:
+    def construct_metadata(self, conf) -> dict:
         """ Get the config including the metadata for all the configured service providers. """
         from .models import ServiceProvider
-        idp_config = copy.deepcopy(settings.SAML_IDP_CONFIG)
-        if idp_config:
-            idp_config['metadata'] = {  # type: ignore
+        if conf:
+            conf['metadata'] = {  # type: ignore
                 'local': [sp.metadata_path() for sp in ServiceProvider.objects.filter(active=True)],
             }
-        return idp_config
+        return conf
 
-    @classmethod
-    def load(cls, force_refresh: bool = False) -> Server:
-        """ Instantiate a IDP Server instance based on the config defined in the SAML_IDP_CONFIG settings.
-            Throws an ImproperlyConfigured exception if it could not do so for any reason.
-        """
-        if cls._server_instance is None or force_refresh:
-            conf = IdPConfig()
-            md = cls.construct_metadata()
-            try:
-                conf.load(md)
-                cls._server_instance = Server(config=conf)
-            except Exception as e:
-                raise ImproperlyConfigured(_('Could not instantiate an IDP based on the SAML_IDP_CONFIG settings and configured ServiceProviders: {}').format(str(e)))
-        return cls._server_instance
-
-    @classmethod
-    def metadata(cls) -> str:
+    def get_metadata(self) -> str:
         """ Get the IDP metadata as a string. """
-        conf = IdPConfig()
         try:
-            conf.load(cls.construct_metadata())
-            metadata = entity_descriptor(conf)
+            metadata = entity_descriptor(self.config)
         except Exception as e:
-            raise ImproperlyConfigured(_('Could not instantiate IDP metadata based on the SAML_IDP_CONFIG settings and configured ServiceProviders: {}').format(str(e)))
+            raise ImproperlyConfigured(_('Could not instantiate IDP metadata: {}').format(str(e)))
         return str(metadata)

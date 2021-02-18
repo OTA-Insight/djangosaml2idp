@@ -23,6 +23,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
+from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 
@@ -31,6 +32,7 @@ from .idp import IDP
 from .models import ServiceProvider
 from .processors import BaseProcessor
 from .utils import repr_saml, verify_request_signature
+from .conf import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +142,6 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
 
 class IdPHandlerViewMixin:
     """ Contains some methods used by multiple views """
-
     def render_login_html_to_string(self, context=None, request=None, using=None):
         """ Render the html response for the login action. Can be using a custom html template if set on the view. """
         default_login_template_name = 'djangosaml2idp/login.html'
@@ -179,7 +180,7 @@ class IdPHandlerViewMixin:
                 "type": "POST",
             }
         else:
-            idp_server = IDP.load()
+            idp_server = self.get_idp_server(request)
             http_args = idp_server.apply_binding(
                 binding=binding,
                 msg_str=authn_resp,
@@ -217,9 +218,23 @@ class IdPHandlerViewMixin:
         else:
             return HttpResponseRedirect(html_response['data'])
 
+class IdPConfigViewMixin:
+    """ Mixin for some of the SAML views with re-usable methods.
+    """
+    config_loader_path = None
+
+    def get_config_loader_path(self, request: HttpRequest):
+        return self.config_loader_path
+
+    def get_idp_config(self, request: HttpRequest) -> IdPConfig:
+        return get_config(self.get_config_loader_path(request), request)
+
+    def get_idp_server(self, request) -> IDP:
+        return IDP(self.get_idp_config(request))
+
 
 @method_decorator(never_cache, name='dispatch')
-class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, View):
     """ View which processes the actual SAML request and returns a self-submitting form with the SAML response.
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' ways.
     """
@@ -230,7 +245,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         # TODO: would it be better to store SAML info in request objects?
         # AuthBackend takes request obj as argument...
         try:
-            idp_server = IDP.load()
+            idp_server = self.get_idp_server(request)
 
             # Parse incoming request
             req_info = idp_server.parse_authn_request(request.session['SAMLRequest'], binding)
@@ -269,7 +284,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 
 @method_decorator(never_cache, name='dispatch')
-class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, View):
     """ View used for IDP initialized login, doesn't handle any SAML authn request
     """
 
@@ -294,7 +309,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         except PermissionDenied as excp:
             return error_cbv.handle_error(request, exception=excp, status_code=403)
 
-        idp_server = IDP.load()
+        idp_server = self.get_idp_server(request)
 
         binding_out, destination = idp_server.pick_binding(
             service="assertion_consumer_service",
@@ -312,7 +327,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 
 @method_decorator(never_cache, name='dispatch')
-class ProcessMultiFactorView(LoginRequiredMixin, View):
+class ProcessMultiFactorView(LoginRequiredMixin, IdPConfigViewMixin, View):
     """ This view is used in an optional step is to perform 'other' user validation, for example 2nd factor checks.
         Override this view per the documentation if using this functionality to plug in your custom validation logic.
     """
@@ -337,7 +352,7 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
 
 
 @method_decorator([never_cache, csrf_exempt], name='dispatch')
-class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, View):
     """ View which processes the actual SAML Single Logout request
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' way.
     """
@@ -354,7 +369,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         relay_state = request.session['RelayState']
         logger.debug("--- {} requested [\n{}] to IDP ---".format(self.__service_name, binding))
 
-        idp_server = IDP.load()
+        idp_server = self.get_idp_server(request)
 
         # adapted from pysaml2 examples/idp2/idp_uwsgi.py
         try:
@@ -413,6 +428,16 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
                 relay_state=relay_state)
         return self.render_response(request, html_response, None)
 
+@method_decorator(never_cache, name="dispatch")
+class MetadataView(IdPHandlerViewMixin, IdPConfigViewMixin, View):
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        """ Returns an XML with the SAML 2.0 metadata for this Idp.
+            The metadata is constructed on-the-fly based on the config dict in the django settings.
+        """
+        idp = self.get_idp_server(request)
+        metadata = idp.get_metadata()
+        return HttpResponse(content=metadata.encode("utf-8"),content_type="text/xml; charset=utf8",)
+
 
 @never_cache
 def get_multifactor(request: HttpRequest) -> HttpResponse:
@@ -421,11 +446,3 @@ def get_multifactor(request: HttpRequest) -> HttpResponse:
     else:
         multifactor_class = ProcessMultiFactorView
     return multifactor_class.as_view()(request)
-
-
-@never_cache
-def metadata(request: HttpRequest) -> HttpResponse:
-    """ Returns an XML with the SAML 2.0 metadata for this Idp.
-        The metadata is constructed on-the-fly based on the config dict in the django settings.
-    """
-    return HttpResponse(content=IDP.metadata().encode('utf-8'), content_type="text/xml; charset=utf8")
