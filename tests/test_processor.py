@@ -64,7 +64,7 @@ class TestBaseProcessor:
         user.username = 'test_username'
 
         service_provider = ServiceProvider(entity_id='entity-id')
-        idp = IDP.load(get_config()).config
+        idp = IDP.load().config
 
         assert BaseProcessor('entity-id').get_user_id(user, NAMEID_FORMAT_UNSPECIFIED, service_provider, idp) == 'test_username'
 
@@ -76,7 +76,7 @@ class TestBaseProcessor:
 
         user = User(first_name='test_first_name')
         service_provider = ServiceProvider(entity_id='entity-id')
-        idp = IDP.load(get_config()).config
+        idp = IDP.load().config
 
         assert BaseProcessor('entity-id').get_user_id(user, NAMEID_FORMAT_UNSPECIFIED, service_provider, idp) == 'test_first_name'
 
@@ -87,7 +87,7 @@ class TestBaseProcessor:
         user.email = 'test_email'
 
         service_provider = ServiceProvider(entity_id='entity-id', _nameid_field='email')
-        idp = IDP.load(get_config()).config
+        idp = IDP.load().config
 
         assert BaseProcessor('entity-id').get_user_id(user, NAMEID_FORMAT_UNSPECIFIED, service_provider, idp) == 'test_email'
 
@@ -102,7 +102,7 @@ class TestBaseProcessor:
         user = User()
 
         service_provider = ServiceProvider(entity_id='entity-id', _nameid_field='random_method')
-        idp = IDP.load(get_config()).config
+        idp = IDP.load().config
 
         assert BaseProcessor('entity-id').get_user_id(user, NAMEID_FORMAT_UNSPECIFIED, service_provider, idp) == 'test method result'
 
@@ -125,7 +125,7 @@ class TestBaseProcessor:
                 'other_setting': 'otherSetting',
                 'random_method': 'randomMethodTest'
             }))
-        _ = IDP.load(get_config()).config
+        _ = IDP.load().config
 
         expected_result = {
             'fullName': 'Test Name',

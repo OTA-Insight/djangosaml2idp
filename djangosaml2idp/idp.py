@@ -1,10 +1,12 @@
-from typing import Dict, TypeVar
+from typing import Callable, Dict, Optional, TypeVar, Union
 from django.core.exceptions import ImproperlyConfigured
+from django.http import HttpRequest
 from django.utils.translation import gettext as _
 from saml2.config import IdPConfig
 from saml2.metadata import entity_descriptor
 from saml2.server import Server
 
+from djangosaml2idp.conf import get_config
 
 T = TypeVar('T', bound='IDP') 
 
@@ -12,20 +14,21 @@ class IDP(Server):
     """ Access point for the IDP Server instance
     """
     _server_instances: Dict[str, T] = {}
-    
+
     @classmethod
-    def load(cls, conf) -> T:
+    def load(cls, request: Optional[HttpRequest] = None, config_loader_path: Optional[Union[Callable, str]] = None) -> T:
+        conf = get_config(config_loader_path, request)
         if "entityid" not in conf:
             raise ImproperlyConfigured(f'The configuration must contain an entityId')
         entity_id = conf["entityid"]
         if entity_id not in cls._server_instances:
             cls._server_instances[entity_id] = cls(conf)
         return cls._server_instances[entity_id]
-        
+
     @classmethod
     def flush(cls):
         cls._server_instances = {}
-    
+
     def __init__(self, conf: dict):
         idp_conf = IdPConfig()
         try:

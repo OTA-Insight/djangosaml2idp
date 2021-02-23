@@ -26,6 +26,9 @@ from saml2.config import IdPConfig
 def get_config_loader(path: str) -> Callable:
     """ Import the function at a given path and return it
     """
+    if callable(path):
+        return path
+
     try:
         config_loader = import_string(path)
     except ImportError as e:
@@ -37,19 +40,14 @@ def get_config_loader(path: str) -> Callable:
     return config_loader
 
 
-def get_config(config_loader_path: Optional[Union[Callable, str]] = None, request: Optional[HttpRequest] = None) -> IdPConfig:
+def get_config(config_loader_path: Optional[Union[Callable, str]] = None, request: Optional[HttpRequest] = None) -> dict:
     """ Load a config_loader function if necessary, and call that function with the request as argument.
         If the config_loader_path is a callable instead of a string, no importing is necessary and it will be used directly.
         Return the resulting SPConfig.
     """
     static_config = copy.deepcopy(settings.SAML_IDP_CONFIG)
-    config_loader_path = config_loader_path or getattr(settings, 'SAML_IDP_CONFIG_LOADER', None)
 
     if config_loader_path is None:
-        return static_config
+        return static_config or {}
     else:
-        if callable(config_loader_path):
-            config_loader = config_loader_path
-        else:
-            config_loader = get_config_loader(config_loader_path)
-        return config_loader(static_config, request)
+        return get_config_loader(config_loader_path)(static_config, request)

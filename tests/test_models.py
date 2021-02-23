@@ -37,21 +37,21 @@ class TestServiceProvider:
     @pytest.mark.django_db
     def test_property_encrypt_saml_responses(self):
         instance = ServiceProvider(_encrypt_saml_responses=None)
-        assert instance.encrypt_saml_responses == getattr(IDP.load(get_config()).config, "SAML_ENCRYPT_AUTHN_RESPONSE", False)
+        assert instance.encrypt_saml_responses == getattr(IDP.load().config, "SAML_ENCRYPT_AUTHN_RESPONSE", False)
         instance = ServiceProvider(_encrypt_saml_responses=True)
         assert instance.encrypt_saml_responses == True
     
     @pytest.mark.django_db
     def test_property_signing_algorithm(self):
         instance = ServiceProvider(_signing_algorithm=None)
-        assert instance.signing_algorithm == getattr(IDP.load(get_config()).config, "SAML_AUTHN_SIGN_ALG", xmldsig.SIG_RSA_SHA256)
+        assert instance.signing_algorithm == getattr(IDP.load().config, "SAML_AUTHN_SIGN_ALG", xmldsig.SIG_RSA_SHA256)
         instance = ServiceProvider(_signing_algorithm='dummy_value')
         assert instance.signing_algorithm == 'dummy_value'
     
     @pytest.mark.django_db
     def test_property_digest_algorithm(self):
         instance = ServiceProvider(_digest_algorithm=None)
-        assert instance.digest_algorithm == getattr(IDP.load(get_config()).config, "SAML_AUTHN_DIGEST_ALG", xmldsig.DIGEST_SHA256)
+        assert instance.digest_algorithm == getattr(IDP.load().config, "SAML_AUTHN_DIGEST_ALG", xmldsig.DIGEST_SHA256)
         instance = ServiceProvider(_digest_algorithm='dummy_value')
         assert instance.digest_algorithm == 'dummy_value'
 

@@ -356,7 +356,7 @@ class TestIdPHandlerViewMixin:
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         sp = get_sp_config('test_generic_sp')
-        idp = IDP.load(get_config())
+        idp = IDP.load()
         user = User()
         authn = get_authn()
         resp_args = {
@@ -370,7 +370,7 @@ class TestIdPHandlerViewMixin:
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         sp = get_sp_config('test_generic_sp')
-        idp = IDP.load(get_config())
+        idp = IDP.load()
         authn = get_authn()
         resp_args = {
             "in_response_to": "SP_Initiated_Login",

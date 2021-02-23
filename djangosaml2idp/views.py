@@ -32,7 +32,6 @@ from .idp import IDP
 from .models import ServiceProvider
 from .processors import BaseProcessor
 from .utils import repr_saml, verify_request_signature
-from .conf import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -221,16 +220,13 @@ class IdPHandlerViewMixin:
 class IdPConfigViewMixin:
     """ Mixin for some of the SAML views with re-usable methods.
     """
-    config_loader_path = None
-
+    config_loader_path = getattr(settings, 'SAML_IDP_CONFIG_LOADER', None)
+    
     def get_config_loader_path(self, request: HttpRequest):
         return self.config_loader_path
-
-    def get_idp_config(self, request: HttpRequest) -> IdPConfig:
-        return get_config(self.get_config_loader_path(request), request)
-
+    
     def get_idp_server(self, request) -> IDP:
-        return IDP(self.get_idp_config(request))
+        return IDP.load(request, self.get_config_loader_path(request))
 
 
 @method_decorator(never_cache, name='dispatch')
