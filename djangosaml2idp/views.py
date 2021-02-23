@@ -103,7 +103,7 @@ def get_authn(req_info=None):
     return broker.get_authn_by_accr(req_authn_context)
 
 
-def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider) -> list:  # type: ignore
+def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider, idp_server: IDP) -> list:  # type: ignore
     """ pysaml2 server.Server.create_authn_response wrapper
     """
     policy = resp_args.get('name_id_policy', None)
@@ -112,7 +112,6 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
     else:
         name_id_format = policy.format
 
-    idp_server = IDP.load()
     idp_name_id_format_list = idp_server.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
 
     if name_id_format not in idp_name_id_format_list:
@@ -129,8 +128,8 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
         userid=user_id,
         sp_entity_id=service_provider.entity_id,
         # Signing
-        sign_response=service_provider.sign_response,
-        sign_assertion=service_provider.sign_assertion,
+        sign_response=service_provider.sign_response if service_provider.sign_response is not None else getattr(idp_server, 'sign_response', False),
+        sign_assertion=service_provider.sign_assertion if service_provider.sign_assertion is not None else getattr(idp_server, 'sign_assertion', False),
         sign_alg=service_provider.signing_algorithm,
         digest_alg=service_provider.digest_algorithm,
         # Encryption
@@ -269,7 +268,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMix
             except PermissionDenied as excp:
                 return error_cbv.handle_error(request, exception=excp, status_code=403)
             # Construct SamlResponse message
-            authn_resp = build_authn_response(request.user, get_authn(), resp_args, service_provider)
+            authn_resp = build_authn_response(request.user, get_authn(), resp_args, service_provider, idp_server)
         except Exception as e:
             return error_cbv.handle_error(request, exception=e, status_code=500)
 
@@ -321,7 +320,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, V
         passed_data['in_response_to'] = "IdP_Initiated_Login"
 
         # Construct SamlResponse messages
-        authn_resp = build_authn_response(request.user, get_authn(), passed_data, service_provider)
+        authn_resp = build_authn_response(request.user, get_authn(), passed_data, service_provider, idp_server)
 
         html_response = self.create_html_response(request, binding_out, authn_resp, destination, passed_data.get('RelayState', ""))
         return self.render_response(request, html_response, processor)

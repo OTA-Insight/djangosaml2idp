@@ -15,15 +15,17 @@ from saml2.config import SPConfig
 from saml2.saml import NAMEID_FORMAT_X509SUBJECTNAME
 from saml2.samlp import Response
 
+from djangosaml2idp.conf import get_config
+from djangosaml2idp.idp import IDP
 from djangosaml2idp.models import ServiceProvider
 from djangosaml2idp.processors import BaseProcessor
 from djangosaml2idp.utils import encode_saml
 from djangosaml2idp.views import (BINDING_HTTP_POST, BINDING_HTTP_REDIRECT,
-                                  IdPHandlerViewMixin, LoginProcessView,
-                                  LogoutProcessView, ProcessMultiFactorView,
+                                  IdPConfigViewMixin, IdPHandlerViewMixin, LoginProcessView,
+                                  LogoutProcessView, MetadataView, ProcessMultiFactorView,
                                   SSOInitView, build_authn_response,
                                   check_access, get_authn, get_multifactor,
-                                  get_sp_config, metadata, sso_entry,
+                                  get_sp_config, sso_entry,
                                   store_params_in_session)
 
 User = get_user_model()
@@ -354,19 +356,21 @@ class TestIdPHandlerViewMixin:
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         sp = get_sp_config('test_generic_sp')
+        idp = IDP.load(get_config())
         user = User()
         authn = get_authn()
         resp_args = {
             "in_response_to": "SP_Initiated_Login",
             "destination": "https://sp.example.com/SAML2",
         }
-        assert isinstance(build_authn_response(user, authn, resp_args, sp), Response)
+        assert isinstance(build_authn_response(user, authn, resp_args, sp, idp), Response)
 
     @pytest.mark.django_db
     def test_build_authn_response_unsupported_nameidformat(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         sp = get_sp_config('test_generic_sp')
+        idp = IDP.load(get_config())
         authn = get_authn()
         resp_args = {
             "in_response_to": "SP_Initiated_Login",
@@ -375,7 +379,7 @@ class TestIdPHandlerViewMixin:
         }
 
         with pytest.raises(ImproperlyConfigured):
-            build_authn_response(User(), authn, resp_args, sp)
+            build_authn_response(User(), authn, resp_args, sp, idp)
 
     @pytest.mark.django_db
     def test_create_html_response_with_post(self):
@@ -384,7 +388,9 @@ class TestIdPHandlerViewMixin:
 
     @pytest.mark.django_db
     def test_create_html_response_with_get(self):
-        mixin = IdPHandlerViewMixin()
+        class ComposedMixin(IdPHandlerViewMixin, IdPConfigViewMixin):
+            pass
+        mixin = ComposedMixin()
         html_response = mixin.create_html_response(HttpRequest(), BINDING_HTTP_REDIRECT, "SAMLResponse", "https://sp.example.com/SAML2", "")
         assert isinstance(html_response['data'], str)
 
@@ -595,7 +601,9 @@ class TestLogoutProcessView:
 class TestMetadata:
     @pytest.mark.django_db
     def test_metadata_works_correctly(self):
-        response = metadata(HttpRequest())
+        request = HttpRequest()
+        request.method = "GET"
+        response = MetadataView.as_view()(request)
         assert isinstance(response, HttpResponse)
         assert response.charset == 'utf8'
         assert response.status_code == 200
