@@ -23,7 +23,7 @@ from django.utils.module_loading import import_string
 from saml2.config import IdPConfig
 
 
-def get_config_loader(path: str) -> Callable:
+def get_callable(path: Union[Callable, str]) -> Callable:
     """ Import the function at a given path and return it
     """
     if callable(path):
@@ -50,4 +50,4 @@ def get_config(config_loader_path: Optional[Union[Callable, str]] = None, reques
     if config_loader_path is None:
         return static_config or {}
     else:
-        return get_config_loader(config_loader_path)(static_config, request)
+        return get_callable(config_loader_path)(static_config, request)

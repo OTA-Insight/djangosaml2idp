@@ -6,7 +6,7 @@ from saml2.config import IdPConfig
 from saml2.metadata import entity_descriptor
 from saml2.server import Server
 
-from djangosaml2idp.conf import get_config
+from .conf import get_config
 
 T = TypeVar('T', bound='IDP') 
 
@@ -19,33 +19,34 @@ class IDP(Server):
     def load(cls, request: Optional[HttpRequest] = None, config_loader_path: Optional[Union[Callable, str]] = None) -> T:
         conf = get_config(config_loader_path, request)
         if "entityid" not in conf:
-            raise ImproperlyConfigured(f'The configuration must contain an entityId')
+            raise ImproperlyConfigured(f'The configuration must contain an entityid')
         entity_id = conf["entityid"]
+        
         if entity_id not in cls._server_instances:
-            cls._server_instances[entity_id] = cls(conf)
+            # actually initialize the IdP server and cache it
+            from .models import ServiceProvider
+            sp_queryset = ServiceProvider.objects.filter(active=True)
+            if "filter_sp_queryset" in conf:
+                sp_queryset = get_callable(conf["filter_sp_queryset"])(sp_queryset, request)
+            cls._server_instances[entity_id] = cls(config=cls.construct_metadata(conf, sp_queryset))
         return cls._server_instances[entity_id]
 
     @classmethod
     def flush(cls):
         cls._server_instances = {}
-
-    def __init__(self, conf: dict):
+    
+    @classmethod
+    def construct_metadata(cls, conf: dict, sp_queryset) -> dict:
+        """ Get the config including the metadata for all the configured service providers. """
         idp_conf = IdPConfig()
+        conf['metadata'] = {  # type: ignore
+            'local': [sp.metadata_path() for sp in sp_queryset],
+        }
         try:
-            md = self.construct_metadata(conf)
-            idp_conf.load(md)
+            idp_conf.load(conf)
         except Exception as e:
             raise ImproperlyConfigured(_('Could not instantiate an IDP based on the SAML_IDP_CONFIG settings and configured ServiceProviders: {}').format(str(e)))
-        super().__init__(config=idp_conf)
-
-    def construct_metadata(self, conf) -> dict:
-        """ Get the config including the metadata for all the configured service providers. """
-        from .models import ServiceProvider
-        if conf:
-            conf['metadata'] = {  # type: ignore
-                'local': [sp.metadata_path() for sp in ServiceProvider.objects.filter(active=True)],
-            }
-        return conf
+        return idp_conf
 
     def get_metadata(self) -> str:
         """ Get the IDP metadata as a string. """

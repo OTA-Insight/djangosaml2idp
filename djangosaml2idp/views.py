@@ -26,6 +26,7 @@ from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
+from saml2.s_utils import UnknownSystemEntity
 
 from .error_views import error_cbv
 from .idp import IDP
@@ -306,10 +307,13 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, V
             return error_cbv.handle_error(request, exception=excp, status_code=403)
 
         idp_server = self.get_idp_server(request)
-
-        binding_out, destination = idp_server.pick_binding(
-            service="assertion_consumer_service",
-            entity_id=sp_entity_id)
+        
+        try:
+            binding_out, destination = idp_server.pick_binding(
+                service="assertion_consumer_service",
+                entity_id=sp_entity_id)
+        except UnknownSystemEntity as excp:
+            return error_cbv.handle_error(request, exception=excp, status_code=404)
 
         # Adding a few things that would have been added if this were SP Initiated
         passed_data['destination'] = destination
