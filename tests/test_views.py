@@ -4,8 +4,8 @@ from urllib import parse
 import pytest
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.contrib.sessions.backends.db import SessionStore
-from django.core.exceptions import (ImproperlyConfigured, PermissionDenied,
-                                    ValidationError)
+from django.core.exceptions import (ImproperlyConfigured, ObjectDoesNotExist,
+                                    PermissionDenied, ValidationError)
 from django.http import HttpRequest, HttpResponse, HttpResponseRedirect
 from django.template.exceptions import TemplateSyntaxError
 from django.utils import timezone
@@ -227,6 +227,9 @@ def mock_get_template(mocker):
 
 class TestIdPHandlerViewMixin:
 
+    def teardown_method(self):
+        IDP.flush()
+
     def test_render_login_hto_to_string_returns_result_of_render(self, mock_get_template):
 
         mixin = IdPHandlerViewMixin()
@@ -290,39 +293,42 @@ class TestIdPHandlerViewMixin:
 
     @pytest.mark.django_db
     def test_set_sp_errors_if_sp_not_defined(self):
-        with pytest.raises(ImproperlyConfigured):
-            get_sp_config('this_sp_does_not_exist')
+        with pytest.raises(ObjectDoesNotExist):
+            get_sp_config('this_sp_does_not_exist', IDP.load())
 
     @pytest.mark.django_db
     def test_set_sp_works_if_sp_defined(self, settings, sp_metadata_xml, sp_testing_configs):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
-        sp = get_sp_config('test_generic_sp')
+        sp = get_sp_config('test_generic_sp', IDP.load())
 
         assert sp._processor == sp_testing_configs['test_generic_sp']['processor']
         assert sp.attribute_mapping == sp_testing_configs['test_generic_sp']['attribute_mapping']
 
     @pytest.mark.django_db
+    @pytest.mark.parametrize('sp_metadata_xml', ['sp_with_bad_processor_metadata'], indirect=True)
     def test_set_processor_errors_if_processor_cannot_be_loaded(self, sp_metadata_xml):
-        ServiceProvider.objects.create(entity_id='test_sp_with_bad_processor', local_metadata=sp_metadata_xml, _processor='this.does.not.exist')
-        sp = get_sp_config('test_sp_with_bad_processor')
+        ServiceProvider.objects.create(entity_id='test_sp_with_bad_processor', active=True, local_metadata=sp_metadata_xml, _processor='this.does.not.exist')
+        sp = get_sp_config('test_sp_with_bad_processor', IDP.load())
 
         with pytest.raises(Exception):
             _ = sp.processor
 
     @pytest.mark.django_db
+    @pytest.mark.parametrize('sp_metadata_xml', ['sp_with_no_processor_metadata'], indirect=True)
     def test_set_processor_defaults_to_base_processor(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_sp_with_no_processor', local_metadata=sp_metadata_xml, _attribute_mapping='{}')
 
-        sp = get_sp_config('test_sp_with_no_processor')
+        sp = get_sp_config('test_sp_with_no_processor', IDP.load())
 
         assert isinstance(sp.processor, BaseProcessor)
 
     @pytest.mark.django_db
+    @pytest.mark.parametrize('sp_metadata_xml', ['sp_with_custom_processor_metadata'], indirect=True)
     def test_get_processor_loads_custom_processor(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_sp_with_custom_processor', local_metadata=sp_metadata_xml, _processor='tests.test_views.CustomProcessor')
 
-        sp = get_sp_config('test_sp_with_custom_processor')
+        sp = get_sp_config('test_sp_with_custom_processor', IDP.load())
 
         assert isinstance(sp.processor, CustomProcessor)
 
@@ -338,15 +344,16 @@ class TestIdPHandlerViewMixin:
     def test_check_access_works(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
-        sp = get_sp_config('test_generic_sp')
+        sp = get_sp_config('test_generic_sp', IDP.load())
         processor = sp.processor
         check_access(processor, HttpRequest())
 
     @pytest.mark.django_db
+    @pytest.mark.parametrize('sp_metadata_xml', ['sp_with_custom_processor_that_doesnt_allow_access_metadata'], indirect=True)
     def test_check_access_fails_when_it_should(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_sp_with_custom_processor_that_doesnt_allow_access', local_metadata=sp_metadata_xml, _processor='tests.test_views.CustomProcessorNoAccess')
 
-        sp = get_sp_config('test_sp_with_custom_processor_that_doesnt_allow_access')
+        sp = get_sp_config('test_sp_with_custom_processor_that_doesnt_allow_access', IDP.load())
         processor = sp.processor
         with pytest.raises(PermissionDenied):
             check_access(processor, HttpRequest())
@@ -355,7 +362,7 @@ class TestIdPHandlerViewMixin:
     def test_build_authn_response(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
-        sp = get_sp_config('test_generic_sp')
+        sp = get_sp_config('test_generic_sp', IDP.load())
         idp = IDP.load()
         user = User()
         authn = get_authn()
@@ -369,7 +376,7 @@ class TestIdPHandlerViewMixin:
     def test_build_authn_response_unsupported_nameidformat(self, sp_metadata_xml):
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
-        sp = get_sp_config('test_generic_sp')
+        sp = get_sp_config('test_generic_sp', IDP.load())
         idp = IDP.load()
         authn = get_authn()
         resp_args = {
@@ -410,7 +417,7 @@ class TestIdPHandlerViewMixin:
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         mixin = IdPHandlerViewMixin()
-        _ = get_sp_config("test_generic_sp")
+        _ = get_sp_config("test_generic_sp", IDP.load())
 
         user = User.objects.create()
         user.email = "test@gmail.com",
@@ -448,7 +455,7 @@ class TestIdPHandlerViewMixin:
             "saml_data": html_response
         }
 
-        mixin.render_response(request, html_response, get_sp_config('test_generic_sp').processor)
+        mixin.render_response(request, html_response, get_sp_config('test_generic_sp', IDP.load()).processor)
 
         assert all(item in request.session.items() for item in expected_session.items())
 
@@ -460,7 +467,7 @@ class TestIdPHandlerViewMixin:
             return True
 
         # Bind enable_multifactor being true to mixin processor.
-        processor = get_sp_config('test_generic_sp').processor
+        processor = get_sp_config('test_generic_sp', IDP.load()).processor
         processor.enable_multifactor = multifactor.__get__(processor)
         response = mixin.render_response(request, html_response, processor)
         assert isinstance(response, HttpResponseRedirect)
@@ -600,7 +607,7 @@ class TestLogoutProcessView:
 
 class TestMetadata:
     @pytest.mark.django_db
-    def test_metadata_works_correctly(self):
+    def test_metadata_works_correctly(self, settings):
         request = HttpRequest()
         request.method = "GET"
         response = MetadataView.as_view()(request)

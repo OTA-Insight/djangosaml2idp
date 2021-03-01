@@ -85,15 +85,22 @@ def check_access(processor: BaseProcessor, request: HttpRequest) -> None:
         raise PermissionDenied(_("You do not have access to this resource"))
 
 
-def get_sp_config(sp_entity_id: str) -> ServiceProvider:
-    """ Get a dict with the configuration for a SP according to the SAML_IDP_SPCONFIG settings.
+def get_sp_config(sp_entity_id: str, idp_server: IDP) -> ServiceProvider:
+    """ Get a dict with the configuration for a SP according to the SAML_IDP_SPCONFIG settings and the SP model.
         Raises an exception if no SP matching the given entity id can be found.
     """
     try:
+        if sp_entity_id not in idp_server.metadata.keys():
+            raise ObjectDoesNotExist()
         sp = ServiceProvider.objects.get(entity_id=sp_entity_id, active=True)
     except ObjectDoesNotExist:
-        raise ImproperlyConfigured(_("No active Service Provider object matching the entity_id '{}' found").format(sp_entity_id))
-    return sp
+        raise ObjectDoesNotExist(
+            _("No active Service Provider object matching the entity_id '{}' found for the Identity Provider '{}").format(
+                sp_entity_id, idp_server.ident.name_qualifier
+            )
+        )
+    else:
+        return sp
 
 
 def get_authn(req_info=None):
@@ -257,11 +264,13 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMix
             resp_args = idp_server.response_args(req_info.message)
             # Set SP and Processor
             sp_entity_id = resp_args.pop('sp_entity_id')
-            service_provider = get_sp_config(sp_entity_id)
+            service_provider = get_sp_config(sp_entity_id, idp_server)
             # Check if user has access
             try:
                 # Check if user has access to SP
                 check_access(service_provider.processor, request)
+            except (ObjectDoesNotExist) as excp:
+                return error_cbv.handle_error(request, exception=excp, status_code=404)
             except PermissionDenied as excp:
                 return error_cbv.handle_error(request, exception=excp, status_code=403)
             # Construct SamlResponse message
@@ -292,11 +301,15 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, V
         request_data = request.POST or request.GET
         passed_data: Dict[str, Union[str, List[str]]] = request_data.copy().dict()
 
+        idp_server = self.get_idp_server(request)
+
         try:
             # get sp information from the parameters
             sp_entity_id = str(passed_data['sp'])
-            service_provider = get_sp_config(sp_entity_id)
+            service_provider = get_sp_config(sp_entity_id, idp_server)
             processor: BaseProcessor = service_provider.processor  # type: ignore
+        except (ObjectDoesNotExist) as excp:
+            return error_cbv.handle_error(request, exception=excp, status_code=404)
         except (KeyError, ImproperlyConfigured) as excp:
             return error_cbv.handle_error(request, exception=excp, status_code=400)
 
@@ -306,14 +319,9 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, V
         except PermissionDenied as excp:
             return error_cbv.handle_error(request, exception=excp, status_code=403)
 
-        idp_server = self.get_idp_server(request)
-        
-        try:
-            binding_out, destination = idp_server.pick_binding(
-                service="assertion_consumer_service",
-                entity_id=sp_entity_id)
-        except UnknownSystemEntity as excp:
-            return error_cbv.handle_error(request, exception=excp, status_code=404)
+        binding_out, destination = idp_server.pick_binding(
+            service="assertion_consumer_service",
+            entity_id=sp_entity_id)
 
         # Adding a few things that would have been added if this were SP Initiated
         passed_data['destination'] = destination

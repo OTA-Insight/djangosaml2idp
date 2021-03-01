@@ -9,3 +9,6 @@ def mocked_requests_get(*args, **kwargs):
         return MockResponse('not found', 404)
 
     return MockResponse('ok', 200)
+
+def identity_queryset(queryset):
+    return queryset

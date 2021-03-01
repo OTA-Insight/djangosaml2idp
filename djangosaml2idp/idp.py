@@ -19,18 +19,21 @@ class IDP(Server):
     @classmethod
     def load(cls, request: Optional[HttpRequest] = None, config_loader_path: Optional[Union[Callable, str]] = None) -> T:
         conf = get_config(config_loader_path, request)
+
         if "entityid" not in conf:
             raise ImproperlyConfigured(f'The configuration must contain an entityid')
         entity_id = conf["entityid"]
-        
+
         if entity_id not in cls._server_instances:
             # actually initialize the IdP server and cache it
             from .models import ServiceProvider
             sp_queryset = ServiceProvider.objects.filter(active=True)
             if getattr(settings, "SAML_IDP_FILTER_SP_QUERYSET", None) is not None:
                 sp_queryset = get_callable(settings.SAML_IDP_FILTER_SP_QUERYSET)(sp_queryset, request)
+
             md = cls.construct_metadata(conf, sp_queryset)
             cls._server_instances[entity_id] = cls(config=md)
+
         return cls._server_instances[entity_id]
 
     @classmethod
