@@ -57,7 +57,7 @@ class TestMetadataValidation:
     def test_extract_validuntil_from_metadata_valid(self, settings, sp_metadata_xml, use_tz, tzinfo):
         settings.USE_TZ = use_tz
         valid_until_dt_extracted = extract_validuntil_from_metadata(sp_metadata_xml)
-        assert valid_until_dt_extracted == datetime.datetime(2021, 2, 14, 17, 43, 34, tzinfo=tzinfo)
+        assert valid_until_dt_extracted == datetime.datetime(2099, 2, 14, 17, 43, 34, tzinfo=tzinfo)
 
 
 class TestUtils:
