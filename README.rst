@@ -85,7 +85,7 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
 
     SAML_IDP_CONFIG = {
         'debug' : DEBUG,
-        'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
+        'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin']),
         'entityid': '%s/metadata' % BASE_URL,
         'description': 'Example IdP setup',
 
