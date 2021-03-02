@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 User = get_user_model()
 
+DEFAULT_PROCESSOR = 'djangosaml2idp.processors.BaseProcessor'
+
 DEFAULT_ATTRIBUTE_MAPPING = {
     # DJANGO: SAML
     'email': 'email',
@@ -35,6 +37,18 @@ DEFAULT_ATTRIBUTE_MAPPING = {
     'is_staff': 'is_staff',
     'is_superuser': 'is_superuser',
 }
+
+
+def get_default_processor() -> str:
+    if hasattr(settings, 'SAML_IDP_SP_FIELD_DEFAULT_PROCESSOR'):
+        return getattr(settings, 'SAML_IDP_SP_FIELD_DEFAULT_PROCESSOR')
+    return DEFAULT_PROCESSOR
+
+
+def get_default_attribute_mapping() -> str:
+    if hasattr(settings, 'SAML_IDP_SP_FIELD_DEFAULT_ATTRIBUTE_MAPPING'):
+        return json.dumps(getattr(settings, 'SAML_IDP_SP_FIELD_DEFAULT_ATTRIBUTE_MAPPING'))
+    return json.dumps(DEFAULT_ATTRIBUTE_MAPPING)
 
 
 class ServiceProvider(models.Model):
@@ -130,8 +144,8 @@ class ServiceProvider(models.Model):
 
     # Configuration
     active = models.BooleanField(verbose_name='Active', default=True)
-    _processor = models.CharField(verbose_name='Processor', max_length=256, help_text='Import string for the (access) Processor to use.', default='djangosaml2idp.processors.BaseProcessor')
-    _attribute_mapping = models.TextField(verbose_name='Attribute mapping', default=json.dumps(DEFAULT_ATTRIBUTE_MAPPING), help_text='dict with the mapping from django attributes to saml attributes in the identity.')
+    _processor = models.CharField(verbose_name='Processor', max_length=256, help_text='Import string for the (access) Processor to use.', default=get_default_processor)
+    _attribute_mapping = models.TextField(verbose_name='Attribute mapping', default=get_default_attribute_mapping, help_text='dict with the mapping from django attributes to saml attributes in the identity.')
 
     _nameid_field = models.CharField(verbose_name='NameID Field', blank=True, max_length=64, help_text='Attribute on the user to use as identifier during the NameID construction. Can be a callable. If not set, this will default to settings.SAML_IDP_DJANGO_USERNAME_FIELD; if that is not set, it will use the `USERNAME_FIELD` attribute on the active user model.')
 

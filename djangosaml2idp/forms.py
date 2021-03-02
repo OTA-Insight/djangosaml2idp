@@ -10,6 +10,13 @@ from .processors import instantiate_processor, validate_processor_path
 boolean_form_select_choices = ((None, _('--------')), (True, _('Yes')), (False, _('No')))
 
 
+def get_initial_value(instance: ServiceProvider, field_name: str) -> str:
+    for field in instance._meta.fields:
+        if field.name == field_name:
+            return field.default
+    return ''
+
+
 class ServiceProviderAdminForm(forms.ModelForm):
 
     class Meta:
