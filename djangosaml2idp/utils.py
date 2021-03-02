@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 import zlib
 from xml.parsers.expat import ExpatError
 from django.conf import settings
-from django.utils.timezone import now
+from django.utils.timezone import now, is_naive, make_aware
 from django.utils.translation import gettext as _
 import arrow
 import requests
@@ -75,4 +75,6 @@ def extract_validuntil_from_metadata(metadata: str) -> datetime.datetime:
 
     if not settings.USE_TZ:
         return metadata_expiration_dt.replace(tzinfo=None)
+    if is_naive(metadata_expiration_dt):
+        return make_aware(metadata_expiration_dt)
     return metadata_expiration_dt
