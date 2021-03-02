@@ -1,5 +1,5 @@
 django~=3.0
 djangosaml2==0.18.1
-pysaml2==5.0.0
+pysaml2==6.5.0
 arrow
 pytz
