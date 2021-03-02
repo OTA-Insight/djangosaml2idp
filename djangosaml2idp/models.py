@@ -16,6 +16,7 @@ from django.utils.timezone import now
 from saml2 import xmldsig
 
 from .idp import IDP
+from .settings import SERVICE_PROVIDER_MODEL
 from .utils import (extract_validuntil_from_metadata, fetch_metadata,
                     validate_metadata)
 
@@ -51,7 +52,8 @@ def get_default_attribute_mapping() -> str:
     return json.dumps(DEFAULT_ATTRIBUTE_MAPPING)
 
 
-class ServiceProvider(models.Model):
+class AbstractServiceProvider(models.Model):
+
     # Bookkeeping
     dt_created = models.DateTimeField(verbose_name='Created at', auto_now_add=True)
     dt_updated = models.DateTimeField(verbose_name='Updated at', auto_now=True, null=True, blank=True)
@@ -158,6 +160,7 @@ class ServiceProvider(models.Model):
     _encrypt_saml_responses = models.BooleanField(verbose_name='Encrypt SAML Response', null=True, help_text='If not set, default to settings.SAML_ENCRYPT_AUTHN_RESPONSE. If that one is not set, default to False.')
 
     class Meta:
+        abstract = True
         verbose_name = "Service Provider"
         verbose_name_plural = "Service Providers"
         indexes = [
@@ -278,15 +281,26 @@ class ServiceProvider(models.Model):
         return mark_safe(config_as_str.replace("\n", "<br>").replace("    ", "&nbsp;&nbsp;&nbsp;&nbsp;"))
 
 
-class PersistentId(models.Model):
+class ServiceProvider(AbstractServiceProvider):
+    class Meta(AbstractServiceProvider.Meta):
+        swappable = "SAML_IDP_SERVICE_PROVIDER_MODEL"
+
+
+class AbstractPersistentId(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    sp = models.ForeignKey(ServiceProvider, on_delete=models.CASCADE)
+    sp = models.ForeignKey(SERVICE_PROVIDER_MODEL, on_delete=models.CASCADE)
     persistent_id = models.UUIDField("User Persistent Id for this SP", default=uuid.uuid4)
     created = models.DateTimeField(default=now)
 
     class Meta:
+        abstract = True
         constraints = [
             models.UniqueConstraint(fields=["sp", "persistent_id"], name="unique_ids_per_sp"),
             models.UniqueConstraint(fields=["sp", "user"], name="unique_users_per_sp"),
         ]
         verbose_name = 'Persistent Id'
+
+
+class PersistentId(AbstractPersistentId):
+    class Meta(AbstractPersistentId.Meta):
+        swappable = "SAML_IDP_PERSISTENT_ID_MODEL"
