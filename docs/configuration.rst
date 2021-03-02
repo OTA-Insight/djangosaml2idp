@@ -99,4 +99,4 @@ Other settings you can set as defaults to be used if not overriden by an SP are 
 
 In case your SP does not properly expose validuntil in metadata, you can provide fallback setting for it using::
 
-   SAML_IDP_FALLBACK_EXPIRATION_DAYS = 30
+    SAML_IDP_FALLBACK_EXPIRATION_DAYS = 30
