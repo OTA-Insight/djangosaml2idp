@@ -7,7 +7,7 @@ Many thanks for major contributions (especially on the testing front where the p
 ### Added
 - Major and breaking change: Service Providers are now backed by the database instead of being configured via the settings: [#51](https://github.com/OTA-Insight/djangosaml2idp/pull/51)
 - Test coverage has been improved significantly. CI was added to run tests, linting and report code coverage which will improve stability of development.
-- Django 3.0 is added to the tests matrix. We currently are doing Python 3.6, 3.7, 3.8 and Django 2.2, 3.0.
+- Django 3.0 is added to the tests matrix. We currently are doing Python 3.6, 3.7, 3.8, 3.9 and Django 2.2, 3.0, 3.1.
 
 ### Removed
 - Dropped Python 3.5.
