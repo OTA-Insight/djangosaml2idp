@@ -147,7 +147,6 @@ You can customize which field is used for the identifier by adding ``SAML_IDP_DJ
 Other settings you can set as defaults to be used if not overriden by an SP are `SAML_AUTHN_SIGN_ALG`, `SAML_AUTHN_DIGEST_ALG`, and `SAML_ENCRYPT_AUTHN_RESPONSE`. They can be set if desired in the django settings, in which case they will be used for all ServiceProviders configuration on this instance if they don't override it. E.g.:
 
     SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA256
-    
     SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA256
 
 In case your SP does not properly expose validuntil in metadata, you can provide fallback setting for it using::
@@ -157,7 +156,6 @@ In case your SP does not properly expose validuntil in metadata, you can provide
 The default value for the fields ``processor`` and ``attribute_mapping`` can be set via the settings (the values displayed here are the defaults):
 
     SAML_IDP_SP_FIELD_DEFAULT_PROCESSOR = 'djangosaml2idp.processors.BaseProcessor'
-
     SAML_IDP_SP_FIELD_DEFAULT_ATTRIBUTE_MAPPING = {"email": "email", "first_name": "first_name", "last_name": "last_name", "is_staff": "is_staff", "is_superuser": "is_superuser"}
 
 
