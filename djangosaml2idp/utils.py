@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 import zlib
 from xml.parsers.expat import ExpatError
 from django.conf import settings
-from django.utils.timezone import is_naive, make_aware
+from django.utils.timezone import now, is_naive, make_aware
 from django.utils.translation import gettext as _
 import arrow
 import requests
@@ -68,6 +68,9 @@ def extract_validuntil_from_metadata(metadata: str) -> datetime.datetime:
     try:
         metadata_expiration_dt = arrow.get(ET.fromstring(metadata).attrib['validUntil']).datetime
     except Exception as e:
+        fallback = getattr(settings, "SAML_IDP_FALLBACK_EXPIRATION_DAYS", 0)
+        if fallback:
+            return now() + datetime.timedelta(days=fallback)
         raise ValidationError(f'Could not extra ValidUntil timestamp from metadata: {e}')
 
     if not settings.USE_TZ:
