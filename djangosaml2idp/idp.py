@@ -14,13 +14,15 @@ class IDP:
     _server_instance: Server = None
 
     @classmethod
-    def construct_metadata(cls) -> dict:
+    def construct_metadata(cls, with_local_sp: bool = True) -> dict:
         """ Get the config including the metadata for all the configured service providers. """
         from .models import ServiceProvider
         idp_config = copy.deepcopy(settings.SAML_IDP_CONFIG)
         if idp_config:
             idp_config['metadata'] = {  # type: ignore
-                'local': [sp.metadata_path() for sp in ServiceProvider.objects.filter(active=True)],
+                'local': (
+                    [sp.metadata_path() for sp in ServiceProvider.objects.filter(active=True)]
+                    if with_local_sp else []),
             }
         return idp_config
 
@@ -44,7 +46,7 @@ class IDP:
         """ Get the IDP metadata as a string. """
         conf = IdPConfig()
         try:
-            conf.load(cls.construct_metadata())
+            conf.load(cls.construct_metadata(with_local_sp=False))
             metadata = entity_descriptor(conf)
         except Exception as e:
             raise ImproperlyConfigured(_('Could not instantiate IDP metadata based on the SAML_IDP_CONFIG settings and configured ServiceProviders: {}').format(str(e)))

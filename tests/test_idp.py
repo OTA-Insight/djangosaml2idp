@@ -1,3 +1,4 @@
+from unittest.mock import patch, Mock
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from saml2.server import Server
@@ -25,6 +26,18 @@ class TestIDP:
         IDP._server_instance = None
         md = IDP.metadata()
         assert isinstance(md, str)
+
+    @pytest.mark.django_db
+    @patch('djangosaml2idp.models.ServiceProvider')
+    def test_metadata_sp_autoload_idp(self, sp_model_mock):
+        '''The IdP metadata should not require loading of SP metadata.'''
+        sp_instance_mock = Mock()
+        sp_instance_mock.metadata_path.return_value = '/tmp/djangosaml2idp/1.xml'
+        sp_model_mock.objects.filter.return_value = [sp_instance_mock]
+        IDP._server_instance = None
+        md = IDP.metadata()
+        sp_instance_mock.metadata_path.assert_not_called()
+
 
     @pytest.mark.django_db
     def test_metadata_no_settings_defined(self, settings):
