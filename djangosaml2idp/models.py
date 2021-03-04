@@ -6,17 +6,19 @@ import os
 from typing import Dict
 
 import pytz
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.module_loading import import_string
 from django.utils.functional import cached_property
 from django.utils.safestring import mark_safe
 from django.utils.timezone import now
 from saml2 import xmldsig
 
 from .idp import IDP
-from .settings import SERVICE_PROVIDER_MODEL
+from . import settings as saml_settings
 from .utils import (extract_validuntil_from_metadata, fetch_metadata,
                     validate_metadata)
 
@@ -288,7 +290,7 @@ class ServiceProvider(AbstractServiceProvider):
 
 class AbstractPersistentId(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    sp = models.ForeignKey(SERVICE_PROVIDER_MODEL, on_delete=models.CASCADE)
+    sp = models.ForeignKey(saml_settings.SERVICE_PROVIDER_MODEL, on_delete=models.CASCADE)
     persistent_id = models.UUIDField("User Persistent Id for this SP", default=uuid.uuid4)
     created = models.DateTimeField(default=now)
 
@@ -304,3 +306,19 @@ class AbstractPersistentId(models.Model):
 class PersistentId(AbstractPersistentId):
     class Meta(AbstractPersistentId.Meta):
         swappable = "SAML_IDP_PERSISTENT_ID_MODEL"
+
+
+def get_service_provider_model():
+    return apps.get_model(saml_settings.SERVICE_PROVIDER_MODEL)
+
+
+def get_persistent_id_model():
+    return apps.get_model(saml_settings.PERSISTENT_ID_MODEL)
+
+
+def get_service_provider_admin_class():
+    return import_string(saml_settings.SERVICE_PROVIDER_ADMIN_CLASS)
+
+
+def get_persistent_id_admin_class():
+    return import_string(saml_settings.PERSISTENT_ID_ADMIN_CLASS)
