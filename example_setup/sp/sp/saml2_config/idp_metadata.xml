@@ -1,4 +1,9 @@
-<ns0:EntityDescriptor xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ns1="urn:oasis:names:tc:SAML:metadata:algsupport" xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" entityID="http://localhost:9000/idp/metadata/" validUntil="2022-03-05T23:02:04Z">
+<ns0:EntityDescriptor
+		xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata"
+		xmlns:ns1="urn:oasis:names:tc:SAML:metadata:algsupport"
+		xmlns:ns2="http://www.w3.org/2000/09/xmldsig#"
+		entityID="http://localhost:9000/idp/metadata/"
+		validUntil="2022-03-05T23:02:04Z">
 	<ns0:Extensions>
 		<ns1:DigestMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#md5"/>
 		<ns1:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#ripemd160"/>
