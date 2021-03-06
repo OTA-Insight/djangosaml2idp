@@ -22,6 +22,11 @@ In order to do an actual login, you will need to create a user account on the Id
 
     docker exec -it djangosaml2idp_idp python manage.py createsuperuser
 
+You can follow the logs via.
+
+    docker-compose logs -f idp
+    docker-compose logs -f sp
+
 If you don't want to use docker, simply do in a terminal from the idp directory
 
     pip install -r requirements.txt
