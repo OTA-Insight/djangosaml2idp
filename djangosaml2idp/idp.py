@@ -9,30 +9,39 @@ from typing import Callable, Dict, Optional, TypeVar, Union
 
 from .conf import get_callable, get_config
 
-T = TypeVar('T', bound='IDP') 
-
-class IDP(Server):
+class IDP:
     """ Access point for the IDP Server instance
     """
-    _server_instances: Dict[str, T] = {}
+    _server_instances: Dict[str, Server] = {}
+    
+    @classmethod
+    def construct_metadata(cls, idp_conf: dict, request: Optional[HttpRequest] = None) -> IdPConfig:
+        """ Get the config including the metadata for all the configured service providers. """
+        from .models import ServiceProvider
+        conf = IdPConfig()
+        sp_queryset = ServiceProvider.objects.filter(active=True)
+        if getattr(settings, "SAML_IDP_FILTER_SP_QUERYSET", None) is not None:
+            sp_queryset = get_callable(settings.SAML_IDP_FILTER_SP_QUERYSET)(sp_queryset, request)
+        idp_conf['metadata'] = {  # type: ignore
+            'local': [sp.metadata_path() for sp in sp_queryset],
+        }
+        try:
+            conf.load(idp_conf)
+        except Exception as e:
+            raise ImproperlyConfigured(_('Could not instantiate an IDP based on the SAML_IDP_CONFIG settings and configured ServiceProviders: {}').format(str(e)))
+        return conf
 
     @classmethod
-    def load(cls, request: Optional[HttpRequest] = None, config_loader_path: Optional[Union[Callable, str]] = None) -> T:
-        conf = get_config(config_loader_path, request)
-
-        if "entityid" not in conf:
+    def load(cls, request: Optional[HttpRequest] = None, config_loader_path: Optional[Union[Callable, str]] = None) -> Server:
+        idp_conf = get_config(config_loader_path, request)
+        if "entityid" not in idp_conf:
             raise ImproperlyConfigured(f'The configuration must contain an entityid')
-        entity_id = conf["entityid"]
+        entity_id = idp_conf["entityid"]
 
         if entity_id not in cls._server_instances:
             # actually initialize the IdP server and cache it
-            from .models import ServiceProvider
-            sp_queryset = ServiceProvider.objects.filter(active=True)
-            if getattr(settings, "SAML_IDP_FILTER_SP_QUERYSET", None) is not None:
-                sp_queryset = get_callable(settings.SAML_IDP_FILTER_SP_QUERYSET)(sp_queryset, request)
-
-            md = cls.construct_metadata(conf, sp_queryset)
-            cls._server_instances[entity_id] = cls(config=md)
+            conf = cls.construct_metadata(idp_conf, request)
+            cls._server_instances[entity_id] = Server(config=conf)
 
         return cls._server_instances[entity_id]
 
@@ -41,22 +50,11 @@ class IDP(Server):
         cls._server_instances = {}
     
     @classmethod
-    def construct_metadata(cls, conf: dict, sp_queryset) -> dict:
-        """ Get the config including the metadata for all the configured service providers. """
-        idp_conf = IdPConfig()
-        conf['metadata'] = {  # type: ignore
-            'local': [sp.metadata_path() for sp in sp_queryset],
-        }
-        try:
-            idp_conf.load(conf)
-        except Exception as e:
-            raise ImproperlyConfigured(_('Could not instantiate an IDP based on the SAML_IDP_CONFIG settings and configured ServiceProviders: {}').format(str(e)))
-        return idp_conf
-
-    def get_metadata(self) -> str:
+    def metadata(cls, request: Optional[HttpRequest] = None, config_loader_path: Optional[Union[Callable, str]] = None) -> str:
         """ Get the IDP metadata as a string. """
         try:
-            metadata = entity_descriptor(self.config)
+            conf = cls.construct_metadata(get_config(config_loader_path, request), request)
+            metadata = entity_descriptor(conf)
         except Exception as e:
             raise ImproperlyConfigured(_('Could not instantiate IDP metadata: {}').format(str(e)))
         return str(metadata)

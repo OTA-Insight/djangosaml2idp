@@ -26,6 +26,7 @@ from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
+from saml2.server import Server
 from saml2.s_utils import UnknownSystemEntity
 
 from .error_views import error_cbv
@@ -233,8 +234,11 @@ class IdPConfigViewMixin:
     def get_config_loader_path(self, request: HttpRequest):
         return self.config_loader_path
     
-    def get_idp_server(self, request) -> IDP:
+    def get_idp_server(self, request: HttpRequest) -> Server:
         return IDP.load(request, self.get_config_loader_path(request))
+        
+    def get_idp_metadata(self, request: HttpRequest) -> str:
+        return IDP.metadata(request, self.get_config_loader_path(request))
 
 
 @method_decorator(never_cache, name='dispatch')
@@ -443,8 +447,7 @@ class MetadataView(IdPHandlerViewMixin, IdPConfigViewMixin, View):
         """ Returns an XML with the SAML 2.0 metadata for this Idp.
             The metadata is constructed on-the-fly based on the config dict in the django settings.
         """
-        idp = self.get_idp_server(request)
-        metadata = idp.get_metadata()
+        metadata = self.get_idp_metadata(request)
         return HttpResponse(content=metadata.encode("utf-8"), content_type="text/xml; charset=utf8",)
 
 

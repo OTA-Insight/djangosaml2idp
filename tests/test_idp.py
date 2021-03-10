@@ -19,7 +19,6 @@ class TestIDP:
     def test_load_default_settings_defined_and_valid(self):
         srv = IDP.load()
         assert isinstance(srv, Server)
-        assert isinstance(srv, IDP)
 
     @pytest.mark.django_db
     def test_load_no_settings_defined(self, settings):
@@ -45,18 +44,20 @@ class TestIDP:
         IDP.load()
         assert called
 
+    @pytest.mark.django_db
     @mock.patch('saml2.config.IdPConfig.load')
     def test_construct_metadata(self, mock):
         conf = { "a": 1, "b": 2 }
-        IDP.construct_metadata(copy.deepcopy(conf), ServiceProvider.objects.none())
+        IDP.construct_metadata(copy.deepcopy(conf))
         mock.assert_called_with({ **conf, "metadata": { "local": [] } })
 
+    @pytest.mark.django_db
     @mock.patch('saml2.config.IdPConfig.load')
     def test_construct_metadata_raise(self, mock):
         mock.side_effect =  ImproperlyConfigured()
         conf = { "a": 1, "b": 2 }
         with pytest.raises(ImproperlyConfigured):
-            IDP.construct_metadata(copy.deepcopy(conf), ServiceProvider.objects.none())
+            IDP.construct_metadata(copy.deepcopy(conf))
 
     @pytest.mark.django_db
     def test_flush(self):
@@ -67,16 +68,14 @@ class TestIDP:
     
     @pytest.mark.django_db
     def test_get_metadata_no_sp_defined_valid(self):
-        md =  IDP.load().get_metadata()
+        md =  IDP.metadata()
         assert isinstance(md, str)
 
     @pytest.mark.django_db
-    def test_get_metadata_no_ipd_in_settings(self, settings):
+    def test_get_metadata_no_idp_in_settings(self, settings):
         # only the first level attribute can be changed to allow the fixture to revert
         idp_config = copy.deepcopy(settings.SAML_IDP_CONFIG)
         del idp_config['service']['idp']
         settings.SAML_IDP_CONFIG = idp_config
-
-        idp = IDP.load()
         with pytest.raises(ImproperlyConfigured):
-             idp.get_metadata()
+             IDP.metadata()
