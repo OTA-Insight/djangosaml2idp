@@ -85,7 +85,7 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
 
     SAML_IDP_CONFIG = {
         'debug' : DEBUG,
-        'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
+        'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin']),
         'entityid': '%s/metadata' % BASE_URL,
         'description': 'Example IdP setup',
 
@@ -144,10 +144,20 @@ Use this metadata xml to configure your SP. Place the metadata xml from that SP 
 Without custom setting, users will be identified by the ``USERNAME_FIELD`` property on the user Model you use. By Django defaults this will be the username.
 You can customize which field is used for the identifier by adding ``SAML_IDP_DJANGO_USERNAME_FIELD`` to your settings with as value the attribute to use on your user instance.
 
-Other settings you can set as defaults to be used if not overriden by an SP are `SAML_AUTHN_SIGN_ALG`, `SAML_AUTHN_DIGEST_ALG`, and `SAML_ENCRYPT_AUTHN_RESPONSE`. They can be set if desired in the django settings, in which case they will be used for all ServiceProviders configuration on this instance if they don't override it. E.g.:
+Other settings you can set as defaults to be used if not overriden by an SP are `SAML_AUTHN_SIGN_ALG`, `SAML_AUTHN_DIGEST_ALG`, and `SAML_ENCRYPT_AUTHN_RESPONSE`. They can be set if desired in the django settings, in which case they will be used for all ServiceProviders configuration on this instance if they don't override it. E.g.::
 
     SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA256
     SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA256
+
+In case your SP does not properly expose validuntil in metadata, you can provide fallback setting for it using::
+
+    SAML_IDP_FALLBACK_EXPIRATION_DAYS = 30
+
+The default value for the fields ``processor`` and ``attribute_mapping`` in the ``ServiceProvider`` can be set via the settings (the values displayed here are the defaults)::
+
+    SAML_IDP_SP_FIELD_DEFAULT_PROCESSOR = 'djangosaml2idp.processors.BaseProcessor'
+    SAML_IDP_SP_FIELD_DEFAULT_ATTRIBUTE_MAPPING = {"email": "email", "first_name": "first_name", "last_name": "last_name", "is_staff": "is_staff", "is_superuser": "is_superuser"}
+
 
 Customizing error handling
 ==========================

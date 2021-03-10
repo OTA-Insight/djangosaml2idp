@@ -1,4 +1,5 @@
 import copy
+from unittest.mock import patch, Mock
 import pytest
 from unittest import mock
 from django.core.exceptions import ImproperlyConfigured
@@ -67,15 +68,23 @@ class TestIDP:
         assert s1 != s2
     
     @pytest.mark.django_db
-    def test_get_metadata_no_sp_defined_valid(self):
+    def test_metadata_no_sp_defined_valid(self):
         md =  IDP.metadata()
         assert isinstance(md, str)
 
     @pytest.mark.django_db
-    def test_get_metadata_no_idp_in_settings(self, settings):
-        # only the first level attribute can be changed to allow the fixture to revert
-        idp_config = copy.deepcopy(settings.SAML_IDP_CONFIG)
-        del idp_config['service']['idp']
-        settings.SAML_IDP_CONFIG = idp_config
+    @patch('djangosaml2idp.models.ServiceProvider')
+    def test_metadata_sp_autoload_idp(self, sp_model_mock):
+        '''The IdP metadata should not require loading of SP metadata.'''
+        sp_instance_mock = Mock()
+        sp_instance_mock.metadata_path.return_value = '/tmp/djangosaml2idp/1.xml'
+        sp_model_mock.objects.filter.return_value = [sp_instance_mock]
+        md = IDP.metadata()
+        sp_instance_mock.metadata_path.assert_not_called()
+
+
+    @pytest.mark.django_db
+    def test_metadata_no_settings_defined(self, settings):
+        settings.SAML_IDP_CONFIG = None
         with pytest.raises(ImproperlyConfigured):
              IDP.metadata()

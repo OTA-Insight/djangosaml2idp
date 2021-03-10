@@ -34,12 +34,11 @@ class TestAdminForm:
                 'random_method': 'randomMethodTest'
             }),
         })
-
         assert form.is_valid() is True
         instance = form.save()
         assert instance.remote_metadata_url == ''
         assert instance.local_metadata == sp_metadata_xml
-        assert instance.metadata_expiration_dt == datetime.datetime(2021, 2, 14, 17, 43, 34, tzinfo=tzinfo)
+        assert instance.metadata_expiration_dt == datetime.datetime(2099, 2, 14, 17, 43, 34, tzinfo=tzinfo)
 
     @pytest.mark.django_db
     def test_invalid_local_metadata(self):
@@ -80,7 +79,7 @@ class TestAdminForm:
         instance = form.save()
         assert instance.remote_metadata_url == 'https://ok'
         assert instance.local_metadata == sp_metadata_xml
-        assert instance.metadata_expiration_dt == datetime.datetime(2021, 2, 14, 17, 43, 34, tzinfo=tzinfo)
+        assert instance.metadata_expiration_dt == datetime.datetime(2099, 2, 14, 17, 43, 34, tzinfo=tzinfo)
 
     @pytest.mark.django_db
     @mock.patch('requests.get')

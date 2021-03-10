@@ -15,15 +15,21 @@ class IDP:
     _server_instances: Dict[str, Server] = {}
     
     @classmethod
-    def construct_metadata(cls, idp_conf: dict, request: Optional[HttpRequest] = None) -> IdPConfig:
+    def construct_metadata(cls, idp_conf: dict, request: Optional[HttpRequest] = None, with_local_sp: bool = True) -> IdPConfig:
         """ Get the config including the metadata for all the configured service providers. """
-        from .models import ServiceProvider
         conf = IdPConfig()
-        sp_queryset = ServiceProvider.objects.filter(active=True)
-        if getattr(settings, "SAML_IDP_FILTER_SP_QUERYSET", None) is not None:
-            sp_queryset = get_callable(settings.SAML_IDP_FILTER_SP_QUERYSET)(sp_queryset, request)
+        
+        sp_queryset = None
+        if with_local_sp:
+            from .models import ServiceProvider
+            sp_queryset = ServiceProvider.objects.filter(active=True)
+            if getattr(settings, "SAML_IDP_FILTER_SP_QUERYSET", None) is not None:
+                sp_queryset = get_callable(settings.SAML_IDP_FILTER_SP_QUERYSET)(sp_queryset, request)
         idp_conf['metadata'] = {  # type: ignore
-            'local': [sp.metadata_path() for sp in sp_queryset],
+            'local': (
+                [sp.metadata_path() for sp in sp_queryset]
+                if with_local_sp else []
+            ),
         }
         try:
             conf.load(idp_conf)
@@ -53,7 +59,7 @@ class IDP:
     def metadata(cls, request: Optional[HttpRequest] = None, config_loader_path: Optional[Union[Callable, str]] = None) -> str:
         """ Get the IDP metadata as a string. """
         try:
-            conf = cls.construct_metadata(get_config(config_loader_path, request), request)
+            conf = cls.construct_metadata(get_config(config_loader_path, request), request, with_local_sp=False)
             metadata = entity_descriptor(conf)
         except Exception as e:
             raise ImproperlyConfigured(_('Could not instantiate IDP metadata: {}').format(str(e)))
