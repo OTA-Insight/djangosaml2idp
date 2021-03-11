@@ -18,13 +18,14 @@ class IDP:
     def construct_metadata(cls, idp_conf: dict, request: Optional[HttpRequest] = None, with_local_sp: bool = True) -> IdPConfig:
         """ Get the config including the metadata for all the configured service providers. """
         conf = IdPConfig()
-        
-        sp_queryset = None
+
+        from .models import ServiceProvider
+        sp_queryset = ServiceProvider.objects.none()
         if with_local_sp:
-            from .models import ServiceProvider
             sp_queryset = ServiceProvider.objects.filter(active=True)
             if getattr(settings, "SAML_IDP_FILTER_SP_QUERYSET", None) is not None:
                 sp_queryset = get_callable(settings.SAML_IDP_FILTER_SP_QUERYSET)(sp_queryset, request)
+
         idp_conf['metadata'] = {  # type: ignore
             'local': (
                 [sp.metadata_path() for sp in sp_queryset]
