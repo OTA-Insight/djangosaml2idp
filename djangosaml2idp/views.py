@@ -28,9 +28,13 @@ from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 
 from .error_views import error_cbv
 from .idp import IDP
-from .models import ServiceProvider
+from .models import get_service_provider_model
 from .processors import BaseProcessor
 from .utils import repr_saml, verify_request_signature
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .models import AbstractServiceProvider
 
 logger = logging.getLogger(__name__)
 
@@ -83,12 +87,12 @@ def check_access(processor: BaseProcessor, request: HttpRequest) -> None:
         raise PermissionDenied(_("You do not have access to this resource"))
 
 
-def get_sp_config(sp_entity_id: str) -> ServiceProvider:
+def get_sp_config(sp_entity_id: str) -> "AbstractServiceProvider":
     """ Get a dict with the configuration for a SP according to the SAML_IDP_SPCONFIG settings.
         Raises an exception if no SP matching the given entity id can be found.
     """
     try:
-        sp = ServiceProvider.objects.get(entity_id=sp_entity_id, active=True)
+        sp = get_service_provider_model().objects.get(entity_id=sp_entity_id, active=True)
     except ObjectDoesNotExist:
         raise ImproperlyConfigured(_("No active Service Provider object matching the entity_id '{}' found").format(sp_entity_id))
     return sp
@@ -101,7 +105,7 @@ def get_authn(req_info=None):
     return broker.get_authn_by_accr(req_authn_context)
 
 
-def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider) -> list:  # type: ignore
+def build_authn_response(user: User, authn, resp_args, service_provider: "AbstractServiceProvider") -> list:  # type: ignore
     """ pysaml2 server.Server.create_authn_response wrapper
     """
     policy = resp_args.get('name_id_policy', None)
@@ -118,14 +122,14 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
 
     processor: BaseProcessor = service_provider.processor  # type: ignore
     user_id = processor.get_user_id(user, name_id_format, service_provider, idp_server.config)
-    name_id = NameID(format=name_id_format, sp_name_qualifier=service_provider.entity_id, text=user_id)
+    name_id = NameID(format=name_id_format, sp_name_qualifier=service_provider.get_entity_id(), text=user_id)
 
     return idp_server.create_authn_response(
         authn=authn,
         identity=processor.create_identity(user, service_provider.attribute_mapping),
         name_id=name_id,
         userid=user_id,
-        sp_entity_id=service_provider.entity_id,
+        sp_entity_id=service_provider.get_entity_id(),
         # Signing
         sign_response=service_provider.sign_response,
         sign_assertion=service_provider.sign_assertion,
@@ -298,7 +302,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         binding_out, destination = idp_server.pick_binding(
             service="assertion_consumer_service",
-            entity_id=sp_entity_id)
+            entity_id=service_provider.get_entity_id())
 
         # Adding a few things that would have been added if this were SP Initiated
         passed_data['destination'] = destination

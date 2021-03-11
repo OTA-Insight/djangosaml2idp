@@ -72,3 +72,6 @@ SAML_IDP_CONFIG = {
 
     'valid_for': 365 * 24,
 }
+
+SAML_IDP_SERVICE_PROVIDER_MODEL = 'djangosaml2idp.ServiceProvider'
+SAML_IDP_PERSISTENT_ID_MODEL = 'djangosaml2idp.PersistentId'
