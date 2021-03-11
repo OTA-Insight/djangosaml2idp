@@ -122,14 +122,14 @@ def build_authn_response(user: User, authn, resp_args, service_provider: "Abstra
 
     processor: BaseProcessor = service_provider.processor  # type: ignore
     user_id = processor.get_user_id(user, name_id_format, service_provider, idp_server.config)
-    name_id = NameID(format=name_id_format, sp_name_qualifier=service_provider.entity_id, text=user_id)
+    name_id = NameID(format=name_id_format, sp_name_qualifier=service_provider.get_entity_id(), text=user_id)
 
     return idp_server.create_authn_response(
         authn=authn,
         identity=processor.create_identity(user, service_provider.attribute_mapping),
         name_id=name_id,
         userid=user_id,
-        sp_entity_id=service_provider.entity_id,
+        sp_entity_id=service_provider.get_entity_id(),
         # Signing
         sign_response=service_provider.sign_response,
         sign_assertion=service_provider.sign_assertion,
@@ -302,7 +302,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         binding_out, destination = idp_server.pick_binding(
             service="assertion_consumer_service",
-            entity_id=sp_entity_id)
+            entity_id=service_provider.get_entity_id())
 
         # Adding a few things that would have been added if this were SP Initiated
         passed_data['destination'] = destination

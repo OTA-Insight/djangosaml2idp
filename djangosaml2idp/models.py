@@ -194,6 +194,10 @@ class AbstractServiceProvider(models.Model):
             return settings.SAML_IDP_DJANGO_USERNAME_FIELD
         return getattr(User, 'USERNAME_FIELD', 'username')
 
+    def get_entity_id(self) -> str:
+        """ A hook to allow the entity_id field to be overridden """
+        return self.entity_id
+
     # Do checks on validity of processor string both on setting and getting, as the
     # codebase can change regardless of the objects persisted in the database.
 
