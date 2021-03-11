@@ -16,12 +16,12 @@ class IDP:
     @classmethod
     def construct_metadata(cls, with_local_sp: bool = True) -> dict:
         """ Get the config including the metadata for all the configured service providers. """
-        from .models import ServiceProvider
+        from .models import get_service_provider_model
         idp_config = copy.deepcopy(settings.SAML_IDP_CONFIG)
         if idp_config:
             idp_config['metadata'] = {  # type: ignore
                 'local': (
-                    [sp.metadata_path() for sp in ServiceProvider.objects.filter(active=True)]
+                    [sp.metadata_path() for sp in get_service_provider_model().objects.filter(active=True)]
                     if with_local_sp else []),
             }
         return idp_config
