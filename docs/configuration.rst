@@ -94,12 +94,8 @@ The resulting configuration of a SP, with merged settings of its own and the ins
 
 The set of SPs available can optionnaly be dynamically defined through the `SAML_IDP_FILTER_SP_QUERYSET` setting, as a path to a callable. It receives the orginal queryset (all SPs with `active=True` field) and the current request as arguments. It is expected to return a queryset.
 
-
 Further optional configuration options
 ======================================
-
-Processor
----------
  
 In the ``SAML_IDP_SPCONFIG`` setting you can define a ``processor``, its value being a string with dotted path to a class.
 This is a hook to customize some access control checks. By default, the included `BaseProcessor` is used, which allows every user to login on the IdP.
@@ -109,14 +105,8 @@ This way, you should have the necessary flexibility to perform whatever checks y
 An example `processor subclass <https://github.com/OTA-Insight/djangosaml2idp/blob/master/example_setup/idp/idp/processors.py>`_ can be found in the IdP of the included example.
 Use this metadata xml to configure your SP. Place the metadata xml from that SP in the location specified in the config dict (sp_metadata.xml in the example above).
 
-Identifiers
------------
-
 Without custom setting, users will be identified by the ``USERNAME_FIELD`` property on the user Model you use. By Django defaults this will be the username.
 You can customize which field is used for the identifier by adding ``SAML_IDP_DJANGO_USERNAME_FIELD`` to your settings with as value the attribute to use on your user instance.
-
-Encryption and signing
-----------------------
 
 Other settings you can set as defaults to be used if not overriden by an SP are `SAML_AUTHN_SIGN_ALG`, `SAML_AUTHN_DIGEST_ALG`, and `SAML_ENCRYPT_AUTHN_RESPONSE`. They can be set if desired in the django settings, in which case they will be used for all ServiceProviders configuration on this instance if they don't override it. E.g.:
 
