@@ -148,6 +148,17 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
 
 
 class IdPHandlerViewMixin:
+    config_loader_path = getattr(settings, 'SAML_IDP_CONFIG_LOADER', None)
+    
+    def get_config_loader_path(self, request: HttpRequest):
+        return self.config_loader_path
+    
+    def get_idp_server(self, request: HttpRequest) -> Server:
+        return IDP.load(request, self.get_config_loader_path(request))
+        
+    def get_idp_metadata(self, request: HttpRequest) -> str:
+        return IDP.metadata(request, self.get_config_loader_path(request))
+    
     """ Contains some methods used by multiple views """
     def render_login_html_to_string(self, context=None, request=None, using=None):
         """ Render the html response for the login action. Can be using a custom html template if set on the view. """
@@ -226,23 +237,8 @@ class IdPHandlerViewMixin:
             return HttpResponseRedirect(html_response['data'])
 
 
-class IdPConfigViewMixin:
-    """ Mixin for some of the SAML views with re-usable methods.
-    """
-    config_loader_path = getattr(settings, 'SAML_IDP_CONFIG_LOADER', None)
-    
-    def get_config_loader_path(self, request: HttpRequest):
-        return self.config_loader_path
-    
-    def get_idp_server(self, request: HttpRequest) -> Server:
-        return IDP.load(request, self.get_config_loader_path(request))
-        
-    def get_idp_metadata(self, request: HttpRequest) -> str:
-        return IDP.metadata(request, self.get_config_loader_path(request))
-
-
 @method_decorator(never_cache, name='dispatch')
-class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, View):
+class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """ View which processes the actual SAML request and returns a self-submitting form with the SAML response.
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' ways.
     """
@@ -294,7 +290,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMix
 
 
 @method_decorator(never_cache, name='dispatch')
-class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, View):
+class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """ View used for IDP initialized login, doesn't handle any SAML authn request
     """
 
@@ -339,7 +335,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, V
 
 
 @method_decorator(never_cache, name='dispatch')
-class ProcessMultiFactorView(LoginRequiredMixin, IdPConfigViewMixin, View):
+class ProcessMultiFactorView(LoginRequiredMixin, View):
     """ This view is used in an optional step is to perform 'other' user validation, for example 2nd factor checks.
         Override this view per the documentation if using this functionality to plug in your custom validation logic.
     """
@@ -364,7 +360,7 @@ class ProcessMultiFactorView(LoginRequiredMixin, IdPConfigViewMixin, View):
 
 
 @method_decorator([never_cache, csrf_exempt], name='dispatch')
-class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMixin, View):
+class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
     """ View which processes the actual SAML Single Logout request
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' way.
     """
@@ -442,7 +438,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, IdPConfigViewMi
 
 
 @method_decorator(never_cache, name="dispatch")
-class MetadataView(IdPHandlerViewMixin, IdPConfigViewMixin, View):
+class MetadataView(IdPHandlerViewMixin, View):
     def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         """ Returns an XML with the SAML 2.0 metadata for this Idp.
             The metadata is constructed on-the-fly based on the config dict in the django settings.

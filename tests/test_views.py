@@ -21,7 +21,7 @@ from djangosaml2idp.models import ServiceProvider
 from djangosaml2idp.processors import BaseProcessor
 from djangosaml2idp.utils import encode_saml
 from djangosaml2idp.views import (BINDING_HTTP_POST, BINDING_HTTP_REDIRECT,
-                                  IdPConfigViewMixin, IdPHandlerViewMixin, LoginProcessView,
+                                  IdPHandlerViewMixin, LoginProcessView,
                                   LogoutProcessView, MetadataView, ProcessMultiFactorView,
                                   SSOInitView, build_authn_response,
                                   check_access, get_authn, get_multifactor,
@@ -395,9 +395,7 @@ class TestIdPHandlerViewMixin:
 
     @pytest.mark.django_db
     def test_create_html_response_with_get(self):
-        class ComposedMixin(IdPHandlerViewMixin, IdPConfigViewMixin):
-            pass
-        mixin = ComposedMixin()
+        mixin = IdPHandlerViewMixin()
         html_response = mixin.create_html_response(HttpRequest(), BINDING_HTTP_REDIRECT, "SAMLResponse", "https://sp.example.com/SAML2", "")
         assert isinstance(html_response['data'], str)
 
