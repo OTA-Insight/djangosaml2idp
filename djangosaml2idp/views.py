@@ -38,11 +38,11 @@ User = get_user_model()
 
 
 class CustomLoginRequiredMixin(LoginRequiredMixin):
-     def get_login_url(self):
-         if hasattr(settings, "SAML_IDP_LOGIN_URL"):
-             return str(settings.SAML_IDP_LOGIN_URL)
-         else:
-             return super().get_login_url()
+    def get_login_url(self):
+        if hasattr(settings, "SAML_IDP_LOGIN_URL"):
+            return str(settings.SAML_IDP_LOGIN_URL)
+        else:
+            return super().get_login_url()
 
 
 def store_params_in_session(request: HttpRequest) -> None:
