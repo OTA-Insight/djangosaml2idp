@@ -105,3 +105,7 @@ The default value for the fields ``processor`` and ``attribute_mapping`` can be 
 
     SAML_IDP_SP_FIELD_DEFAULT_PROCESSOR = 'djangosaml2idp.processors.BaseProcessor'
     SAML_IDP_SP_FIELD_DEFAULT_ATTRIBUTE_MAPPING = {"email": "email", "first_name": "first_name", "last_name": "last_name", "is_staff": "is_staff", "is_superuser": "is_superuser"}
+
+The djangosaml2idp views are composed with the Django [LoginRequiredMixin](https://docs.djangoproject.com/en/3.1/topics/auth/default/#the-loginrequired-mixin). In case there is a need to customize the *login_url* member for this set of views, it can be done through :
+
+    SAML_IDP_LOGIN_URL = '/custom/login/for/saml/idp/'
