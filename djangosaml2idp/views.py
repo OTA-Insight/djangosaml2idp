@@ -37,6 +37,14 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
+class CustomLoginRequiredMixin(LoginRequiredMixin):
+    def get_login_url(self):
+        if hasattr(settings, "SAML_IDP_LOGIN_URL"):
+            return str(settings.SAML_IDP_LOGIN_URL)
+        else:
+            return super().get_login_url()
+
+
 def store_params_in_session(request: HttpRequest) -> None:
     """ Gathers the SAML parameters from the HTTP request and store them in the session
     """
@@ -219,7 +227,7 @@ class IdPHandlerViewMixin:
 
 
 @method_decorator(never_cache, name='dispatch')
-class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+class LoginProcessView(CustomLoginRequiredMixin, IdPHandlerViewMixin, View):
     """ View which processes the actual SAML request and returns a self-submitting form with the SAML response.
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' ways.
     """
@@ -269,7 +277,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 
 @method_decorator(never_cache, name='dispatch')
-class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+class SSOInitView(CustomLoginRequiredMixin, IdPHandlerViewMixin, View):
     """ View used for IDP initialized login, doesn't handle any SAML authn request
     """
 
@@ -312,7 +320,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
 
 @method_decorator(never_cache, name='dispatch')
-class ProcessMultiFactorView(LoginRequiredMixin, View):
+class ProcessMultiFactorView(CustomLoginRequiredMixin, View):
     """ This view is used in an optional step is to perform 'other' user validation, for example 2nd factor checks.
         Override this view per the documentation if using this functionality to plug in your custom validation logic.
     """
@@ -337,7 +345,7 @@ class ProcessMultiFactorView(LoginRequiredMixin, View):
 
 
 @method_decorator([never_cache, csrf_exempt], name='dispatch')
-class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
+class LogoutProcessView(CustomLoginRequiredMixin, IdPHandlerViewMixin, View):
     """ View which processes the actual SAML Single Logout request
         The login_required decorator ensures the user authenticates first on the IdP using 'normal' way.
     """
