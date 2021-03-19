@@ -5,15 +5,16 @@ from django.utils.translation import gettext as _
 from saml2.config import IdPConfig
 from saml2.metadata import entity_descriptor
 from saml2.server import Server
-from typing import Callable, Dict, Optional, TypeVar, Union
+from typing import Callable, Dict, Optional, Union
 
 from .conf import get_callable, get_config
+
 
 class IDP:
     """ Access point for the IDP Server instance
     """
     _server_instances: Dict[str, Server] = {}
-    
+
     @classmethod
     def construct_metadata(cls, idp_conf: dict, request: Optional[HttpRequest] = None, with_local_sp: bool = True) -> IdPConfig:
         """ Get the config including the metadata for all the configured service providers. """
@@ -42,7 +43,7 @@ class IDP:
     def load(cls, request: Optional[HttpRequest] = None, config_loader_path: Optional[Union[Callable, str]] = None) -> Server:
         idp_conf = get_config(config_loader_path, request)
         if "entityid" not in idp_conf:
-            raise ImproperlyConfigured(f'The configuration must contain an entityid')
+            raise ImproperlyConfigured('The configuration must contain an entityid')
         entity_id = idp_conf["entityid"]
 
         if entity_id not in cls._server_instances:
@@ -55,7 +56,7 @@ class IDP:
     @classmethod
     def flush(cls):
         cls._server_instances = {}
-    
+
     @classmethod
     def metadata(cls, request: Optional[HttpRequest] = None, config_loader_path: Optional[Union[Callable, str]] = None) -> str:
         """ Get the IDP metadata as a string. """

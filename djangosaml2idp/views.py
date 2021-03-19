@@ -23,11 +23,9 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
-from saml2.config import IdPConfig
 from saml2.ident import NameID
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 from saml2.server import Server
-from saml2.s_utils import UnknownSystemEntity
 
 from .error_views import error_cbv
 from .idp import IDP
@@ -86,7 +84,7 @@ def check_access(processor: BaseProcessor, request: HttpRequest) -> None:
         raise PermissionDenied(_("You do not have access to this resource"))
 
 
-def get_sp_config(sp_entity_id: str, idp_server: IDP) -> ServiceProvider:
+def get_sp_config(sp_entity_id: str, idp_server: Server) -> ServiceProvider:
     """ Get a dict with the configuration for a SP according to the SAML_IDP_SPCONFIG settings and the SP model.
         Raises an exception if no SP matching the given entity id can be found.
     """
@@ -111,7 +109,7 @@ def get_authn(req_info=None):
     return broker.get_authn_by_accr(req_authn_context)
 
 
-def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider, idp_server: IDP) -> list:  # type: ignore
+def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider, idp_server: Server) -> list:  # type: ignore
     """ pysaml2 server.Server.create_authn_response wrapper
     """
     policy = resp_args.get('name_id_policy', None)
@@ -149,16 +147,16 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
 
 class IdPHandlerViewMixin:
     config_loader_path = getattr(settings, 'SAML_IDP_CONFIG_LOADER', None)
-    
+
     def get_config_loader_path(self, request: HttpRequest):
         return self.config_loader_path
-    
+
     def get_idp_server(self, request: HttpRequest) -> Server:
         return IDP.load(request, self.get_config_loader_path(request))
-        
+
     def get_idp_metadata(self, request: HttpRequest) -> str:
         return IDP.metadata(request, self.get_config_loader_path(request))
-    
+
     """ Contains some methods used by multiple views """
     def render_login_html_to_string(self, context=None, request=None, using=None):
         """ Render the html response for the login action. Can be using a custom html template if set on the view. """
