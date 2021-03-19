@@ -16,6 +16,7 @@ def saml_request_minimal() -> str:
 
 @pytest.fixture()
 @lru_cache()
-def sp_metadata_xml() -> str:
-    with (XML_ROOT / "metadata/sp_metadata.xml").open("r") as f:
+def sp_metadata_xml(request) -> str:
+    file_name = getattr(request, "param", "sp_metadata")
+    with (XML_ROOT / f"metadata/{file_name}.xml").open("r") as f:
         return f.read()

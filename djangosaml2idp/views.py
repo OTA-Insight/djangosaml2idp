@@ -25,6 +25,7 @@ from saml2 import BINDING_HTTP_POST, BINDING_HTTP_REDIRECT
 from saml2.authn_context import PASSWORD, AuthnBroker, authn_context_class_ref
 from saml2.ident import NameID
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
+from saml2.server import Server
 
 from .error_views import error_cbv
 from .idp import IDP
@@ -83,15 +84,22 @@ def check_access(processor: BaseProcessor, request: HttpRequest) -> None:
         raise PermissionDenied(_("You do not have access to this resource"))
 
 
-def get_sp_config(sp_entity_id: str) -> ServiceProvider:
-    """ Get a dict with the configuration for a SP according to the SAML_IDP_SPCONFIG settings.
+def get_sp_config(sp_entity_id: str, idp_server: Server) -> ServiceProvider:
+    """ Get a dict with the configuration for a SP according to the SAML_IDP_SPCONFIG settings and the SP model.
         Raises an exception if no SP matching the given entity id can be found.
     """
     try:
+        if sp_entity_id not in idp_server.metadata.keys():
+            raise ObjectDoesNotExist()
         sp = ServiceProvider.objects.get(entity_id=sp_entity_id, active=True)
     except ObjectDoesNotExist:
-        raise ImproperlyConfigured(_("No active Service Provider object matching the entity_id '{}' found").format(sp_entity_id))
-    return sp
+        raise ObjectDoesNotExist(
+            _("No active Service Provider object matching the entity_id '{}' found for the Identity Provider '{}").format(
+                sp_entity_id, idp_server.ident.name_qualifier
+            )
+        )
+    else:
+        return sp
 
 
 def get_authn(req_info=None):
@@ -101,7 +109,7 @@ def get_authn(req_info=None):
     return broker.get_authn_by_accr(req_authn_context)
 
 
-def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider) -> list:  # type: ignore
+def build_authn_response(user: User, authn, resp_args, service_provider: ServiceProvider, idp_server: Server) -> list:  # type: ignore
     """ pysaml2 server.Server.create_authn_response wrapper
     """
     policy = resp_args.get('name_id_policy', None)
@@ -110,7 +118,6 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
     else:
         name_id_format = policy.format
 
-    idp_server = IDP.load()
     idp_name_id_format_list = idp_server.config.getattr("name_id_format", "idp") or [NAMEID_FORMAT_UNSPECIFIED]
 
     if name_id_format not in idp_name_id_format_list:
@@ -127,8 +134,8 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
         userid=user_id,
         sp_entity_id=service_provider.entity_id,
         # Signing
-        sign_response=service_provider.sign_response,
-        sign_assertion=service_provider.sign_assertion,
+        sign_response=service_provider.sign_response if service_provider.sign_response is not None else getattr(idp_server, 'sign_response', False),
+        sign_assertion=service_provider.sign_assertion if service_provider.sign_assertion is not None else getattr(idp_server, 'sign_assertion', False),
         sign_alg=service_provider.signing_algorithm,
         digest_alg=service_provider.digest_algorithm,
         # Encryption
@@ -139,8 +146,18 @@ def build_authn_response(user: User, authn, resp_args, service_provider: Service
 
 
 class IdPHandlerViewMixin:
-    """ Contains some methods used by multiple views """
+    config_loader_path = getattr(settings, 'SAML_IDP_CONFIG_LOADER', None)
 
+    def get_config_loader_path(self, request: HttpRequest):
+        return self.config_loader_path
+
+    def get_idp_server(self, request: HttpRequest) -> Server:
+        return IDP.load(request, self.get_config_loader_path(request))
+
+    def get_idp_metadata(self, request: HttpRequest) -> str:
+        return IDP.metadata(request, self.get_config_loader_path(request))
+
+    """ Contains some methods used by multiple views """
     def render_login_html_to_string(self, context=None, request=None, using=None):
         """ Render the html response for the login action. Can be using a custom html template if set on the view. """
         default_login_template_name = 'djangosaml2idp/login.html'
@@ -179,7 +196,7 @@ class IdPHandlerViewMixin:
                 "type": "POST",
             }
         else:
-            idp_server = IDP.load()
+            idp_server = self.get_idp_server(request)
             http_args = idp_server.apply_binding(
                 binding=binding,
                 msg_str=authn_resp,
@@ -230,7 +247,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         # TODO: would it be better to store SAML info in request objects?
         # AuthBackend takes request obj as argument...
         try:
-            idp_server = IDP.load()
+            idp_server = self.get_idp_server(request)
 
             # Parse incoming request
             req_info = idp_server.parse_authn_request(request.session['SAMLRequest'], binding)
@@ -245,15 +262,17 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             resp_args = idp_server.response_args(req_info.message)
             # Set SP and Processor
             sp_entity_id = resp_args.pop('sp_entity_id')
-            service_provider = get_sp_config(sp_entity_id)
+            service_provider = get_sp_config(sp_entity_id, idp_server)
             # Check if user has access
             try:
                 # Check if user has access to SP
                 check_access(service_provider.processor, request)
+            except (ObjectDoesNotExist) as excp:
+                return error_cbv.handle_error(request, exception=excp, status_code=404)
             except PermissionDenied as excp:
                 return error_cbv.handle_error(request, exception=excp, status_code=403)
             # Construct SamlResponse message
-            authn_resp = build_authn_response(request.user, get_authn(), resp_args, service_provider)
+            authn_resp = build_authn_response(request.user, get_authn(), resp_args, service_provider, idp_server)
         except Exception as e:
             return error_cbv.handle_error(request, exception=e, status_code=500)
 
@@ -280,11 +299,15 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         request_data = request.POST or request.GET
         passed_data: Dict[str, Union[str, List[str]]] = request_data.copy().dict()
 
+        idp_server = self.get_idp_server(request)
+
         try:
             # get sp information from the parameters
             sp_entity_id = str(passed_data['sp'])
-            service_provider = get_sp_config(sp_entity_id)
+            service_provider = get_sp_config(sp_entity_id, idp_server)
             processor: BaseProcessor = service_provider.processor  # type: ignore
+        except (ObjectDoesNotExist) as excp:
+            return error_cbv.handle_error(request, exception=excp, status_code=404)
         except (KeyError, ImproperlyConfigured) as excp:
             return error_cbv.handle_error(request, exception=excp, status_code=400)
 
@@ -293,8 +316,6 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             check_access(processor, request)
         except PermissionDenied as excp:
             return error_cbv.handle_error(request, exception=excp, status_code=403)
-
-        idp_server = IDP.load()
 
         binding_out, destination = idp_server.pick_binding(
             service="assertion_consumer_service",
@@ -305,7 +326,7 @@ class SSOInitView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         passed_data['in_response_to'] = "IdP_Initiated_Login"
 
         # Construct SamlResponse messages
-        authn_resp = build_authn_response(request.user, get_authn(), passed_data, service_provider)
+        authn_resp = build_authn_response(request.user, get_authn(), passed_data, service_provider, idp_server)
 
         html_response = self.create_html_response(request, binding_out, authn_resp, destination, passed_data.get('RelayState', ""))
         return self.render_response(request, html_response, processor)
@@ -354,7 +375,7 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         relay_state = request.session['RelayState']
         logger.debug("--- {} requested [\n{}] to IDP ---".format(self.__service_name, binding))
 
-        idp_server = IDP.load()
+        idp_server = self.get_idp_server(request)
 
         # adapted from pysaml2 examples/idp2/idp_uwsgi.py
         try:
@@ -414,6 +435,16 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
         return self.render_response(request, html_response, None)
 
 
+@method_decorator(never_cache, name="dispatch")
+class MetadataView(IdPHandlerViewMixin, View):
+    def get(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
+        """ Returns an XML with the SAML 2.0 metadata for this Idp.
+            The metadata is constructed on-the-fly based on the config dict in the django settings.
+        """
+        metadata = self.get_idp_metadata(request)
+        return HttpResponse(content=metadata.encode("utf-8"), content_type="text/xml; charset=utf8",)
+
+
 @never_cache
 def get_multifactor(request: HttpRequest) -> HttpResponse:
     if hasattr(settings, "SAML_IDP_MULTIFACTOR_VIEW"):
@@ -421,11 +452,3 @@ def get_multifactor(request: HttpRequest) -> HttpResponse:
     else:
         multifactor_class = ProcessMultiFactorView
     return multifactor_class.as_view()(request)
-
-
-@never_cache
-def metadata(request: HttpRequest) -> HttpResponse:
-    """ Returns an XML with the SAML 2.0 metadata for this Idp.
-        The metadata is constructed on-the-fly based on the config dict in the django settings.
-    """
-    return HttpResponse(content=IDP.metadata().encode('utf-8'), content_type="text/xml; charset=utf8")

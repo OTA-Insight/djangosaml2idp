@@ -8,6 +8,7 @@ from django.utils import timezone
 from saml2 import xmldsig
 
 import requests_mock
+from djangosaml2idp.conf import get_config
 from djangosaml2idp.idp import IDP
 from djangosaml2idp.models import DEFAULT_ATTRIBUTE_MAPPING, ServiceProvider
 
@@ -32,31 +33,22 @@ class TestServiceProvider:
         assert instance.attribute_mapping == DEFAULT_ATTRIBUTE_MAPPING
         instance = ServiceProvider(_attribute_mapping='{"custom_key": "custom_value"}')
         assert instance.attribute_mapping == {"custom_key": "custom_value"}
-
-    def test_property_sign_response(self):
-        instance = ServiceProvider(_sign_response=None)
-        assert instance.sign_response == getattr(IDP.load().config, "sign_response", False)
-        instance = ServiceProvider(_sign_response=True)
-        assert instance.sign_response == True
-
-    def test_property_sign_assertion(self):
-        instance = ServiceProvider(_sign_assertion=None)
-        assert instance.sign_assertion == getattr(IDP.load().config, "sign_assertion", False)
-        instance = ServiceProvider(_sign_assertion=True)
-        assert instance.sign_assertion == True
-
+    
+    @pytest.mark.django_db
     def test_property_encrypt_saml_responses(self):
         instance = ServiceProvider(_encrypt_saml_responses=None)
         assert instance.encrypt_saml_responses == getattr(IDP.load().config, "SAML_ENCRYPT_AUTHN_RESPONSE", False)
         instance = ServiceProvider(_encrypt_saml_responses=True)
         assert instance.encrypt_saml_responses == True
-
+    
+    @pytest.mark.django_db
     def test_property_signing_algorithm(self):
         instance = ServiceProvider(_signing_algorithm=None)
         assert instance.signing_algorithm == getattr(IDP.load().config, "SAML_AUTHN_SIGN_ALG", xmldsig.SIG_RSA_SHA256)
         instance = ServiceProvider(_signing_algorithm='dummy_value')
         assert instance.signing_algorithm == 'dummy_value'
-
+    
+    @pytest.mark.django_db
     def test_property_digest_algorithm(self):
         instance = ServiceProvider(_digest_algorithm=None)
         assert instance.digest_algorithm == getattr(IDP.load().config, "SAML_AUTHN_DIGEST_ALG", xmldsig.DIGEST_SHA256)

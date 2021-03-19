@@ -7,6 +7,7 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.http import HttpRequest
 from saml2.saml import NAMEID_FORMAT_UNSPECIFIED
 
+from djangosaml2idp.conf import get_config
 from djangosaml2idp.idp import IDP
 from djangosaml2idp.models import ServiceProvider
 from djangosaml2idp.processors import (BaseProcessor, NameIdBuilder,

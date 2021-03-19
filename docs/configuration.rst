@@ -71,6 +71,20 @@ In your Django settings, configure your IdP. Configuration follows the `PySAML2 
 
 Notice the configuration requires a private key and public certificate to be available on the filesystem in order to sign and encrypt messages.
 
+Dynamic IdP configuration
+-------------------------
+
+Aditionaly a callback can be used to customize the IdP settings on a per-request basis. It can be defined either
+* as a path set in the `SAML_IDP_CONFIG_LOADER` 
+* by subclassing the views (and using them in the url config) and overriding their `get_config_loader_path(self, request: HttpRequest)` method, returning a callback or a path to it
+
+Any of these callbacks will be called when loading the IdP, receiving the static configuration (defined by `SAML_IDP_CONFIG`) and the current request as arguments. It is expected to return a new configuration with the same form as the static one.
+
+Please note that the resulting IDP objects will be cached with the 'entityid' parameter as a key.
+
+Service Providers
+-----------------
+
 Next the Service Providers and their configuration need to be added, this is done via the Django admin interface. Add an entry for each SP which speaks to thie IdP.
 Add a copy of the local metadata xml, or set a remote metadata url. Add an attribute mapping for user attributes to SAML fields or leave the default mapping which will be prefilled.
 
@@ -78,9 +92,11 @@ Several attributes can be overriden per SP. If they aren't overridden explicitly
 If those aren't set, some defaults will be used, as indicated in the admin when you configre a SP.
 The resulting configuration of a SP, with merged settings of its own and the instance settings and defaults, is shown in the admin as a summary.
 
+The set of SPs available can optionnaly be dynamically defined through the `SAML_IDP_FILTER_SP_QUERYSET` setting, as a path to a callable. It receives the orginal queryset (all SPs with `active=True` field) and the current request as arguments. It is expected to return a queryset.
+
 Further optional configuration options
 ======================================
-
+ 
 In the ``SAML_IDP_SPCONFIG`` setting you can define a ``processor``, its value being a string with dotted path to a class.
 This is a hook to customize some access control checks. By default, the included `BaseProcessor` is used, which allows every user to login on the IdP.
 You can customize this behaviour by subclassing the `BaseProcessor` and overriding its `has_access(self, request)` method. This method should return true or false, depending if the user has permission to log in for the SP / IdP.
@@ -92,7 +108,7 @@ Use this metadata xml to configure your SP. Place the metadata xml from that SP 
 Without custom setting, users will be identified by the ``USERNAME_FIELD`` property on the user Model you use. By Django defaults this will be the username.
 You can customize which field is used for the identifier by adding ``SAML_IDP_DJANGO_USERNAME_FIELD`` to your settings with as value the attribute to use on your user instance.
 
-Other settings you can set as defaults to be used if not overriden by an SP are `SAML_AUTHN_SIGN_ALG`, `SAML_AUTHN_DIGEST_ALG`, and `SAML_ENCRYPT_AUTHN_RESPONSE`. They can be set if desired in the django settings, in which case they will be used for all ServiceProviders configuration on this instance if they don't override it. E.g.::
+Other settings you can set as defaults to be used if not overriden by an SP are `SAML_AUTHN_SIGN_ALG`, `SAML_AUTHN_DIGEST_ALG`, and `SAML_ENCRYPT_AUTHN_RESPONSE`. They can be set if desired in the django settings, in which case they will be used for all ServiceProviders configuration on this instance if they don't override it. E.g.:
 
     SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA256
     SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA256

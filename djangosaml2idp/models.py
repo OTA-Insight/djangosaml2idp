@@ -173,7 +173,7 @@ class ServiceProvider(models.Model):
         if not self.metadata_expiration_dt:
             self.metadata_expiration_dt = extract_validuntil_from_metadata(self.local_metadata)
         super().save(*args, **kwargs)
-        IDP.load(force_refresh=True)
+        IDP.flush()
 
     @property
     def attribute_mapping(self) -> Dict[str, str]:
@@ -228,14 +228,10 @@ class ServiceProvider(models.Model):
 
     @property
     def sign_response(self) -> bool:
-        if self._sign_response is None:
-            return getattr(IDP.load().config, "sign_response", False)
         return self._sign_response
 
     @property
     def sign_assertion(self) -> bool:
-        if self._sign_assertion is None:
-            return getattr(IDP.load().config, "sign_assertion", False)
         return self._sign_assertion
 
     @property
