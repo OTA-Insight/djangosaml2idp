@@ -376,6 +376,21 @@ class LogoutProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
 
         resp = idp_server.create_logout_response(req_info.message, [binding])
 
+        # Case request is already signed
+        if isinstance(resp, str):
+            binding, destination = idp_server.pick_binding(
+                "single_logout_service", [binding], "spsso", req_info
+            )
+            html_response = self.create_html_response(
+                request,
+                binding=binding,
+                authn_resp=resp,
+                destination=destination,
+                relay_state=relay_state
+            )
+            logout(request)
+            return self.render_response(request, html_response, None)
+
         '''
         # TODO: SOAP
         # if binding == BINDING_SOAP:
