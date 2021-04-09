@@ -1,4 +1,5 @@
 import base64
+import pathlib
 from urllib import parse
 
 import pytest
@@ -85,7 +86,7 @@ def sp_conf_dict() -> dict:
         }
     },
     "metadata": {
-        "local": ["tests/xml/metadata/idp_metadata.xml"]
+        "local": [str(pathlib.Path(__file__).parent / "xml/metadata/idp_metadata.xml")]
     }
 }
 
@@ -590,6 +591,18 @@ class TestLogoutProcessView:
         response = LogoutProcessView.as_view()(logged_in_request)
 
         assert isinstance(response, HttpResponse)
+
+    @pytest.mark.django_db
+    def test_sign_assertions_true(self, sp_metadata_xml, logged_in_request, saml_logout_request_factory, sp_conf_dict):
+        # TODO: Cannot get "settings.SAML_IDP_CONFIG" to be modified and loaded so I just modified
+        #  the current settings.py to cause the error. I only want to modify settings for this test and
+        #  set the config to sign_response = True.
+        ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
+
+        logged_in_request.GET['SAMLRequest'] = saml_logout_request_factory()
+        response = LogoutProcessView.as_view()(logged_in_request)
+
+        assert response.status_code == 302
 
 
 class TestMetadata:
