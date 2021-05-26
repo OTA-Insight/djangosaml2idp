@@ -66,9 +66,11 @@ SAML_IDP_CONFIG = {
                     ('%s/sso/redirect' % BASE_URL, saml2.BINDING_HTTP_REDIRECT),
                 ],
             },
+            'sign_response': True,
             'name_id_format': [NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED],
-        }
+        },
     },
-
+    'key_file': PROJECT_ROOT + '/private.pem',
+    'cert_file': PROJECT_ROOT + '/public.pem',
     'valid_for': 365 * 24,
 }
