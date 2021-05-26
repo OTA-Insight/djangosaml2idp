@@ -594,9 +594,6 @@ class TestLogoutProcessView:
 
     @pytest.mark.django_db
     def test_sign_assertions_true(self, sp_metadata_xml, logged_in_request, saml_logout_request_factory, sp_conf_dict):
-        # TODO: Cannot get "settings.SAML_IDP_CONFIG" to be modified and loaded so I just modified
-        #  the current settings.py to cause the error. I only want to modify settings for this test and
-        #  set the config to sign_response = True.
         ServiceProvider.objects.create(entity_id='test_generic_sp', local_metadata=sp_metadata_xml)
 
         logged_in_request.GET['SAMLRequest'] = saml_logout_request_factory()
