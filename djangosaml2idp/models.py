@@ -207,7 +207,8 @@ class ServiceProvider(models.Model):
         if refreshed_metadata:
             self.save()
 
-        path = '/tmp/djangosaml2idp'
+        # Get temp folder in a portable way (taken from https://stackoverflow.com/a/66528016)
+        path = ((os.getenv("TEMP") + '\\') if os.name=="nt" else "/tmp/") + 'djangosaml2idp'
         if not os.path.exists(path):
             try:
                 os.mkdir(path)
