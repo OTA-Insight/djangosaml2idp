@@ -86,6 +86,8 @@ pytest-cov==2.11.1
     # via -r requirements-dev.in
 pytest-django==4.1.0
     # via -r requirements-dev.in
+pytest-mock==3.6.1
+    # via -r requirements-dev.in
 pytest==6.2.2
     # via
     #   pytest-cov
@@ -100,6 +102,8 @@ requests==2.25.1
     # via
     #   codecov
     #   pysaml2
+requests-mock==1.9.3
+    # via -r requirements-dev.in
 six==1.15.0
     # via
     #   pyopenssl

@@ -1,4 +1,5 @@
 import base64
+from os import environ
 from urllib import parse
 
 import pytest
@@ -53,6 +54,8 @@ def logged_in_request() -> HttpRequest:
         login(request, user)
     request.method = 'GET'
     request.user = user
+    request.META["SERVER_NAME"] = "test.org"
+    request.META["SERVER_PORT"] = "80"
     return request
 
 
@@ -85,7 +88,7 @@ def sp_conf_dict() -> dict:
         }
     },
     "metadata": {
-        "local": ["tests/xml/metadata/idp_metadata.xml"]
+        "local": ["xml/metadata/idp_metadata.xml"]
     }
 }
 

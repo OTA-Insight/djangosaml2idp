@@ -45,6 +45,8 @@ INSTALLED_APPS = (
     'tests',
 )
 
+ALLOWED_HOSTS = ['*']
+
 ROOT_URLCONF = 'tests.urls'
 
 BASE_URL = 'http://localhost:9000/idp'
@@ -53,7 +55,7 @@ SAML_AUTHN_SIGN_ALG = saml2.xmldsig.SIG_RSA_SHA256
 SAML_AUTHN_DIGEST_ALG = saml2.xmldsig.DIGEST_SHA256
 
 SAML_IDP_CONFIG = {
-    'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
+    'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1', '/usr/local/Cellar/libxmlsec1/1.2.33/include/xmlsec1/']),
     'entityid': 'test_generic_idp',
     'description': 'test_generic_idp',
 
