@@ -1,0 +1,42 @@
+[
+{
+  "model": "auth.user",
+  "fields": {
+    "password": "pbkdf2_sha256$260000$xFdX8A0V9zv9Ma0bgRm7Lr$tp08v/Rda6Wuc+VRRkufXzkX/szMD/nWVUGTAFLzN/I=",
+    "last_login": "2022-12-02T18:10:52Z",
+    "is_superuser": true,
+    "username": "teste",
+    "first_name": "Usuário",
+    "last_name": "Teste",
+    "email": "teste@teste.br",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2022-12-02T13:31:08Z",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "djangosaml2idp.serviceprovider",
+  "pk": 1,
+  "fields": {
+    "dt_created": "2022-12-02T13:26:41.028Z",
+    "dt_updated": "2022-12-02T18:08:05.410Z",
+    "entity_id": "https://sp.localhost.com/saml2/metadata/",
+    "pretty_name": "Teste",
+    "description": "Teste baixado",
+    "metadata_expiration_dt": "2023-12-02T15:06:21Z",
+    "remote_metadata_url": "",
+    "local_metadata": "<ns0:EntityDescriptor xmlns:ns0=\"urn:oasis:names:tc:SAML:2.0:metadata\" xmlns:ns1=\"urn:oasis:names:tc:SAML:metadata:algsupport\" xmlns:ns2=\"http://www.w3.org/2000/09/xmldsig#\" entityID=\"https://sp.localhost.com/saml2/metadata/\" validUntil=\"2023-12-02T15:06:21Z\">\r\n<ns0:Extensions>\r\n<ns1:DigestMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#md5\"/>\r\n<ns1:DigestMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#ripemd160\"/>\r\n<ns1:DigestMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#sha1\"/>\r\n<ns1:DigestMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#sha224\"/>\r\n<ns1:DigestMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#sha256\"/>\r\n<ns1:DigestMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#sha384\"/>\r\n<ns1:DigestMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#sha512\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#dsa-sha1\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2009/xmldsig11#dsa-sha256\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha1\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha224\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha256\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha384\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#ecdsa-sha512\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#rsa-md5\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#rsa-ripemd160\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2000/09/xmldsig#rsa-sha1\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#rsa-sha224\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#rsa-sha256\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#rsa-sha384\"/>\r\n<ns1:SigningMethod Algorithm=\"http://www.w3.org/2001/04/xmldsig-more#rsa-sha512\"/>\r\n</ns0:Extensions>\r\n<ns0:SPSSODescriptor protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\" AuthnRequestsSigned=\"true\" WantAssertionsSigned=\"true\">\r\n<ns0:KeyDescriptor use=\"signing\">\r\n<ns2:KeyInfo>\r\n<ns2:X509Data>\r\n<ns2:X509Certificate>MIIDZTCCAk2gAwIBAgIUZ5E/Xg58luC9ClLoAg2tWoeCtwIwDQYJKoZIhvcNAQEL BQAwQjFAMD4GA1UEAww3c3AubG9jYWxob3N0LmNvbSwgQz1CUiwgU1Q9UlMsIEw9 Q2F4aWFzIGRvIFN1bCwgTz1UZXN0ZTAeFw0yMjEyMDIxNDUwNDVaFw0zMjExMjkx NDUwNDVaMEIxQDA+BgNVBAMMN3NwLmxvY2FsaG9zdC5jb20sIEM9QlIsIFNUPVJT LCBMPUNheGlhcyBkbyBTdWwsIE89VGVzdGUwggEiMA0GCSqGSIb3DQEBAQUAA4IB DwAwggEKAoIBAQD2A2Ue0ZHORM6Gdc1h/F/RtSFWup3nZqS6yx2lW5oW50FxfqwO llOc3mgP89PaWfpPmmS+cd4JdHTHRUV4DwTpQhZm7UtiQVNHUx1tXlNv1zQyKNbb awUB1vDhN/1r7lsRCKwphzaBmujaKwnTjiJ3sIh6Wp0fS14BnjS6Tq4JWihpuRj1 ik1B3ahCoAagIXsgDSKApSPO2J0bZxH7w56HC0bZ23AXTvDmptlbbS7d9lkKgKdD VQCPrjSZuxNFFzUWLsVGRG9zgkYgZVSby0atmCVOdCERLz08/nhvmE2qboPc1nob oKgfhF10QbxbtnI311483xOfCPXVaL9q26kTAgMBAAGjUzBRMB0GA1UdDgQWBBQb KpEEcRHw4zEgyriyq68p/RIhgzAfBgNVHSMEGDAWgBQbKpEEcRHw4zEgyriyq68p /RIhgzAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQA03woSZ/YG lqTBgETx4I5KYbbqzAf6mHXbM10oH+tPuY8YjBkp/2kp6q/WPq5vLJgQBWCqUIKh R0SdpxcMdqVcTClPVRgAxzW54tKuGwZ0IFUpVVEvafCJMUwT5/LGpAKRdJz9ahDy GQgZCmSMWGXqLaEBrqyzKhs1SXrI8vMT4zXrpryYygF5Fc7zaADpM3iiHC7AeHxp A+HD4BRNleX3lqWSteuyBNW1P/s8ZAiPIGY1cK2DySmTVkUlRCgpFwfUaggm4utd URvHzR3CHSyk6Z/MmzETnihZ9fHblb45GN6SeBv7klOblUBVywF6337U4BK4a3dK mGPO82qFwjQo </ns2:X509Certificate>\r\n</ns2:X509Data>\r\n</ns2:KeyInfo>\r\n</ns0:KeyDescriptor>\r\n<ns0:KeyDescriptor use=\"encryption\">\r\n<ns2:KeyInfo>\r\n<ns2:X509Data>\r\n<ns2:X509Certificate>MIIDZTCCAk2gAwIBAgIUZ5E/Xg58luC9ClLoAg2tWoeCtwIwDQYJKoZIhvcNAQEL BQAwQjFAMD4GA1UEAww3c3AubG9jYWxob3N0LmNvbSwgQz1CUiwgU1Q9UlMsIEw9 Q2F4aWFzIGRvIFN1bCwgTz1UZXN0ZTAeFw0yMjEyMDIxNDUwNDVaFw0zMjExMjkx NDUwNDVaMEIxQDA+BgNVBAMMN3NwLmxvY2FsaG9zdC5jb20sIEM9QlIsIFNUPVJT LCBMPUNheGlhcyBkbyBTdWwsIE89VGVzdGUwggEiMA0GCSqGSIb3DQEBAQUAA4IB DwAwggEKAoIBAQD2A2Ue0ZHORM6Gdc1h/F/RtSFWup3nZqS6yx2lW5oW50FxfqwO llOc3mgP89PaWfpPmmS+cd4JdHTHRUV4DwTpQhZm7UtiQVNHUx1tXlNv1zQyKNbb awUB1vDhN/1r7lsRCKwphzaBmujaKwnTjiJ3sIh6Wp0fS14BnjS6Tq4JWihpuRj1 ik1B3ahCoAagIXsgDSKApSPO2J0bZxH7w56HC0bZ23AXTvDmptlbbS7d9lkKgKdD VQCPrjSZuxNFFzUWLsVGRG9zgkYgZVSby0atmCVOdCERLz08/nhvmE2qboPc1nob oKgfhF10QbxbtnI311483xOfCPXVaL9q26kTAgMBAAGjUzBRMB0GA1UdDgQWBBQb KpEEcRHw4zEgyriyq68p/RIhgzAfBgNVHSMEGDAWgBQbKpEEcRHw4zEgyriyq68p /RIhgzAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQA03woSZ/YG lqTBgETx4I5KYbbqzAf6mHXbM10oH+tPuY8YjBkp/2kp6q/WPq5vLJgQBWCqUIKh R0SdpxcMdqVcTClPVRgAxzW54tKuGwZ0IFUpVVEvafCJMUwT5/LGpAKRdJz9ahDy GQgZCmSMWGXqLaEBrqyzKhs1SXrI8vMT4zXrpryYygF5Fc7zaADpM3iiHC7AeHxp A+HD4BRNleX3lqWSteuyBNW1P/s8ZAiPIGY1cK2DySmTVkUlRCgpFwfUaggm4utd URvHzR3CHSyk6Z/MmzETnihZ9fHblb45GN6SeBv7klOblUBVywF6337U4BK4a3dK mGPO82qFwjQo </ns2:X509Certificate>\r\n</ns2:X509Data>\r\n</ns2:KeyInfo>\r\n</ns0:KeyDescriptor>\r\n<ns0:SingleLogoutService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"https://sp.localhost.com/saml2/ls/\"/>\r\n<ns0:SingleLogoutService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"https://sp.localhost.com/saml2/ls/post/\"/>\r\n<ns0:NameIDFormat>urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress</ns0:NameIDFormat>\r\n<ns0:AssertionConsumerService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"https://sp.localhost.com/saml2/acs/\" index=\"1\"/>\r\n</ns0:SPSSODescriptor>\r\n</ns0:EntityDescriptor>",
+    "active": true,
+    "_processor": "djangosaml2idp.processors.BaseProcessor",
+    "_attribute_mapping": "{\n    \"email\": \"email\",\n    \"first_name\": \"first_name\",\n    \"last_name\": \"last_name\",\n    \"is_staff\": \"is_staff\",\n    \"is_superuser\": \"is_superuser\"\n}",
+    "_nameid_field": "",
+    "_sign_response": true,
+    "_sign_assertion": true,
+    "_signing_algorithm": null,
+    "_digest_algorithm": null,
+    "_encrypt_saml_responses": null
+  }
+}
+]
