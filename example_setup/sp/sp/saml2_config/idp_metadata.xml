@@ -1,7 +1,7 @@
 <ns0:EntityDescriptor 
 	xmlns:ns0="urn:oasis:names:tc:SAML:2.0:metadata" 
 	xmlns:ns1="urn:oasis:names:tc:SAML:metadata:algsupport" 
-	xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" entityID="http://localhost:9000/idp/metadata/" validUntil="2020-12-27T12:41:18Z">
+	xmlns:ns2="http://www.w3.org/2000/09/xmldsig#" entityID="https://idp.localhost.com/idp/metadata/" validUntil="2029-12-27T12:41:18Z">
 	<ns0:Extensions>
 		<ns1:DigestMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#md5"/>
 		<ns1:DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#ripemd160"/>
@@ -25,7 +25,7 @@
 			<ns2:KeyInfo>
 				<ns2:X509Data>
 					<ns2:X509Certificate>
-MIIDCzCCAfOgAwIBAgIJALYDB+Awm3SNMA0GCSqGSIb3DQEBCwUAMBwxGjAYBgNV BAMMEWlkcC5sb2NhbGhvc3QuY29tMB4XDTE4MDgwODE4MTcxM1oXDTI4MDgwNTE4 MTcxM1owHDEaMBgGA1UEAwwRaWRwLmxvY2FsaG9zdC5jb20wggEiMA0GCSqGSIb3 DQEBAQUAA4IBDwAwggEKAoIBAQCyL++77fy/kHSy7b14Xx4a084sHBNBRRG4GcPS 1PVp4Ssv4Y74RnZYXNTYO3Fm76UHfv6BAWVc6UQXoScYp/DpDml9GS22bnBS3JQP IIp3tFhElWRd9m+e/FkK29F9L8WZDNzbMMQUhwNd/K/k/L9ycjISbbWlcO4rqHpt aprWoQmpl8yvWPYVCiSDoj494rmjdF2kRVaJvGvb9YLM1ziUMl4iJUc7tjybz2ef rkkERNmWZRiMKp7wPpDf2VJ81GP7Gp15PIVnmUKw4v2R6fFJkociW1TEm0xJJxmV +SiwyyQ/9oVShOBYwoYYZZm0N4fIRKiVaZ1m9eRFFKHrX01ZAgMBAAGjUDBOMB0G A1UdDgQWBBR63/bbGWxzIdeHNSovHUsYaaTZ5jAfBgNVHSMEGDAWgBR63/bbGWxz IdeHNSovHUsYaaTZ5jAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQCW V6VaNdXRu8OrmYAeZtHL6xwdGbVcih1URRJmjOnwjKhQGJnzLGqEM8ofxibLIXKM xFRho+v1+2C8n6uNbQsvce5xHcygucKSZ56wN8iRtCFqrSWTZRTTs8yMfQpjYHXc 4SBUKfVX0mQeHcBzd5MiUHAgWo2BYF3beEngrDEzCxckxpLspZymTzOOIlqYJwRL 8KOxtTTaqIgX5A2/JNjGnbmgoCY39XG0xmL1X5BEzoGBjvkt4Sl+L0n+cz2WSDrM OxlEpwWZ78hmz2zYRegJOwDP6Tiov87fy6kxtirBD4Elozenqks1AcKFELY8Pi5R bzad2vwjVUMi1Xe2J3b6
+MIIDZzCCAk+gAwIBAgIURRm/ZPdGORMWeOvWxdhd5n2nIXowDQYJKoZIhvcNAQEL BQAwQzFBMD8GA1UEAww4aWRwLmxvY2FsaG9zdC5jb20sIEM9QlIsIFNUPVJTLCBM PUNheGlhcyBkbyBTdWwsIE89VGVzdGUwHhcNMjIxMjAyMTQ1MDM1WhcNMzIxMTI5 MTQ1MDM1WjBDMUEwPwYDVQQDDDhpZHAubG9jYWxob3N0LmNvbSwgQz1CUiwgU1Q9 UlMsIEw9Q2F4aWFzIGRvIFN1bCwgTz1UZXN0ZTCCASIwDQYJKoZIhvcNAQEBBQAD ggEPADCCAQoCggEBAMaEPB+640BgStA9c4kOY1gZuQ0BXWLKisItf0gAff3mNy0f 2qrBE4XLX4i/CIQnjPK0ur/a3me9COsnYeDkK4PuPzNfo3wQKHNGup8Gu9QVRmX8 PfPVsyUvVtGZ8p9nWjNRgKviGCogo0h4d4Ne80fCbBmABLNCwjXhsUM8BPCqn45k Q8itDpqCje4YgQJ2nizCojU4A6UeJKE4fE0gUTCPbNfdyAKv9gsMT6ot3L1KqCrg KesxGIbplWe3QR5tS4x2NNfmOtx47GQd8/KSnTzekZzE/TL+iHzSZyoX5yVSkhkZ Ief7oLVuIIHT/L+cNLUYG7Zbj6hmHuPhw09vUw8CAwEAAaNTMFEwHQYDVR0OBBYE FLIhFPZgbQIA3VEvB9udDSG9440vMB8GA1UdIwQYMBaAFLIhFPZgbQIA3VEvB9ud DSG9440vMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAJNB0fUs 0qGnJIB/NBCHjUmAkhqDpHwLPSRMFvb0sGAduW+Pjuv7MWDlx2yxEVKz6X6236o5 SRYR2qyAyDgi7Zgf76IXiGdMIe78K0Gj/4aZuYoMACeo4KfvZ5X1LfBMQRWhR9Ty x05Rp35mhWnRI3SUMZSrrCf/DOdv1TSytyNNOjb1DZngtD1QXYSkKLR/2GB7HOOk xX4XhHi6sle05esGgYSPhpiqUVdbtt0SisdveDFaYQIdLN8VY+n3cRfkFETsaqLe zkwb3yZRPoQ1ti0wcRWyMRsoWf7OSM2rzjVLT/XjjWmdCj32cvFSGVg207/MLCdt wx+wo+yds2b6GEU=
 </ns2:X509Certificate>
 				</ns2:X509Data>
 			</ns2:KeyInfo>
@@ -34,20 +34,20 @@ MIIDCzCCAfOgAwIBAgIJALYDB+Awm3SNMA0GCSqGSIb3DQEBCwUAMBwxGjAYBgNV BAMMEWlkcC5sb2N
 			<ns2:KeyInfo>
 				<ns2:X509Data>
 					<ns2:X509Certificate>
-MIIDCzCCAfOgAwIBAgIJALYDB+Awm3SNMA0GCSqGSIb3DQEBCwUAMBwxGjAYBgNV BAMMEWlkcC5sb2NhbGhvc3QuY29tMB4XDTE4MDgwODE4MTcxM1oXDTI4MDgwNTE4 MTcxM1owHDEaMBgGA1UEAwwRaWRwLmxvY2FsaG9zdC5jb20wggEiMA0GCSqGSIb3 DQEBAQUAA4IBDwAwggEKAoIBAQCyL++77fy/kHSy7b14Xx4a084sHBNBRRG4GcPS 1PVp4Ssv4Y74RnZYXNTYO3Fm76UHfv6BAWVc6UQXoScYp/DpDml9GS22bnBS3JQP IIp3tFhElWRd9m+e/FkK29F9L8WZDNzbMMQUhwNd/K/k/L9ycjISbbWlcO4rqHpt aprWoQmpl8yvWPYVCiSDoj494rmjdF2kRVaJvGvb9YLM1ziUMl4iJUc7tjybz2ef rkkERNmWZRiMKp7wPpDf2VJ81GP7Gp15PIVnmUKw4v2R6fFJkociW1TEm0xJJxmV +SiwyyQ/9oVShOBYwoYYZZm0N4fIRKiVaZ1m9eRFFKHrX01ZAgMBAAGjUDBOMB0G A1UdDgQWBBR63/bbGWxzIdeHNSovHUsYaaTZ5jAfBgNVHSMEGDAWgBR63/bbGWxz IdeHNSovHUsYaaTZ5jAMBgNVHRMEBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQCW V6VaNdXRu8OrmYAeZtHL6xwdGbVcih1URRJmjOnwjKhQGJnzLGqEM8ofxibLIXKM xFRho+v1+2C8n6uNbQsvce5xHcygucKSZ56wN8iRtCFqrSWTZRTTs8yMfQpjYHXc 4SBUKfVX0mQeHcBzd5MiUHAgWo2BYF3beEngrDEzCxckxpLspZymTzOOIlqYJwRL 8KOxtTTaqIgX5A2/JNjGnbmgoCY39XG0xmL1X5BEzoGBjvkt4Sl+L0n+cz2WSDrM OxlEpwWZ78hmz2zYRegJOwDP6Tiov87fy6kxtirBD4Elozenqks1AcKFELY8Pi5R bzad2vwjVUMi1Xe2J3b6
+MIIDZzCCAk+gAwIBAgIURRm/ZPdGORMWeOvWxdhd5n2nIXowDQYJKoZIhvcNAQEL BQAwQzFBMD8GA1UEAww4aWRwLmxvY2FsaG9zdC5jb20sIEM9QlIsIFNUPVJTLCBM PUNheGlhcyBkbyBTdWwsIE89VGVzdGUwHhcNMjIxMjAyMTQ1MDM1WhcNMzIxMTI5 MTQ1MDM1WjBDMUEwPwYDVQQDDDhpZHAubG9jYWxob3N0LmNvbSwgQz1CUiwgU1Q9 UlMsIEw9Q2F4aWFzIGRvIFN1bCwgTz1UZXN0ZTCCASIwDQYJKoZIhvcNAQEBBQAD ggEPADCCAQoCggEBAMaEPB+640BgStA9c4kOY1gZuQ0BXWLKisItf0gAff3mNy0f 2qrBE4XLX4i/CIQnjPK0ur/a3me9COsnYeDkK4PuPzNfo3wQKHNGup8Gu9QVRmX8 PfPVsyUvVtGZ8p9nWjNRgKviGCogo0h4d4Ne80fCbBmABLNCwjXhsUM8BPCqn45k Q8itDpqCje4YgQJ2nizCojU4A6UeJKE4fE0gUTCPbNfdyAKv9gsMT6ot3L1KqCrg KesxGIbplWe3QR5tS4x2NNfmOtx47GQd8/KSnTzekZzE/TL+iHzSZyoX5yVSkhkZ Ief7oLVuIIHT/L+cNLUYG7Zbj6hmHuPhw09vUw8CAwEAAaNTMFEwHQYDVR0OBBYE FLIhFPZgbQIA3VEvB9udDSG9440vMB8GA1UdIwQYMBaAFLIhFPZgbQIA3VEvB9ud DSG9440vMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAJNB0fUs 0qGnJIB/NBCHjUmAkhqDpHwLPSRMFvb0sGAduW+Pjuv7MWDlx2yxEVKz6X6236o5 SRYR2qyAyDgi7Zgf76IXiGdMIe78K0Gj/4aZuYoMACeo4KfvZ5X1LfBMQRWhR9Ty x05Rp35mhWnRI3SUMZSrrCf/DOdv1TSytyNNOjb1DZngtD1QXYSkKLR/2GB7HOOk xX4XhHi6sle05esGgYSPhpiqUVdbtt0SisdveDFaYQIdLN8VY+n3cRfkFETsaqLe zkwb3yZRPoQ1ti0wcRWyMRsoWf7OSM2rzjVLT/XjjWmdCj32cvFSGVg207/MLCdt wx+wo+yds2b6GEU=
 </ns2:X509Certificate>
 				</ns2:X509Data>
 			</ns2:KeyInfo>
 		</ns0:KeyDescriptor>
-		<ns0:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://localhost:9000/idp/slo/post/"/>
-		<ns0:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="http://localhost:9000/idp/slo/redirect/"/>
+		<ns0:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://idp.localhost.com/idp/slo/post/"/>
+		<ns0:SingleLogoutService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.localhost.com/idp/slo/redirect/"/>
 		<ns0:NameIDFormat>
 urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
 </ns0:NameIDFormat>
 		<ns0:NameIDFormat>
 urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified
 </ns0:NameIDFormat>
-		<ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="http://localhost:9000/idp/sso/post/"/>
-		<ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="http://localhost:9000/idp/sso/redirect/"/>
+		<ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://idp.localhost.com/idp/sso/post/"/>
+		<ns0:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.localhost.com/idp/sso/redirect/"/>
 	</ns0:IDPSSODescriptor>
 </ns0:EntityDescriptor>

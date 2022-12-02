@@ -255,6 +255,7 @@ class LoginProcessView(LoginRequiredMixin, IdPHandlerViewMixin, View):
             # Construct SamlResponse message
             authn_resp = build_authn_response(request.user, get_authn(), resp_args, service_provider)
         except Exception as e:
+            print(e)
             return error_cbv.handle_error(request, exception=e, status_code=500)
 
         html_response = self.create_html_response(

@@ -174,7 +174,7 @@ LOGOUT_REDIRECT_URL = '/'
 SAML_IDP_CONFIG = {
     'debug': DEBUG,
     'xmlsec_binary': get_xmlsec_binary(['/opt/local/bin', '/usr/bin/xmlsec1']),
-    'entityid': 'http://localhost:9000/idp/metadata/',
+    'entityid': 'https://idp.localhost.com/idp/metadata/',
     'description': 'Example IdP setup',
 
     'service': {
@@ -182,17 +182,17 @@ SAML_IDP_CONFIG = {
             'name': 'Django localhost IdP',
             'endpoints': {
                 'single_sign_on_service': [
-                    ('http://localhost:9000/idp/sso/post/', saml2.BINDING_HTTP_POST),
-                    ('http://localhost:9000/idp/sso/redirect/', saml2.BINDING_HTTP_REDIRECT),
+                    ('https://idp.localhost.com/idp/sso/post/', saml2.BINDING_HTTP_POST),
+                    ('https://idp.localhost.com/idp/sso/redirect/', saml2.BINDING_HTTP_REDIRECT),
                 ],
                 "single_logout_service": [
-                    ("http://localhost:9000/idp/slo/post/", saml2.BINDING_HTTP_POST),
-                    ("http://localhost:9000/idp/slo/redirect/", saml2.BINDING_HTTP_REDIRECT)
+                    ("https://idp.localhost.com/idp/slo/post/", saml2.BINDING_HTTP_POST),
+                    ("https://idp.localhost.com/idp/slo/redirect/", saml2.BINDING_HTTP_REDIRECT)
                 ],
             },
             'name_id_format': [NAMEID_FORMAT_EMAILADDRESS, NAMEID_FORMAT_UNSPECIFIED],
             'sign_response': True,
-            'sign_assertion': True,
+            'sign_assertion': False,
             'want_authn_requests_signed': True,
         },
     },
