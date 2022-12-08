@@ -2,7 +2,7 @@
 
 - Rodar o seguinte comando em outro terminal:
 
-    `docker exec -it djangosaml2idp_idp python manage.py loaddata ../dump.json`
+    `docker exec -it djangosaml2idp-idp python manage.py loaddata ../dump.json`
 
 Isso roda a fixture adicionando o usuário Teste e adicionando o SP(de acordo com os links que estão rodando no código).
 

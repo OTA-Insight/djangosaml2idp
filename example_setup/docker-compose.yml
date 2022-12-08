@@ -1,26 +1,50 @@
 version: '2'
 
-services:
-  sp:
-    restart: always
-    container_name: djangosaml2idp_sp
-    build: sp
-    stdin_open: true
-    tty: true
-    volumes:
-      - ./sp:/app
-    working_dir: /app
-    ports:
-      - "8000:8000"
+networks:
+  saml_network:
 
+services:
   idp:
     restart: always
-    container_name: djangosaml2idp_idp
+    container_name: djangosaml2idp-idp
     build: idp
     stdin_open: true
     tty: true
     volumes:
       - ..:/app
     working_dir: /app/example_setup/idp
+    networks:
+      - saml_network
     ports:
       - "9000:9000"
+
+  sp:
+    depends_on:
+      - idp
+    restart: always
+    container_name: djangosaml2idp-sp
+    build: sp
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./sp:/app
+    working_dir: /app
+    networks:
+      - saml_network
+    ports:
+      - "8000:8000"
+
+  nginx:
+    depends_on:
+      - idp
+      - sp
+    restart: always
+    container_name: djangosaml2idp-nginx
+    build: nginx
+    stdin_open: true
+    tty: true
+    networks:
+      - saml_network
+    ports:
+      - "80:80"
+      - "443:443"
