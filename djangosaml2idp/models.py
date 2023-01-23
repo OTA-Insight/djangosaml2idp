@@ -219,7 +219,7 @@ class ServiceProvider(models.Model):
         # Rewrite the file if it did not exist yet, or if the SP config was updated after having written the file previously.
         if not os.path.exists(filename) or refreshed_metadata or (self.dt_updated and self.dt_updated.replace(tzinfo=pytz.utc) > datetime.datetime.fromtimestamp(os.path.getmtime(filename)).replace(tzinfo=pytz.utc)):
             try:
-                with open(filename, 'w') as f:
+                with open(filename, 'w', encoding='utf-8') as f:
                     f.write(self.local_metadata)
             except Exception as e:
                 logger.error(f'Could not write metadata to file {filename}: {e}')
